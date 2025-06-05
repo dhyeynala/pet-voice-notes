@@ -42,7 +42,7 @@
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const uid = userCredential.user.uid;
 
-        const res = await fetch('/api/start', {
+        const res = await fetch('http://127.0.0.1:8000/api/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid, pet })
