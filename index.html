@@ -19,15 +19,16 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
+    // ✅ Your Firebase config
     const firebaseConfig = {
-    apiKey: "AIzaSyCVvGsrYlf8rwKVaPlQif8ipW3ghDhBv38",
-    authDomain: "puppypages-29427.firebaseapp.com",
-    databaseURL: "https://puppypages-29427-default-rtdb.firebaseio.com",
-    projectId: "puppypages-29427",
-    storageBucket: "puppypages-29427.appspot.com",
-    messagingSenderId: "168138704553",
-    appId: "1:168138704553:web:69353f37163a17fc1b4bb8",
-    measurementId: "G-5X3SX0RBLK"
+      apiKey: "AIzaSyCVvGsrYlf8rwKVaPlQif8ipW3ghDhBv38",
+      authDomain: "puppypages-29427.firebaseapp.com",
+      databaseURL: "https://puppypages-29427-default-rtdb.firebaseio.com",
+      projectId: "puppypages-29427",
+      storageBucket: "puppypages-29427.appspot.com",
+      messagingSenderId: "168138704553",
+      appId: "1:168138704553:web:69353f37163a17fc1b4bb8",
+      measurementId: "G-5X3SX0RBLK"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -55,6 +56,9 @@
         document.getElementById('output').innerText = `Error: ${error.message}`;
       }
     }
+
+    // ✅ Make signUp globally accessible for onclick
+    window.signUp = signUp;
   </script>
 </body>
 </html>
