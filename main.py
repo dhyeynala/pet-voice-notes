@@ -16,7 +16,7 @@ def main(user_id, pet_id):
     print("🎤 Starting real-time voice notes system...")
 
     try:
-        transcript = transcribe_audio(duration_seconds=8)
+        transcript = transcribe_audio(duration_seconds=20)
         print("\n📝 TRANSCRIPT:\n", transcript)
 
         summary = summarize_text(transcript)
