@@ -1,0 +1,21 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Voice Notes App</title>
+</head>
+<body>
+  <h2>Pet & Human Healthcare Voice Notes</h2>
+  <button onclick="startTranscription()">Start Speaking</button>
+  <p id="output"></p>
+
+  <script>
+    async function startTranscription() {
+      const res = await fetch('/api/start', { method: 'POST' });
+      const data = await res.json();
+      document.getElementById('output').innerText = `Summary:\n${data.summary}`;
+    }
+  </script>
+</body>
+</html>

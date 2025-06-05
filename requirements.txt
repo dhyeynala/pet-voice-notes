@@ -1,0 +1,7 @@
+python-dotenv
+openai
+google-cloud-speech
+pyaudio
+google-generativeai
+python-dotenv
+firebase-admin
