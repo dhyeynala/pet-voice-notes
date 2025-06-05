@@ -57,7 +57,17 @@
       });
 
       const data = await res.json();
-      document.getElementById('output').innerText = `Summary:\n${data.message}`;
+      if (data.summary && data.transcript) {
+        document.getElementById('output').innerText =
+        `📝 Transcript:\n${data.transcript}\n\n🔍 Summary:\n${data.summary}`;
+      } else if (data.error) {
+        document.getElementById('output').innerText =
+        `❌ Error: ${data.error}`;
+      } else {
+        document.getElementById('output').innerText =
+        `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
+      }
+
     };
   </script>
 </body>
