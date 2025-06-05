@@ -46,7 +46,7 @@ def transcribe_audio():
         stream_callback=callback
     )
 
-    print(" Recording... Speak now (Press Ctrl+C to stop)")
+    print("🎤 Recording... Speak now (Press Ctrl+C to stop)")
 
     stream.start_stream()
     transcript = ""
@@ -63,7 +63,7 @@ def transcribe_audio():
                     transcript += text + " "
 
     except KeyboardInterrupt:
-        print("\n Recording stopped by user.")
+        print("\n🛑 Recording stopped by user.")
 
     finally:
         stream.stop_stream()
@@ -72,3 +72,6 @@ def transcribe_audio():
         audio_queue.put(None)
 
     return transcript.strip()
+
+
+
