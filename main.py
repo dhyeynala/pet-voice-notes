@@ -1,6 +1,5 @@
-# main.py
-
 import os
+import argparse
 from dotenv import load_dotenv
 import openai
 from transcribe import transcribe_audio
@@ -13,25 +12,26 @@ load_dotenv()
 # Set OpenAI key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def main():
-    print(" Starting real-time voice notes system...")
+def main(user_id, pet_id):
+    print("🎤 Starting real-time voice notes system...")
 
     try:
-        # Transcribe from mic
         transcript = transcribe_audio()
-        print("\n TRANSCRIPT:\n", transcript)
+        print("\n📝 TRANSCRIPT:\n", transcript)
 
-        # Summarize
         summary = summarize_text(transcript)
-        print("\n SUMMARY:\n", summary)
+        print("\n🔍 SUMMARY:\n", summary)
 
-        # Store in Firestore
-        user_id = "demo-user"
-        pet_id = "dhyey"
         store_to_firestore(user_id, pet_id, transcript, summary)
+        print("✅ Data stored to Firestore.")
 
     except Exception as e:
-        print(f" Error: {e}")
+        print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Voice note system for pets.")
+    parser.add_argument("--user_id", required=True, help="User ID for Firestore")
+    parser.add_argument("--pet_id", required=True, help="Pet ID for Firestore")
+    args = parser.parse_args()
+
+    main(args.user_id, args.pet_id)
