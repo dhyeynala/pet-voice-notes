@@ -3,6 +3,8 @@
 import os
 import queue
 import pyaudio
+import threading
+import time
 from dotenv import load_dotenv
 from google.cloud import speech
 
@@ -15,10 +17,12 @@ RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms
 audio_queue = queue.Queue()
 
+# Callback to capture audio from mic
 def callback(in_data, frame_count, time_info, status):
     audio_queue.put(in_data)
     return (None, pyaudio.paContinue)
 
+# Generator for streaming audio to Google API
 def audio_generator():
     while True:
         data = audio_queue.get()
@@ -26,7 +30,16 @@ def audio_generator():
             break
         yield data
 
-def transcribe_audio():
+# Automatically stop recording after N seconds
+def stop_recording_after(seconds, stream):
+    time.sleep(seconds)
+    print(f"🛑 Auto-stopping after {seconds} seconds.")
+    stream.stop_stream()
+    stream.close()
+    audio_queue.put(None)
+
+# Transcribe audio from mic using Google Cloud Speech
+def transcribe_audio(duration_seconds=10):
     client = speech.SpeechClient()
 
     config = speech.RecognitionConfig(
@@ -46,9 +59,12 @@ def transcribe_audio():
         stream_callback=callback
     )
 
-    print("🎤 Recording... Speak now (Press Ctrl+C to stop)")
+    print(f"🎤 Recording for {duration_seconds} seconds...")
 
+    # Start streaming and launch stop timer
     stream.start_stream()
+    threading.Thread(target=stop_recording_after, args=(duration_seconds, stream), daemon=True).start()
+
     transcript = ""
 
     try:
@@ -62,16 +78,10 @@ def transcribe_audio():
                     print(f">> {text}")
                     transcript += text + " "
 
-    except KeyboardInterrupt:
-        print("\n🛑 Recording stopped by user.")
+    except Exception as e:
+        print(f"❌ Error during transcription: {e}")
 
     finally:
-        stream.stop_stream()
-        stream.close()
         mic.terminate()
-        audio_queue.put(None)
 
     return transcript.strip()
-
-
-
