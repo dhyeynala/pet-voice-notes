@@ -27,7 +27,7 @@ def main():
 
         # Store in Firestore
         user_id = "demo-user"
-        pet_id = "tom"
+        pet_id = "dhyey"
         store_to_firestore(user_id, pet_id, transcript, summary)
 
     except Exception as e:
