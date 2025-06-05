@@ -1,0 +1,40 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+</head>
+<body>
+  <h2>Login or Sign Up</h2>
+  <button onclick="signInWithGoogle()">Sign in with Google</button>
+
+  <script type="module">
+    import { app } from "./firebase-config.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Already signed in → go to record.html
+    onAuthStateChanged(auth, user => {
+      if (user) window.location.href = "/record.html";
+    });
+
+    // Sign in logic
+    window.signInWithGoogle = async function () {
+      try {
+        await signInWithPopup(auth, provider);
+        window.location.href = "/record.html";
+      } catch (error) {
+        alert("Login failed: " + error.message);
+      }
+    };
+  </script>
+</body>
+</html>

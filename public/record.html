@@ -1,0 +1,64 @@
+<!-- public/record.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Record</title>
+</head>
+<body>
+  <h2>Welcome! Start Recording</h2>
+
+  <button onclick="startTranscription()">Start Speaking</button>
+  <button onclick="logout()">Logout</button>
+  <p id="output"></p>
+
+  <script type="module">
+    import { app } from "./firebase-config.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const auth = getAuth(app);
+    let currentUser = null;
+
+    // 🔐 Block access if not logged in
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "/index.html";
+      } else {
+        currentUser = user;
+      }
+    });
+
+    // 🔓 Logout logic
+    window.logout = async function () {
+      await signOut(auth);
+      window.location.href = "/index.html";
+    };
+
+    // 🎤 Transcription (now with uid + dummy pet_id)
+    window.startTranscription = async function () {
+      if (!currentUser) {
+        alert("User not authenticated");
+        return;
+      }
+
+      const res = await fetch('/api/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          uid: currentUser.uid,
+          pet: "my_pet_id"  // Replace with real pet ID when ready
+        })
+      });
+
+      const data = await res.json();
+      document.getElementById('output').innerText = `Summary:\n${data.message}`;
+    };
+  </script>
+</body>
+</html>

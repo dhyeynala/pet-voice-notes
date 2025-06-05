@@ -16,6 +16,7 @@ db = firestore.client()
 
 def store_to_firestore(user_id: str, pet_id: str, transcript: str, summary: str):
     data = {
+        "user_id": user_id,
         "timestamp": datetime.utcnow().isoformat(),
         "transcript": transcript,
         "summary": summary
