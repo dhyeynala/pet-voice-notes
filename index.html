@@ -39,15 +39,21 @@
       const password = document.getElementById('password').value;
       const pet = document.getElementById('pet').value;
 
+      console.log("🔁 Starting sign-up with:", { email, pet });
+
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const uid = userCredential.user.uid;
+
+        console.log("✅ Firebase user created:", uid);
 
         const res = await fetch('http://127.0.0.1:8000/api/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid, pet })
         });
+
+        console.log("📬 POST response received");
 
         const data = await res.json();
         document.getElementById('output').innerText = `Summary:\n${data.summary}`;
@@ -56,6 +62,7 @@
         document.getElementById('output').innerText = `Error: ${error.message}`;
       }
     }
+
 
     // ✅ Make signUp globally accessible for onclick
     window.signUp = signUp;
