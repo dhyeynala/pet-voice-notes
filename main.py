@@ -13,21 +13,29 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def main(user_id, pet_id):
-    print("🎤 Starting real-time voice notes system...")
+    print(" Starting real-time voice notes system...")
 
     try:
         transcript = transcribe_audio(duration_seconds=20)
-        print("\n📝 TRANSCRIPT:\n", transcript)
+        print("\n TRANSCRIPT:\n", transcript)
 
         summary = summarize_text(transcript)
-        print("\n🔍 SUMMARY:\n", summary)
+        print("\n SUMMARY:\n", summary)
 
         store_to_firestore(user_id, pet_id, transcript, summary)
-        print("✅ Data stored to Firestore.")
+        print(" Data stored to Firestore.")
+
+        # ✅ Return for FastAPI
+        return {
+            "transcript": transcript,
+            "summary": summary
+        }
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
+        return {"error": str(e)}
 
+# CLI usage (safe to keep)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Voice note system for pets.")
     parser.add_argument("--user_id", required=True, help="User ID for Firestore")

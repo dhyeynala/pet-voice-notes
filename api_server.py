@@ -21,10 +21,11 @@ async def start(request: Request):
     user_id = data["uid"]
     pet_id = data["pet"]
 
-    print("📥 Received POST:", data)
-    run_main(user_id, pet_id)
+    print(" Received POST:", data)
+    response = run_main(user_id, pet_id)
+    return response
 
-    return {"message": "Data stored successfully"}
+    #return {"message": "Data stored successfully"}
 
 # ✅ Mount static frontend AFTER defining routes
 app.mount("/", StaticFiles(directory="public", html=True), name="static")
