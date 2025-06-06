@@ -17,12 +17,20 @@ db = firestore.client()
 def store_to_firestore(user_id: str, pet_id: str, transcript: str, summary: str):
     data = {
         "user_id": user_id,
+        "pet_id": pet_id,
         "timestamp": datetime.utcnow().isoformat(),
         "transcript": transcript,
         "summary": summary
     }
 
-    doc_ref = db.collection("pets").document(pet_id).collection("voice-notes").document()
+    doc_ref = db.collection("users") \
+                .document(user_id) \
+                .collection("pets") \
+                .document(pet_id) \
+                .collection("voice-notes") \
+                .document()
+
     doc_ref.set(data)
 
-    print(f" Stored voice note for pet {pet_id} under user {user_id}")
+    print(f"Stored voice note for user {user_id}, pet {pet_id}")
+
