@@ -7,3 +7,4 @@ google-cloud-speech
 google-generativeai
 PyMuPDF
 python-multipart
+openai
