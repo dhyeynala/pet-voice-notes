@@ -16,7 +16,7 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
     doc.close()
 
     # Use Gemini
-    model = genai.GenerativeModel("models/gemini-pro") 
+    model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
     prompt = (
         "You are a veterinary assistant AI. Read the following medical document "
         "and extract key details like symptoms, diagnosis, medications, or treatments. "
