@@ -24,8 +24,12 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
         + text[:30000]
     )
 
-    response = model.generate_content(prompt)
-    summary = response.text.strip()
+    try:
+        response = model.generate_content(prompt)
+        summary = response.text.strip()
+    except Exception as e:
+        print("Gemini error:", e)
+        summary = "Summary could not be generated due to quota limits."
 
     # Save
     timestamp = datetime.utcnow().isoformat()
