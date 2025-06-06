@@ -25,7 +25,7 @@ def main(user_id, pet_id):
         store_to_firestore(user_id, pet_id, transcript, summary)
         print(" Data stored to Firestore.")
 
-        # ✅ Return for FastAPI
+        # Return for FastAPI
         return {
             "transcript": transcript,
             "summary": summary

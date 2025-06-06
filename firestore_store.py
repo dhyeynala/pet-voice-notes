@@ -11,7 +11,7 @@ load_dotenv()
 if not firebase_admin._apps:
     cred = credentials.Certificate("gcloud-key.json")
     firebase_admin.initialize_app(cred, {
-        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET")  # Add this to .env
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET") 
     })
 
 db = firestore.client()

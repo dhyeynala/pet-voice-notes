@@ -33,7 +33,7 @@ def audio_generator():
 # Automatically stop recording after N seconds
 def stop_recording_after(seconds, stream):
     time.sleep(seconds)
-    print(f"🛑 Auto-stopping after {seconds} seconds.")
+    print(f"Auto-stopping after {seconds} seconds.")
     stream.stop_stream()
     stream.close()
     audio_queue.put(None)
@@ -59,7 +59,7 @@ def transcribe_audio(duration_seconds=10):
         stream_callback=callback
     )
 
-    print(f"🎤 Recording for {duration_seconds} seconds...")
+    print(f"Recording for {duration_seconds} seconds...")
 
     # Start streaming and launch stop timer
     stream.start_stream()
@@ -79,7 +79,7 @@ def transcribe_audio(duration_seconds=10):
                     transcript += text + " "
 
     except Exception as e:
-        print(f"❌ Error during transcription: {e}")
+        print(f"Error during transcription: {e}")
 
     finally:
         mic.terminate()

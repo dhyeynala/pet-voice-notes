@@ -13,20 +13,20 @@
   <br><br>
 
   <input type="text" id="new-pet-name" placeholder="Add new pet" />
-  <button onclick="addNewPet()">➕ Add Pet</button>
+  <button onclick="addNewPet()">Add Pet</button>
   <br><br>
 
-  <button onclick="startTranscription()">🎙️ Start Speaking</button>
-  <button onclick="logout()">🚪 Logout</button>
+  <button onclick="startTranscription()">Start Speaking</button>
+  <button onclick="logout()">Logout</button>
 
   <p id="output"></p>
 
   <hr>
 
-  <h3>📄 Upload Pet Medical PDF</h3>
+  <h3>Upload Pet Medical PDF</h3>
   <form id="pdf-form">
     <input type="file" id="pdf-file" accept="application/pdf" required />
-    <button type="submit">📤 Upload PDF</button>
+    <button type="submit">Upload PDF</button>
   </form>
 
   <pre id="pdf-result"></pre>
@@ -91,12 +91,12 @@
       const data = await res.json();
       if (data.summary && data.transcript) {
         document.getElementById('output').innerText =
-          `📝 Transcript:\n${data.transcript}\n\n🔍 Summary:\n${data.summary}`;
+          `Transcript:\n${data.transcript}\n\nSummary:\n${data.summary}`;
       } else if (data.error) {
-        document.getElementById('output').innerText = `❌ Error: ${data.error}`;
+        document.getElementById('output').innerText = `Error: ${data.error}`;
       } else {
         document.getElementById('output').innerText =
-          `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
+          `Unexpected response:\n${JSON.stringify(data, null, 2)}`;
       }
     };
 
@@ -124,12 +124,12 @@
       const output = document.getElementById("pdf-result");
 
       if (data.summary && data.url) {
-        output.textContent = `✅ Summary:\n${data.summary}\n\n🔗 PDF: ${data.url}`;
+        output.textContent = `Summary:\n${data.summary}\n\n🔗 PDF: ${data.url}`;
       } else {
-        output.textContent = `❌ Error:\n${JSON.stringify(data, null, 2)}`;
+        output.textContent = `Error:\n${JSON.stringify(data, null, 2)}`;
       }
 
-      // ✅ Auto-clear input
+      //Auto-clear input
       fileInput.value = "";
     });
 
