@@ -16,10 +16,20 @@
   <button onclick="addNewPet()">➕ Add Pet</button>
   <br><br>
 
-  <button onclick="startTranscription()">Start Speaking</button>
-  <button onclick="logout()">Logout</button>
+  <button onclick="startTranscription()">🎙️ Start Speaking</button>
+  <button onclick="logout()">🚪 Logout</button>
 
   <p id="output"></p>
+
+  <hr>
+
+  <h3>📄 Upload Pet Medical PDF</h3>
+  <form id="pdf-form">
+    <input type="file" id="pdf-file" accept="application/pdf" required />
+    <button type="submit">📤 Upload PDF</button>
+  </form>
+
+  <pre id="pdf-result"></pre>
 
   <script type="module">
     import { app } from "./firebase-config.js";
@@ -66,7 +76,7 @@
       window.location.href = "/index.html";
     };
 
-    // Record and summarize
+    // Record and summarize voice note
     window.startTranscription = async function () {
       if (!currentUser) return alert("User not authenticated");
       const petId = document.getElementById("pet-select").value;
@@ -89,6 +99,39 @@
           `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
       }
     };
+
+    // Upload PDF and get Gemini summary
+    document.getElementById("pdf-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (!currentUser) return alert("User not authenticated");
+      const petId = document.getElementById("pet-select").value;
+      if (!petId) return alert("Please select a pet");
+
+      const fileInput = document.getElementById("pdf-file");
+      const file = fileInput.files[0];
+      if (!file) return alert("Please select a PDF file");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${petId}`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      const output = document.getElementById("pdf-result");
+
+      if (data.summary && data.url) {
+        output.textContent = `✅ Summary:\n${data.summary}\n\n🔗 PDF: ${data.url}`;
+      } else {
+        output.textContent = `❌ Error:\n${JSON.stringify(data, null, 2)}`;
+      }
+
+      // ✅ Auto-clear input
+      fileInput.value = "";
+    });
 
     // Auth check
     onAuthStateChanged(auth, user => {
