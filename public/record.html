@@ -8,8 +8,17 @@
 <body>
   <h2>Welcome! Start Recording</h2>
 
+  <label for="pet-select">Choose your pet:</label>
+  <select id="pet-select"></select>
+  <br><br>
+
+  <input type="text" id="new-pet-name" placeholder="Add new pet" />
+  <button onclick="addNewPet()">➕ Add Pet</button>
+  <br><br>
+
   <button onclick="startTranscription()">Start Speaking</button>
   <button onclick="logout()">Logout</button>
+
   <p id="output"></p>
 
   <script type="module">
@@ -23,52 +32,73 @@
     const auth = getAuth(app);
     let currentUser = null;
 
-    // 🔐 Block access if not logged in
-    onAuthStateChanged(auth, user => {
-      if (!user) {
-        window.location.href = "/index.html";
-      } else {
-        currentUser = user;
-      }
-    });
+    // Load user's pets from Firestore
+    async function loadPets() {
+      const res = await fetch(`/api/pets/${currentUser.uid}`);
+      const pets = await res.json();
+      const select = document.getElementById("pet-select");
+      select.innerHTML = "";
 
-    // 🔓 Logout logic
+      pets.forEach(pet => {
+        const option = document.createElement("option");
+        option.value = pet.id;
+        option.textContent = pet.name || pet.id;
+        select.appendChild(option);
+      });
+    }
+
+    // Add a new pet and refresh dropdown
+    window.addNewPet = async function () {
+      const name = document.getElementById("new-pet-name").value;
+      if (!name) return alert("Please enter a pet name");
+      await fetch(`/api/pets/${currentUser.uid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      document.getElementById("new-pet-name").value = "";
+      await loadPets();
+    };
+
+    // Logout logic
     window.logout = async function () {
       await signOut(auth);
       window.location.href = "/index.html";
     };
 
-    // 🎤 Transcription (now with uid + dummy pet_id)
+    // Record and summarize
     window.startTranscription = async function () {
-      if (!currentUser) {
-        alert("User not authenticated");
-        return;
-      }
+      if (!currentUser) return alert("User not authenticated");
+      const petId = document.getElementById("pet-select").value;
+      if (!petId) return alert("Please select a pet");
 
       const res = await fetch('/api/start', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          uid: currentUser.uid,
-          pet: "my_pet_id"  // Replace with real pet ID when ready
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: currentUser.uid, pet: petId })
       });
 
       const data = await res.json();
       if (data.summary && data.transcript) {
         document.getElementById('output').innerText =
-        `📝 Transcript:\n${data.transcript}\n\n🔍 Summary:\n${data.summary}`;
+          `📝 Transcript:\n${data.transcript}\n\n🔍 Summary:\n${data.summary}`;
       } else if (data.error) {
-        document.getElementById('output').innerText =
-        `❌ Error: ${data.error}`;
+        document.getElementById('output').innerText = `❌ Error: ${data.error}`;
       } else {
         document.getElementById('output').innerText =
-        `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
+          `⚠️ Unexpected response:\n${JSON.stringify(data, null, 2)}`;
       }
-
     };
+
+    // Auth check
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "/index.html";
+      } else {
+        currentUser = user;
+        loadPets();
+      }
+    });
   </script>
 </body>
 </html>

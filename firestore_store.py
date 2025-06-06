@@ -34,3 +34,13 @@ def store_to_firestore(user_id: str, pet_id: str, transcript: str, summary: str)
 
     print(f"Stored voice note for user {user_id}, pet {pet_id}")
 
+def get_pets_for_user(user_id):
+    pets_ref = db.collection("users").document(user_id).collection("pets")
+    docs = pets_ref.stream()
+    return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+def add_pet_for_user(user_id, pet_name):
+    pet_id = pet_name.lower().replace(" ", "_")
+    pet_doc = db.collection("users").document(user_id).collection("pets").document(pet_id)
+    pet_doc.set({"name": pet_name})
+    return {"id": pet_id, "name": pet_name}
