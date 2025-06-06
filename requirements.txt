@@ -1,7 +1,9 @@
 fastapi
 uvicorn
 python-dotenv
-openai
 firebase-admin
 pyaudio
 google-cloud-speech
+google-generativeai
+PyMuPDF
+python-multipart
