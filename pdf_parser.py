@@ -1,45 +1,42 @@
-# pdf_parser.py
-
+import fitz
 import os
-import fitz  # PyMuPDF
+from openai import OpenAI
 from datetime import datetime
-from google.auth import load_credentials_from_file
-import google.generativeai as genai
 from firestore_store import store_pdf_summary
+from dotenv import load_dotenv
 
-# ✅ Load service account credentials and configure Gemini
-creds, _ = load_credentials_from_file(
-    "gcloud-key.json",
-    scopes=["https://www.googleapis.com/auth/cloud-platform"]
-)
-
-genai.configure(
-    credentials=creds,
-    transport="rest"
-)
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
-    # Step 1: Extract text from the PDF using PyMuPDF
+    # Step 1: Extract PDF text
     doc = fitz.open(file_path)
     text = "\n".join([page.get_text() for page in doc])
     doc.close()
 
-    # Step 2: Summarize using Gemini (Vertex AI)
-    model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
-    prompt = (
-        "You are a veterinary assistant AI. Read the following medical document "
-        "and extract key details like symptoms, diagnosis, medications, or treatments. "
-        "Give a short summary suitable for a pet health timeline.\n\n"
-        + text[:30000]  # Limit to 30,000 chars for safety
-    )
-
+    # Step 2: Summarize using GPT-4o (new SDK style)
     try:
-        response = model.generate_content(prompt)
-        summary = response.text.strip()
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a veterinary assistant AI. Summarize this medical document. "
+                        "Extract key points like symptoms, diagnosis, treatments, medications, and vet advice. "
+                        "Keep it concise and useful for a pet health timeline."
+                    )
+                },
+                {"role": "user", "content": text[:12000]}
+            ],
+            temperature=0.5
+        )
+        summary = response.choices[0].message.content.strip()
     except Exception as e:
-        summary = f"[Error summarizing PDF: {str(e)}]"
+        print("OpenAI error:", e)
+        summary = "Summary could not be generated due to OpenAI error."
 
-    # Step 3: Store result in Firestore
+    # Step 3: Store in Firestore
     timestamp = datetime.utcnow().isoformat()
     store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url)
 
