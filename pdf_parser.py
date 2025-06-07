@@ -1,53 +1,45 @@
+# pdf_parser.py
+
 import os
 import fitz  # PyMuPDF
 from datetime import datetime
-from firestore_store import store_pdf_summary
-import google.generativeai as genai
 from google.auth import load_credentials_from_file
-from dotenv import load_dotenv
+import google.generativeai as genai
+from firestore_store import store_pdf_summary
 
-# ✅ Load .env (for consistency, even if GEMINI_API_KEY is unused)
-load_dotenv()
-
-# ✅ Load service account credentials from gcloud-key.json
+# ✅ Load service account credentials and configure Gemini
 creds, _ = load_credentials_from_file(
     "gcloud-key.json",
     scopes=["https://www.googleapis.com/auth/cloud-platform"]
 )
 
-# ✅ Configure Gemini with IAM credentials
 genai.configure(
     credentials=creds,
     transport="rest"
 )
 
 def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
-    # Step 1: Extract text from PDF
-    try:
-        doc = fitz.open(file_path)
-        text = "\n".join([page.get_text() for page in doc])
-        doc.close()
-    except Exception as e:
-        return {"summary": f"[Error reading PDF: {str(e)}]"}
+    # Step 1: Extract text from the PDF using PyMuPDF
+    doc = fitz.open(file_path)
+    text = "\n".join([page.get_text() for page in doc])
+    doc.close()
 
-    # Step 2: Create Gemini model client (with IAM auth)
+    # Step 2: Summarize using Gemini (Vertex AI)
     model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
-
     prompt = (
         "You are a veterinary assistant AI. Read the following medical document "
-        "and extract key information such as symptoms, treatments, diagnoses, and medications. "
-        "Give a short summary suitable for a pet health record.\n\n"
-        + text[:30000]  # Truncate to stay within model limits
+        "and extract key details like symptoms, diagnosis, medications, or treatments. "
+        "Give a short summary suitable for a pet health timeline.\n\n"
+        + text[:30000]  # Limit to 30,000 chars for safety
     )
 
-    # Step 3: Generate summary from Gemini
     try:
         response = model.generate_content(prompt)
         summary = response.text.strip()
     except Exception as e:
         summary = f"[Error summarizing PDF: {str(e)}]"
 
-    # Step 4: Store result in Firestore
+    # Step 3: Store result in Firestore
     timestamp = datetime.utcnow().isoformat()
     store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url)
 
