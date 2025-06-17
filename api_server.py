@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 
 from main import main as run_main
 from firestore_store import *
-from pdf_parser import extract_text_and_summarize  # ✅ <-- Make sure this is here
+from pdf_parser import extract_text_and_summarize
 from firebase_admin import storage
 
 import os
@@ -56,12 +56,6 @@ async def invite_user(request: Request):
     data = await request.json()
     return handle_user_invite(data)
 
-@app.get("/")
-async def serve_index():
-    return FileResponse(os.path.join("public", "index.html"))
-
-app.mount("/", StaticFiles(directory="public", html=True), name="static")
-
 @app.get("/api/pages/{page_id}")
 async def get_page(page_id: str):
     doc = db.collection("pages").document(page_id).get()
@@ -97,3 +91,11 @@ async def update_markdown(request: Request):
     db.collection("pets").document(pet).set({ "markdown": markdown }, merge=True)
     db.collection("pages").document(page).set({ "markdown": markdown }, merge=True)
     return { "status": "updated" }
+
+# ✅ Move this to the bottom so it doesn’t block routes above
+@app.get("/")
+async def serve_index():
+    return FileResponse(os.path.join("public", "index.html"))
+
+app.mount("/", StaticFiles(directory="public", html=True), name="static")
+
