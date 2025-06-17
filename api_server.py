@@ -7,6 +7,8 @@ from main import main as run_main
 from firestore_store import *
 from firebase_admin import storage
 import uuid
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI()
 
@@ -50,3 +52,10 @@ async def create_pet(user_id: str, request: Request):
 async def invite_user(request: Request):
     data = await request.json()
     return handle_user_invite(data)
+
+@app.get("/")
+async def serve_index():
+    return FileResponse(os.path.join("public", "index.html"))
+
+app.mount("/", StaticFiles(directory="public", html=True), name="static")
+
