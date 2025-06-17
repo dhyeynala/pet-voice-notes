@@ -46,12 +46,13 @@ def add_pet_to_page_and_user(user_id, pet_name, page_id):
     pet_ref = db.collection("pets").document(pet_id)
     pet_ref.set({ "name": pet_name })
 
-    db.collection("users").document(user_id).update({
+    db.collection("users").document(user_id).set({
         "pets": firestore.ArrayUnion([pet_id])
-    })
-    db.collection("pages").document(page_id).update({
+    }, merge=True)
+
+    db.collection("pages").document(page_id).set({
         "pets": firestore.ArrayUnion([pet_id])
-    })
+    }, merge=True)
     return { "id": pet_id, "name": pet_name }
 
 def handle_user_invite(data):
@@ -67,10 +68,13 @@ def handle_user_invite(data):
         uid = str(uuid.uuid4())
         create_user_entry(uid, email)
 
-    db.collection("pages").document(page_id).update({
+    db.collection("pages").document(page_id).set({
         "authorizedUsers": firestore.ArrayUnion([uid])
-    })
-    db.collection("users").document(uid).update({
+    }, merge=True)
+
+    db.collection("users").document(uid).set({
         "pages": firestore.ArrayUnion([page_id])
-    })
+    }, merge=True)
+
     return {"status": "success", "userId": uid}
+
