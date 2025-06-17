@@ -8,6 +8,10 @@
 <body>
   <h2>Pet Health Page Notes</h2>
 
+  <label for="pet-select">Choose your pet:</label>
+  <select id="pet-select"></select>
+  <br><br>
+
   <textarea id="markdown-input" rows="10" cols="60" placeholder="Write notes here..."></textarea><br>
   <button onclick="saveMarkdown()">Save Notes</button>
   <p>Status: <span id="status"></span></p>
@@ -24,45 +28,64 @@
     import { app } from "./firebase-config.js";
     import {
       getAuth,
-      onAuthStateChanged,
-      signOut
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const auth = getAuth(app);
-    let currentUser = null;
     const pageId = "default-page";
+    let currentUser = null;
+    let selectedPet = "";
 
-    // Load saved markdown
+    async function loadPets() {
+      const res = await fetch(`/api/user-pets/${currentUser.uid}`);
+      const pets = await res.json();
+      const select = document.getElementById("pet-select");
+      select.innerHTML = "";
+
+      pets.forEach(pet => {
+        const option = document.createElement("option");
+        option.value = pet.id;
+        option.textContent = pet.name || pet.id;
+        select.appendChild(option);
+      });
+
+      if (pets.length > 0) {
+        selectedPet = pets[0].id;
+        select.value = selectedPet;
+        await loadMarkdown();
+      }
+    }
+
+    document.getElementById("pet-select").addEventListener("change", async (e) => {
+      selectedPet = e.target.value;
+      await loadMarkdown();
+    });
+
     async function loadMarkdown() {
-      const res = await fetch(`/api/pages/${pageId}`);
+      const res = await fetch(`/api/markdown?page=${pageId}&pet=${selectedPet}`);
       const data = await res.json();
       document.getElementById("markdown-input").value = data.markdown || "";
     }
 
-    // Save markdown
     window.saveMarkdown = async function () {
       const markdown = document.getElementById("markdown-input").value;
-      await fetch(`/api/pages/${pageId}`, {
+      await fetch(`/api/markdown`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown })
+        body: JSON.stringify({ page: pageId, pet: selectedPet, markdown })
       });
       document.getElementById("status").textContent = "Saved!";
     };
 
-    // Upload PDF
     document.getElementById("pdf-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!currentUser) return alert("User not authenticated");
-
-      const petId = prompt("Enter pet ID for this file:");
-      if (!petId) return;
+      if (!selectedPet) return alert("Please select a pet");
 
       const file = document.getElementById("pdf-file").files[0];
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${petId}`, {
+      const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${selectedPet}`, {
         method: "POST",
         body: formData
       });
@@ -73,13 +96,12 @@
       document.getElementById("pdf-file").value = "";
     });
 
-    // Auth check
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
       if (!user) {
         window.location.href = "/index.html";
       } else {
         currentUser = user;
-        loadMarkdown();
+        await loadPets();
       }
     });
   </script>

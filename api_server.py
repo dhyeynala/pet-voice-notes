@@ -74,3 +74,26 @@ async def update_page(page_id: str, request: Request):
         "markdown": data.get("markdown", "")
     })
     return {"status": "updated"}
+
+@app.get("/api/markdown")
+async def get_markdown(page: str, pet: str):
+    page_doc = db.collection("pages").document(page).get()
+    pet_doc = db.collection("pets").document(pet).get()
+
+    pet_data = pet_doc.to_dict() or {}
+    page_data = page_doc.to_dict() or {}
+
+    return {
+        "markdown": pet_data.get("markdown") or page_data.get("markdown", "")
+    }
+
+@app.post("/api/markdown")
+async def update_markdown(request: Request):
+    data = await request.json()
+    page = data["page"]
+    pet = data["pet"]
+    markdown = data.get("markdown", "")
+
+    db.collection("pets").document(pet).set({ "markdown": markdown }, merge=True)
+    db.collection("pages").document(page).set({ "markdown": markdown }, merge=True)
+    return { "status": "updated" }
