@@ -1,0 +1,89 @@
+Sure! Here's a short explanation of each part of the codebase and what your final app will do:
+
+---
+
+### ✅ **What the End Product Does**
+
+Your web app allows users to:
+
+1. **Log in with Google** via Firebase Auth.
+2. **See and select pets** linked to pages they are authorized for.
+3. **Record voice notes** using the browser and automatically:
+
+   * Transcribe the audio using Google Cloud Speech-to-Text.
+   * Summarize the transcription using OpenAI GPT-4o.
+   * Save transcript + summary in Firestore under `pets/{petId}/voice-notes/`.
+4. **Upload pet medical PDFs**, which:
+
+   * Get summarized using OpenAI.
+   * Get stored in Firebase Storage and Firestore under `pets/{petId}/records/`.
+5. **Collaborate via Pages**:
+
+   * Each `page` has a list of `authorizedUsers` and linked `petIds`.
+   * You can invite other users to collaborate by adding them to a `page`.
+
+---
+
+### 🧩 File-by-File Summary
+
+#### **Frontend**
+
+* `public/firebase-config.js`: Sets up Firebase app in the browser.
+* `public/index.html`: Google login page using Firebase Auth.
+* `public/record.html`: Main app interface:
+
+  * Shows pet dropdown.
+  * Buttons for: add pet, record voice, upload PDF, logout.
+  * Uses Fetch API to talk to backend.
+
+#### **Backend**
+
+* `api_server.py`: FastAPI server that:
+
+  * Handles voice transcription & summary (`/api/start`)
+  * Uploads + summarizes PDFs (`/api/upload_pdf`)
+  * Lists user's pets (`/api/user-pets/{uid}`)
+  * Adds pets to users and pages
+  * Handles inviting users to a page
+
+* `auth.py`: Contains helper to create a new user doc in Firestore.
+
+* `firestore_store.py`: Core Firestore logic:
+
+  * Add/retrieve pets
+  * Store voice notes and PDF summaries
+  * Add pet to page & user
+  * Handle invites to pages
+
+* `main.py`: Runs transcription + summary pipeline using:
+
+  * Google Speech-to-Text
+  * OpenAI summarization
+  * Stores result in Firestore
+
+* `pdf_parser.py`: Extracts text from PDF using `PyMuPDF`, summarizes using OpenAI, and stores result.
+
+* `summarize_openai.py`: Uses GPT-4o to summarize a text string robustly (with retries).
+
+* `transcribe.py`: Captures microphone audio for a few seconds and transcribes it using Google Speech-to-Text.
+
+* `requirements.txt`: Python packages needed to run the backend.
+
+---
+
+### 🔁 Firestore Structure After Refactor
+
+* `users/{userId}`
+  → stores: `email`, list of `pages`, list of `pets`
+
+* `pages/{pageId}`
+  → stores: `authorizedUsers`, list of `pets`, markdown (optional)
+
+* `pets/{petId}`
+  → stores:
+      `voice-notes/{noteId}`: transcript, summary, timestamp
+      `records/{recordId}`: summary, file name, file URL, timestamp
+
+---
+
+Let me know if you want me to walk through a flow (e.g. "what happens when user records a voice note") or help you add markdown editing for `pages/`.

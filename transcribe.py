@@ -1,4 +1,4 @@
-# transcribe.py
+# transcribe.py 
 
 import os
 import queue
@@ -14,7 +14,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CRE
 
 # Audio settings
 RATE = 16000
-CHUNK = int(RATE / 10)  # 100ms
+CHUNK = int(RATE / 10) 
 audio_queue = queue.Queue()
 
 # Callback to capture audio from mic

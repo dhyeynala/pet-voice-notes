@@ -1,63 +1,76 @@
 # firestore_store.py
 
-import os
-from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
+from dotenv import load_dotenv
 from datetime import datetime
+import uuid
+import os
 
-# Load .env and initialize Firebase once
 load_dotenv()
 if not firebase_admin._apps:
     cred = credentials.Certificate("gcloud-key.json")
     firebase_admin.initialize_app(cred, {
-        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET") 
+        "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET")
     })
 
 db = firestore.client()
 
-# Voice Note Storage
-def store_to_firestore(user_id: str, pet_id: str, transcript: str, summary: str):
-    data = {
-        "user_id": user_id,
-        "pet_id": pet_id,
-        "timestamp": datetime.utcnow().isoformat(),
+def store_to_firestore(user_id, pet_id, transcript, summary):
+    db.collection("pets").document(pet_id).collection("voice-notes").add({
         "transcript": transcript,
-        "summary": summary
-    }
+        "summary": summary,
+        "timestamp": datetime.utcnow().isoformat()
+    })
 
-    doc_ref = db.collection("users") \
-                .document(user_id) \
-                .collection("pets") \
-                .document(pet_id) \
-                .collection("voice-notes") \
-                .document()
-
-    doc_ref.set(data)
-    print(f"Stored voice note for user {user_id}, pet {pet_id}")
-
-# PDF Summary Storage
 def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url):
-    doc_ref = db.collection("users").document(user_id) \
-        .collection("pets").document(pet_id) \
-        .collection("records").document()
-
-    doc_ref.set({
-        "source": "pdf_upload",
+    db.collection("pets").document(pet_id).collection("records").add({
+        "summary": summary,
         "file_name": file_name,
         "file_url": file_url,
-        "summary": summary,
         "timestamp": timestamp
     })
 
-# Pets Handling
-def get_pets_for_user(user_id):
-    pets_ref = db.collection("users").document(user_id).collection("pets")
-    docs = pets_ref.stream()
-    return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+def get_pets_by_user_id(user_id):
+    user_doc = db.collection("users").document(user_id).get()
+    if not user_doc.exists:
+        return []
+    pet_ids = user_doc.to_dict().get("pets", [])
+    return [
+        {"id": pid, **db.collection("pets").document(pid).get().to_dict()}
+        for pid in pet_ids
+    ]
 
-def add_pet_for_user(user_id, pet_name):
+def add_pet_to_page_and_user(user_id, pet_name, page_id):
     pet_id = pet_name.lower().replace(" ", "_")
-    pet_doc = db.collection("users").document(user_id).collection("pets").document(pet_id)
-    pet_doc.set({"name": pet_name})
-    return {"id": pet_id, "name": pet_name}
+    pet_ref = db.collection("pets").document(pet_id)
+    pet_ref.set({ "name": pet_name })
+
+    db.collection("users").document(user_id).update({
+        "pets": firestore.ArrayUnion([pet_id])
+    })
+    db.collection("pages").document(page_id).update({
+        "pets": firestore.ArrayUnion([pet_id])
+    })
+    return { "id": pet_id, "name": pet_name }
+
+def handle_user_invite(data):
+    email = data["email"]
+    page_id = data["pageId"]
+
+    user_query = db.collection("users").where("email", "==", email).limit(1).stream()
+    user_doc = next(user_query, None)
+
+    if user_doc:
+        uid = user_doc.id
+    else:
+        uid = str(uuid.uuid4())
+        create_user_entry(uid, email)
+
+    db.collection("pages").document(page_id).update({
+        "authorizedUsers": firestore.ArrayUnion([uid])
+    })
+    db.collection("users").document(uid).update({
+        "pages": firestore.ArrayUnion([page_id])
+    })
+    return {"status": "success", "userId": uid}

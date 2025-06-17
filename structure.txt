@@ -1,0 +1,26 @@
+users/
+  └── {userId}
+        ├── email: string
+        ├── pages: [pageId1, pageId2, ...]
+        └── pets: [petId1, petId2, ...]
+
+pages/
+  └── {pageId}
+        ├── authorizedUsers: [userId1, userId2, ...]
+        ├── pets: [petId1, petId2, ...]
+        └── content: (optional markdown content for the page)
+
+pets/
+  └── {petId}
+        ├── name: string
+        ├── voice-notes/
+        │     └── {noteId}
+        │           ├── transcript: string
+        │           ├── summary: string
+        │           └── timestamp: ISO string
+        └── records/
+              └── {recordId}
+                    ├── summary: string
+                    ├── file_url: string
+                    ├── file_name: string
+                    └── timestamp: ISO string
