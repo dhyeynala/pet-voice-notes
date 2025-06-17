@@ -1,14 +1,17 @@
 #api_server.py
-
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from main import main as run_main
 from firestore_store import *
+from pdf_parser import extract_text_and_summarize  # ✅ <-- Make sure this is here
 from firebase_admin import storage
-import uuid
-from fastapi.responses import FileResponse
+
 import os
+import uuid
+
 
 app = FastAPI()
 
