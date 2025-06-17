@@ -3,15 +3,15 @@ from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from firebase_admin import storage
 
 from main import main as run_main
 from firestore_store import *
 from pdf_parser import extract_text_and_summarize
-from firebase_admin import storage
 
 import os
 import uuid
-
+from datetime import datetime
 
 app = FastAPI()
 
@@ -92,10 +92,24 @@ async def update_markdown(request: Request):
     db.collection("pages").document(page).set({ "markdown": markdown }, merge=True)
     return { "status": "updated" }
 
-# ✅ Move this to the bottom so it doesn’t block routes above
+# ✅ NEW: Add text input note under each pet
+@app.post("/api/pets/{pet_id}/textinput")
+async def add_pet_textinput(pet_id: str, request: Request):
+    data = await request.json()
+    input_text = data.get("input", "")
+    if not input_text:
+        return { "status": "error", "message": "Input is empty" }
+
+    db.collection("pets").document(pet_id).collection("textinput").add({
+        "input": input_text,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+    return { "status": "success" }
+
+# ✅ Serve index last to avoid route shadowing
 @app.get("/")
 async def serve_index():
     return FileResponse(os.path.join("public", "index.html"))
 
 app.mount("/", StaticFiles(directory="public", html=True), name="static")
-

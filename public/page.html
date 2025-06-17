@@ -8,18 +8,29 @@
 <body>
   <a href="/record.html">🔊 Back to Recording</a>
   <br><br>
-  
+
   <h2>Pet Health Page Notes</h2>
 
   <label for="pet-select">Choose your pet:</label>
   <select id="pet-select"></select>
   <br><br>
 
-  <textarea id="markdown-input" rows="10" cols="60" placeholder="Write notes here..."></textarea><br>
-  <button onclick="saveMarkdown()">Save Notes</button>
+  <!-- Page-level Markdown -->
+  <h3>Shared Page Notes</h3>
+  <textarea id="markdown-input" rows="10" cols="60" placeholder="Shared notes for all pets on this page..."></textarea><br>
+  <button onclick="saveMarkdown()">Save Page Notes</button>
   <p>Status: <span id="status"></span></p>
 
   <hr>
+
+  <!-- Pet-specific Input -->
+  <h3>Pet-Specific Notes (Text Input)</h3>
+  <textarea id="pet-input-text" rows="4" cols="60" placeholder="Write something about the selected pet..."></textarea><br>
+  <button onclick="submitPetText()">Submit Pet Note</button>
+  <p id="input-status"></p>
+
+  <hr>
+
   <h3>Upload Medical PDF</h3>
   <form id="pdf-form">
     <input type="file" id="pdf-file" accept="application/pdf" required />
@@ -55,31 +66,49 @@
       if (pets.length > 0) {
         selectedPet = pets[0].id;
         select.value = selectedPet;
-        await loadMarkdown();
       }
+
+      await loadMarkdown();
     }
 
     document.getElementById("pet-select").addEventListener("change", async (e) => {
       selectedPet = e.target.value;
-      await loadMarkdown();
     });
 
+    // Load markdown (page-level only)
     async function loadMarkdown() {
-      const res = await fetch(`/api/markdown?page=${pageId}&pet=${selectedPet}`);
+      const res = await fetch(`/api/pages/${pageId}`);
       const data = await res.json();
       document.getElementById("markdown-input").value = data.markdown || "";
     }
 
+    // Save page-level markdown
     window.saveMarkdown = async function () {
       const markdown = document.getElementById("markdown-input").value;
-      await fetch(`/api/markdown`, {
+      await fetch(`/api/pages/${pageId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ page: pageId, pet: selectedPet, markdown })
+        body: JSON.stringify({ markdown })
       });
       document.getElementById("status").textContent = "Saved!";
     };
 
+    // Save pet-level free text input
+    window.submitPetText = async function () {
+      const input = document.getElementById("pet-input-text").value;
+      if (!input || !selectedPet) return alert("Please enter text and select a pet.");
+
+      await fetch(`/api/pets/${selectedPet}/textinput`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input })
+      });
+
+      document.getElementById("input-status").textContent = "Saved!";
+      document.getElementById("pet-input-text").value = "";
+    };
+
+    // Upload PDF
     document.getElementById("pdf-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!selectedPet) return alert("Please select a pet");
@@ -99,6 +128,7 @@
       document.getElementById("pdf-file").value = "";
     });
 
+    // Auth
     onAuthStateChanged(auth, async user => {
       if (!user) {
         window.location.href = "/index.html";
