@@ -1,0 +1,87 @@
+<!-- public/page.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Page Notes</title>
+</head>
+<body>
+  <h2>Pet Health Page Notes</h2>
+
+  <textarea id="markdown-input" rows="10" cols="60" placeholder="Write notes here..."></textarea><br>
+  <button onclick="saveMarkdown()">Save Notes</button>
+  <p>Status: <span id="status"></span></p>
+
+  <hr>
+  <h3>Upload Medical PDF</h3>
+  <form id="pdf-form">
+    <input type="file" id="pdf-file" accept="application/pdf" required />
+    <button type="submit">Upload PDF</button>
+  </form>
+  <pre id="pdf-result"></pre>
+
+  <script type="module">
+    import { app } from "./firebase-config.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const auth = getAuth(app);
+    let currentUser = null;
+    const pageId = "default-page";
+
+    // Load saved markdown
+    async function loadMarkdown() {
+      const res = await fetch(`/api/pages/${pageId}`);
+      const data = await res.json();
+      document.getElementById("markdown-input").value = data.markdown || "";
+    }
+
+    // Save markdown
+    window.saveMarkdown = async function () {
+      const markdown = document.getElementById("markdown-input").value;
+      await fetch(`/api/pages/${pageId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown })
+      });
+      document.getElementById("status").textContent = "Saved!";
+    };
+
+    // Upload PDF
+    document.getElementById("pdf-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!currentUser) return alert("User not authenticated");
+
+      const petId = prompt("Enter pet ID for this file:");
+      if (!petId) return;
+
+      const file = document.getElementById("pdf-file").files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${petId}`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      document.getElementById("pdf-result").textContent =
+        `Summary:\n${data.summary}\n\nPDF: ${data.url}`;
+      document.getElementById("pdf-file").value = "";
+    });
+
+    // Auth check
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "/index.html";
+      } else {
+        currentUser = user;
+        loadMarkdown();
+      }
+    });
+  </script>
+</body>
+</html>

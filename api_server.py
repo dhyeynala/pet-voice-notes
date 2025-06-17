@@ -62,3 +62,15 @@ async def serve_index():
 
 app.mount("/", StaticFiles(directory="public", html=True), name="static")
 
+@app.get("/api/pages/{page_id}")
+async def get_page(page_id: str):
+    doc = db.collection("pages").document(page_id).get()
+    return doc.to_dict() or {}
+
+@app.post("/api/pages/{page_id}")
+async def update_page(page_id: str, request: Request):
+    data = await request.json()
+    db.collection("pages").document(page_id).update({
+        "markdown": data.get("markdown", "")
+    })
+    return {"status": "updated"}
