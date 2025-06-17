@@ -16,6 +16,7 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+# Store voice transcript + summary
 def store_to_firestore(user_id, pet_id, transcript, summary):
     db.collection("pets").document(pet_id).collection("voice-notes").add({
         "transcript": transcript,
@@ -23,6 +24,7 @@ def store_to_firestore(user_id, pet_id, transcript, summary):
         "timestamp": datetime.utcnow().isoformat()
     })
 
+# Store PDF summary
 def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url):
     db.collection("pets").document(pet_id).collection("records").add({
         "summary": summary,
@@ -31,6 +33,7 @@ def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url):
         "timestamp": timestamp
     })
 
+# Get pets linked to a user
 def get_pets_by_user_id(user_id):
     user_doc = db.collection("users").document(user_id).get()
     if not user_doc.exists:
@@ -41,20 +44,28 @@ def get_pets_by_user_id(user_id):
         for pid in pet_ids
     ]
 
+# Add a pet and sync it across user and page, with authorizedUsers and markdown
 def add_pet_to_page_and_user(user_id, pet_name, page_id):
     pet_id = pet_name.lower().replace(" ", "_")
-    pet_ref = db.collection("pets").document(pet_id)
-    pet_ref.set({ "name": pet_name })
 
+    # Create or update pet
+    db.collection("pets").document(pet_id).set({ "name": pet_name })
+
+    # Link pet to user and page
     db.collection("users").document(user_id).set({
-        "pets": firestore.ArrayUnion([pet_id])
+        "pets": firestore.ArrayUnion([pet_id]),
+        "pages": firestore.ArrayUnion([page_id])
     }, merge=True)
 
     db.collection("pages").document(page_id).set({
-        "pets": firestore.ArrayUnion([pet_id])
+        "pets": firestore.ArrayUnion([pet_id]),
+        "authorizedUsers": firestore.ArrayUnion([user_id]),
+        "markdown": ""  # initialized only if not set yet
     }, merge=True)
+
     return { "id": pet_id, "name": pet_name }
 
+# Invite user by email and link to page
 def handle_user_invite(data):
     email = data["email"]
     page_id = data["pageId"]
@@ -68,13 +79,22 @@ def handle_user_invite(data):
         uid = str(uuid.uuid4())
         create_user_entry(uid, email)
 
+    # Add user to page
     db.collection("pages").document(page_id).set({
         "authorizedUsers": firestore.ArrayUnion([uid])
     }, merge=True)
 
+    # Add page to user
     db.collection("users").document(uid).set({
         "pages": firestore.ArrayUnion([page_id])
     }, merge=True)
 
     return {"status": "success", "userId": uid}
 
+# (Optional) Create blank user entry when invited
+def create_user_entry(uid, email):
+    db.collection("users").document(uid).set({
+        "email": email,
+        "pets": [],
+        "pages": []
+    })

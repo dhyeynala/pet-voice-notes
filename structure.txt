@@ -1,26 +1,27 @@
-users/
-  └── {userId}
-        ├── email: string
-        ├── pages: [pageId1, pageId2, ...]
-        └── pets: [petId1, petId2, ...]
-
 pages/
-  └── {pageId}
+  └── {pageId}/
         ├── authorizedUsers: [userId1, userId2, ...]
         ├── pets: [petId1, petId2, ...]
-        └── content: (optional markdown content for the page)
+        ├── markdown: "<custom content here>"
+
+users/
+  └── {userId}/
+        ├── pets: [petId1, petId2, ...]
+        └── pages: [pageId1, pageId2, ...]
 
 pets/
-  └── {petId}
-        ├── name: string
+  └── {petId}/
+        ├── name: "dhyey"
         ├── voice-notes/
-        │     └── {noteId}
-        │           ├── transcript: string
-        │           ├── summary: string
-        │           └── timestamp: ISO string
+        │     └── {noteId} → {
+        │             transcript: "...",
+        │             summary: "...",
+        │             timestamp: "..."
+        │         }
         └── records/
-              └── {recordId}
-                    ├── summary: string
-                    ├── file_url: string
-                    ├── file_name: string
-                    └── timestamp: ISO string
+              └── {recordId} → {
+                      summary: "...",
+                      file_url: "...",
+                      file_name: "...",
+                      timestamp: "..."
+                  }
