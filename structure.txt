@@ -1,27 +1,30 @@
-pages/
-  └── {pageId}/
-        ├── authorizedUsers: [userId1, userId2, ...]
-        ├── pets: [petId1, petId2, ...]
-        ├── markdown: "<custom content here>"
-
 users/
   └── {userId}/
-        ├── pets: [petId1, petId2, ...]
-        └── pages: [pageId1, pageId2, ...]
+      ├── pages: [pageId]
+      └── pets: [petId]
+
+pages/
+  └── {pageId}/
+      ├── authorizedUsers: [userId]
+      ├── pets: [petId]
+      └── markdown: "...page-level markdown..."
 
 pets/
   └── {petId}/
-        ├── name: "dhyey"
-        ├── voice-notes/
-        │     └── {noteId} → {
-        │             transcript: "...",
-        │             summary: "...",
-        │             timestamp: "..."
-        │         }
-        └── records/
-              └── {recordId} → {
-                      summary: "...",
-                      file_url: "...",
-                      file_name: "...",
-                      timestamp: "..."
-                  }
+      ├── name: "Nala"
+      └── subcollections:
+          ├── voice-notes/
+          │   └── {noteId}
+          │       ├── transcript
+          │       ├── summary
+          │       └── timestamp
+          ├── records/
+          │   └── {recordId}
+          │       ├── summary
+          │       ├── file_url
+          │       ├── file_name
+          │       └── timestamp
+          └── textinput/
+              └── {inputId}
+                  ├── text
+                  └── timestamp
