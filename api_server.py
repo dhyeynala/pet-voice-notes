@@ -6,8 +6,9 @@ from fastapi.responses import FileResponse
 from firebase_admin import storage
 
 from main import main as run_main
-from firestore_store import *
+from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
 from pdf_parser import extract_text_and_summarize
+from transcribe import start_recording, stop_recording, get_recording_status
 
 import os
 import uuid
@@ -106,6 +107,52 @@ async def add_pet_textinput(pet_id: str, request: Request):
     })
 
     return { "status": "success" }
+
+# ✅ NEW: Start recording endpoint
+@app.post("/api/start_recording")
+async def start_recording_endpoint(request: Request):
+    data = await request.json()
+    user_id = data.get("uid")
+    pet_id = data.get("pet")
+    
+    if not user_id or not pet_id:
+        return {"status": "error", "message": "Missing uid or pet"}
+    
+    result = start_recording()
+    return result
+
+# ✅ NEW: Stop recording endpoint
+@app.post("/api/stop_recording")
+async def stop_recording_endpoint(request: Request):
+    data = await request.json()
+    user_id = data.get("uid")
+    pet_id = data.get("pet")
+    
+    if not user_id or not pet_id:
+        return {"status": "error", "message": "Missing uid or pet"}
+    
+    result = stop_recording()
+    
+    # If successful, process the transcript
+    if result["status"] == "stopped" and result.get("transcript"):
+        from summarize_openai import summarize_text
+        
+        transcript = result["transcript"]
+        summary = summarize_text(transcript)
+        store_to_firestore(user_id, pet_id, transcript, summary)
+        
+        return {
+            "status": "success",
+            "transcript": transcript,
+            "summary": summary
+        }
+    
+    return result
+
+# ✅ NEW: Get recording status endpoint
+@app.get("/api/recording_status")
+async def recording_status_endpoint():
+    return get_recording_status()
 
 # ✅ Serve index last to avoid route shadowing
 @app.get("/")

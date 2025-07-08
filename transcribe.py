@@ -1,87 +1,188 @@
-# transcribe.py 
-
-import os
-import queue
+# transcribe.py
 import pyaudio
+import queue
 import threading
 import time
-from dotenv import load_dotenv
 from google.cloud import speech
+import os
+from dotenv import load_dotenv
 
-# Load credentials
 load_dotenv()
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
 
-# Audio settings
+# Audio recording parameters
 RATE = 16000
-CHUNK = int(RATE / 10) 
-audio_queue = queue.Queue()
+CHUNK = int(RATE / 10)  # 100ms chunks
+CHANNELS = 1
+FORMAT = pyaudio.paInt16
 
-# Callback to capture audio from mic
-def callback(in_data, frame_count, time_info, status):
-    audio_queue.put(in_data)
-    return (None, pyaudio.paContinue)
+# Global state for recording
+recording_state = {
+    "is_recording": False,
+    "audio_data": [],
+    "transcript": "",
+    "audio_queue": queue.Queue()
+}
 
-# Generator for streaming audio to Google API
-def audio_generator():
-    while True:
-        data = audio_queue.get()
-        if data is None:
-            break
-        yield data
-
-# Automatically stop recording after N seconds
-def stop_recording_after(seconds, stream):
-    time.sleep(seconds)
-    print(f"Auto-stopping after {seconds} seconds.")
-    stream.stop_stream()
-    stream.close()
-    audio_queue.put(None)
-
-# Transcribe audio from mic using Google Cloud Speech
 def transcribe_audio(duration_seconds=10):
+    """Simple transcription for a fixed duration"""
     client = speech.SpeechClient()
-
+    
+    # Set up audio recording
+    audio = pyaudio.PyAudio()
+    
+    # Recording configuration
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=RATE,
         language_code="en-US",
     )
-    streaming_config = speech.StreamingRecognitionConfig(config=config)
-
-    mic = pyaudio.PyAudio()
-    stream = mic.open(
-        format=pyaudio.paInt16,
-        channels=1,
+    
+    # Start recording
+    stream = audio.open(
+        format=FORMAT,
+        channels=CHANNELS,
         rate=RATE,
         input=True,
-        frames_per_buffer=CHUNK,
-        stream_callback=callback
+        frames_per_buffer=CHUNK
     )
-
-    print(f"Recording for {duration_seconds} seconds...")
-
-    # Start streaming and launch stop timer
-    stream.start_stream()
-    threading.Thread(target=stop_recording_after, args=(duration_seconds, stream), daemon=True).start()
-
-    transcript = ""
-
+    
+    print(f"🎙️  Recording for {duration_seconds} seconds...")
+    frames = []
+    
+    for _ in range(0, int(RATE / CHUNK * duration_seconds)):
+        data = stream.read(CHUNK)
+        frames.append(data)
+    
+    print("🔄 Recording finished. Processing...")
+    
+    # Stop recording
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+    
+    # Combine audio data
+    audio_data = b''.join(frames)
+    
+    # Transcribe
+    audio = speech.RecognitionAudio(content=audio_data)
+    
     try:
-        requests = (speech.StreamingRecognizeRequest(audio_content=chunk) for chunk in audio_generator())
-        responses = client.streaming_recognize(streaming_config, requests)
-
-        for response in responses:
-            for result in response.results:
-                if result.is_final:
-                    text = result.alternatives[0].transcript
-                    print(f">> {text}")
-                    transcript += text + " "
-
+        response = client.recognize(config=config, audio=audio)
+        
+        if response.results:
+            transcript = response.results[0].alternatives[0].transcript
+            print(f"📝 Transcript: {transcript}")
+            return transcript
+        else:
+            return "No speech detected"
+            
     except Exception as e:
-        print(f"Error during transcription: {e}")
+        print(f"❌ Transcription error: {e}")
+        return f"Error: {str(e)}"
 
-    finally:
-        mic.terminate()
+def start_recording():
+    """Start recording audio"""
+    global recording_state
+    
+    if recording_state["is_recording"]:
+        return {"status": "error", "message": "Already recording"}
+    
+    recording_state["is_recording"] = True
+    recording_state["audio_data"] = []
+    recording_state["transcript"] = ""
+    recording_state["audio_queue"] = queue.Queue()
+    
+    # Start recording thread
+    recording_thread = threading.Thread(target=_record_audio)
+    recording_thread.daemon = True
+    recording_thread.start()
+    
+    return {"status": "recording", "message": "Recording started"}
 
-    return transcript.strip()
+def stop_recording():
+    """Stop recording and process audio"""
+    global recording_state
+    
+    if not recording_state["is_recording"]:
+        return {"status": "error", "message": "Not recording"}
+    
+    recording_state["is_recording"] = False
+    
+    # Wait a moment for recording to finish
+    time.sleep(0.5)
+    
+    # Process the recorded audio
+    if recording_state["audio_data"]:
+        audio_data = b''.join(recording_state["audio_data"])
+        transcript = _transcribe_audio_data(audio_data)
+        recording_state["transcript"] = transcript
+        
+        return {
+            "status": "stopped",
+            "transcript": transcript,
+            "message": "Recording stopped and transcribed"
+        }
+    else:
+        return {"status": "error", "message": "No audio data recorded"}
+
+def get_recording_status():
+    """Get current recording status"""
+    return {
+        "is_recording": recording_state["is_recording"],
+        "transcript": recording_state["transcript"]
+    }
+
+def _record_audio():
+    """Internal function to record audio in background"""
+    global recording_state
+    
+    audio = pyaudio.PyAudio()
+    
+    stream = audio.open(
+        format=FORMAT,
+        channels=CHANNELS,
+        rate=RATE,
+        input=True,
+        frames_per_buffer=CHUNK
+    )
+    
+    print("🎙️  Recording started...")
+    
+    while recording_state["is_recording"]:
+        try:
+            data = stream.read(CHUNK, exception_on_overflow=False)
+            recording_state["audio_data"].append(data)
+        except Exception as e:
+            print(f"Error reading audio: {e}")
+            break
+    
+    stream.stop_stream()
+    stream.close()
+    audio.terminate()
+    
+    print("🔄 Recording stopped")
+
+def _transcribe_audio_data(audio_data):
+    """Transcribe audio data using Google Cloud Speech-to-Text"""
+    try:
+        client = speech.SpeechClient()
+        
+        config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=RATE,
+            language_code="en-US",
+        )
+        
+        audio = speech.RecognitionAudio(content=audio_data)
+        response = client.recognize(config=config, audio=audio)
+        
+        if response.results:
+            transcript = response.results[0].alternatives[0].transcript
+            print(f"📝 Transcript: {transcript}")
+            return transcript
+        else:
+            return "No speech detected"
+            
+    except Exception as e:
+        print(f"❌ Transcription error: {e}")
+        return f"Error: {str(e)}"
