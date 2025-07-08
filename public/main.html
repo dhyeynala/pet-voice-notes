@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PetPages - Pet Health Management</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      color: #2c3e50;
+    }
+
+    .header {
+      background: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      padding: 20px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .nav-item {
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      background: #f8fafc;
+      border: 2px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: #e1e8ed;
+    }
+
+    .nav-item.active {
+      background: #667eea;
+      color: white;
+      border-color: #5a67d8;
+    }
+
+    .logout-btn {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-left: 20px;
+    }
+
+    .logout-btn:hover {
+      background: #ff5252;
+      transform: translateY(-1px);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .section-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .section-header p {
+      color: #7f8c8d;
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid #e1e8ed;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2px solid #f1f3f4;
+      padding-bottom: 10px;
+    }
+
+    .pet-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .select-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: white;
+      color: #2c3e50;
+      cursor: pointer;
+      appearance: none;
+      transition: all 0.3s ease;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .select-wrapper::after {
+      content: '\f107';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #7f8c8d;
+      pointer-events: none;
+    }
+
+    input[type="text"] {
+      padding: 12px 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      font-size: 1rem;
+      flex: 1;
+      min-width: 150px;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea {
+      width: 100%;
+      padding: 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 120px;
+      transition: all 0.3s ease;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #e1e8ed;
+      color: #2c3e50;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d9e0;
+    }
+
+    .btn-success {
+      background: #4ecdc4;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #3db7b0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+    }
+
+    .record-button {
+      width: 100%;
+      padding: 20px;
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .record-button.recording {
+      background: #ff6b6b !important;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+    }
+
+    .status {
+      text-align: center;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .status.recording {
+      background: #fff5f5;
+      color: #e53e3e;
+      border: 1px solid #fed7d7;
+      display: block;
+    }
+
+    .status.processing {
+      background: #fef5e7;
+      color: #d69e2e;
+      border: 1px solid #fbd38d;
+      display: block;
+    }
+
+    .status.success {
+      background: #f0fff4;
+      color: #38a169;
+      border: 1px solid #9ae6b4;
+      display: block;
+    }
+
+    .status.error {
+      background: #fff5f5;
+      color: #e53e3e;
+      border: 1px solid #fed7d7;
+      display: block;
+    }
+
+    .status-message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #f0fff4;
+      color: #38a169;
+      border: 1px solid #9ae6b4;
+      display: block;
+    }
+
+    .status-message.error {
+      background: #fff5f5;
+      color: #e53e3e;
+      border: 1px solid #fed7d7;
+      display: block;
+    }
+
+    .output {
+      background: #f7fafc;
+      border: 2px solid #e1e8ed;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 100px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .output.has-content {
+      display: block;
+    }
+
+    .result-box {
+      background: #f7fafc;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    .result-box.has-content {
+      display: block;
+    }
+
+    .output h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .transcript {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .summary {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #4ecdc4;
+    }
+
+    .add-pet-form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+
+    .file-upload {
+      border: 2px dashed #e1e8ed;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: #f8fafc;
+    }
+
+    .file-upload:hover {
+      border-color: #667eea;
+      background: #f1f3f4;
+    }
+
+    .file-upload.dragover {
+      border-color: #667eea;
+      background: #eef2ff;
+    }
+
+    .file-upload input[type="file"] {
+      display: none;
+    }
+
+    .upload-icon {
+      font-size: 2rem;
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .upload-text {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+
+    .upload-text strong {
+      color: #2c3e50;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .nav-menu {
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .nav-item {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+      }
+
+      .logout-btn {
+        margin-left: 0;
+        margin-top: 10px;
+      }
+
+      .header-content {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .section-header h1 {
+        font-size: 2rem;
+      }
+
+      .pet-controls {
+        flex-direction: column;
+      }
+
+      .add-pet-form {
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span>🐾</span>
+        <span>PetPages</span>
+      </div>
+      <div style="display: flex; align-items: center;">
+        <div class="nav-menu">
+          <div class="nav-item active" onclick="showSection('recording')">
+            <i class="fas fa-microphone"></i>
+            <span>Voice Recording</span>
+          </div>
+          <div class="nav-item" onclick="showSection('notes')">
+            <i class="fas fa-file-alt"></i>
+            <span>Notes & Files</span>
+          </div>
+        </div>
+        <button class="logout-btn" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i>
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Pet Selection Section (Common) -->
+    <div class="card">
+      <div class="section-title">
+        <i class="fas fa-paw"></i>
+        Select Your Pet
+      </div>
+      <div class="select-wrapper">
+        <select id="pet-select"></select>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <div class="section-title">
+          <i class="fas fa-plus-circle"></i>
+          Add New Pet
+        </div>
+        <div class="add-pet-form">
+          <input type="text" id="new-pet-name" placeholder="Enter pet name" />
+          <button class="btn btn-secondary" onclick="addNewPet()">
+            <i class="fas fa-plus"></i>
+            Add Pet
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice Recording Section -->
+    <div id="recording-section" class="section active">
+      <div class="section-header">
+        <h1>Voice Recording</h1>
+        <p>Record voice notes about your pet's health and get AI-powered summaries</p>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-microphone"></i>
+          Voice Recording
+        </div>
+        
+        <button id="record-button" class="btn btn-primary record-button" onclick="toggleRecording()">
+          <i class="fas fa-microphone"></i>
+          Start Recording
+        </button>
+
+        <div id="status" class="status"></div>
+
+        <div id="output" class="output">
+          <div class="transcript">
+            <h3><i class="fas fa-quote-left"></i> Transcript</h3>
+            <div id="transcript-content"></div>
+          </div>
+          <div class="summary">
+            <h3><i class="fas fa-brain"></i> AI Summary</h3>
+            <div id="summary-content"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes & Files Section -->
+    <div id="notes-section" class="section">
+      <div class="section-header">
+        <h1>Notes & Files</h1>
+        <p>Manage pet health records, notes, and medical documents</p>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="section-title">
+            <i class="fas fa-sticky-note"></i>
+            Shared Page Notes
+          </div>
+          <div class="form-group">
+            <textarea id="markdown-input" placeholder="Write shared notes for all pets on this page..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="saveMarkdown()">
+            <i class="fas fa-save"></i>
+            Save Page Notes
+          </button>
+          <div id="markdown-status" class="status-message"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <i class="fas fa-edit"></i>
+            Pet-Specific Notes
+          </div>
+          <div class="form-group">
+            <textarea id="pet-input-text" placeholder="Write something specific about the selected pet..."></textarea>
+          </div>
+          <button class="btn btn-success" onclick="submitPetText()">
+            <i class="fas fa-plus"></i>
+            Add Pet Note
+          </button>
+          <div id="pet-input-status" class="status-message"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-file-medical"></i>
+          Upload Medical Documents
+        </div>
+        <form id="pdf-form">
+          <div class="file-upload" onclick="document.getElementById('pdf-file').click()">
+            <div class="upload-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="upload-text">
+              <strong>Click to upload</strong> or drag and drop<br>
+              PDF files only
+            </div>
+            <input type="file" id="pdf-file" accept="application/pdf" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top: 20px; width: 100%;">
+            <i class="fas fa-upload"></i>
+            Upload and Analyze Document
+          </button>
+        </form>
+        <div id="pdf-result" class="result-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  ">
+    <div style="text-align: center;">
+      <div style="
+        width: 50px;
+        height: 50px;
+        border: 4px solid #e1e8ed;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      "></div>
+      <p style="color: #667eea; font-weight: 500;">Loading...</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { app } from "./firebase-config.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const auth = getAuth(app);
+    const pageId = "default-page";
+    let currentUser = null;
+    let selectedPet = "";
+    let isRecording = false;
+
+    // Navigation functionality
+    window.showSection = function(sectionName) {
+      // Update nav items
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      
+      // Find and activate the correct nav item
+      const navItems = document.querySelectorAll('.nav-item');
+      navItems.forEach(item => {
+        if ((sectionName === 'recording' && item.textContent.includes('Voice Recording')) ||
+            (sectionName === 'notes' && item.textContent.includes('Notes & Files'))) {
+          item.classList.add('active');
+        }
+      });
+
+      // Update sections
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+
+      if (sectionName === 'recording') {
+        document.getElementById('recording-section').classList.add('active');
+        window.location.hash = 'recording';
+      } else if (sectionName === 'notes') {
+        document.getElementById('notes-section').classList.add('active');
+        loadMarkdown(); // Load notes when switching to notes section
+        window.location.hash = 'notes';
+      }
+    };
+
+    // Handle URL hash navigation
+    function handleHashNavigation() {
+      const hash = window.location.hash.substring(1);
+      if (hash === 'notes') {
+        showSection('notes');
+      } else {
+        showSection('recording'); // Default to recording
+      }
+    }
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashNavigation);
+
+    // Pet management functions
+    async function loadPets() {
+      const res = await fetch(`/api/user-pets/${currentUser.uid}`);
+      const pets = await res.json();
+      const select = document.getElementById("pet-select");
+      select.innerHTML = "";
+
+      pets.forEach(pet => {
+        const option = document.createElement("option");
+        option.value = pet.id;
+        option.textContent = pet.name || pet.id;
+        select.appendChild(option);
+      });
+
+      if (pets.length > 0) {
+        selectedPet = pets[0].id;
+        select.value = selectedPet;
+      }
+    }
+
+    document.getElementById("pet-select").addEventListener("change", async (e) => {
+      selectedPet = e.target.value;
+    });
+
+    window.addNewPet = async function () {
+      const name = document.getElementById("new-pet-name").value;
+      if (!name) return alert("Please enter a pet name");
+      await fetch(`/api/pets/${currentUser.uid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      document.getElementById("new-pet-name").value = "";
+      await loadPets();
+    };
+
+    // Voice recording functions
+    window.toggleRecording = async function () {
+      if (!currentUser) return alert("User not authenticated");
+      const petId = document.getElementById("pet-select").value;
+      if (!petId) return alert("Please select a pet");
+
+      const button = document.getElementById("record-button");
+      const statusElement = document.getElementById("status");
+      const outputElement = document.getElementById("output");
+      const loadingOverlay = document.getElementById("loading-overlay");
+
+      if (!isRecording) {
+        // Start recording
+        const res = await fetch('/api/start_recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: currentUser.uid, pet: petId })
+        });
+
+        const data = await res.json();
+        if (data.status === "recording") {
+          isRecording = true;
+          button.innerHTML = '<i class="fas fa-stop"></i> Stop Recording';
+          button.classList.add('recording');
+          statusElement.textContent = "🎙️ Recording in progress... Click Stop when finished";
+          statusElement.className = "status recording";
+          outputElement.classList.remove("has-content");
+        } else {
+          statusElement.textContent = "❌ Failed to start recording";
+          statusElement.className = "status error";
+        }
+      } else {
+        // Stop recording
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        statusElement.textContent = "⏳ Processing your recording...";
+        statusElement.className = "status processing";
+        loadingOverlay.style.display = "flex";
+        
+        const res = await fetch('/api/stop_recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: currentUser.uid, pet: petId })
+        });
+
+        const data = await res.json();
+        loadingOverlay.style.display = "none";
+        
+        isRecording = false;
+        button.innerHTML = '<i class="fas fa-microphone"></i> Start Recording';
+        button.classList.remove('recording');
+        button.disabled = false;
+        
+        if (data.status === "success" && data.transcript && data.summary) {
+          document.getElementById("transcript-content").textContent = data.transcript;
+          document.getElementById("summary-content").textContent = data.summary;
+          outputElement.classList.add("has-content");
+          statusElement.textContent = "✅ Recording processed successfully!";
+          statusElement.className = "status success";
+          
+          setTimeout(() => {
+            statusElement.style.display = "none";
+          }, 5000);
+        } else {
+          statusElement.textContent = "❌ Error processing recording: " + (data.error || "Unknown error");
+          statusElement.className = "status error";
+        }
+      }
+    };
+
+    // Notes functions
+    async function loadMarkdown() {
+      try {
+        const res = await fetch(`/api/pages/${pageId}`);
+        const data = await res.json();
+        document.getElementById("markdown-input").value = data.markdown || "";
+      } catch (error) {
+        console.error("Error loading markdown:", error);
+      }
+    }
+
+    window.saveMarkdown = async function () {
+      const markdown = document.getElementById("markdown-input").value;
+      const statusElement = document.getElementById("markdown-status");
+      
+      try {
+        await fetch(`/api/pages/${pageId}`, {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markdown })
+        });
+        
+        statusElement.textContent = "✅ Page notes saved successfully!";
+        statusElement.className = "status-message success";
+        
+        setTimeout(() => {
+          statusElement.style.display = "none";
+        }, 3000);
+      } catch (error) {
+        statusElement.textContent = "❌ Error saving notes: " + error.message;
+        statusElement.className = "status-message error";
+      }
+    };
+
+    window.submitPetText = async function () {
+      const input = document.getElementById("pet-input-text").value;
+      const statusElement = document.getElementById("pet-input-status");
+      
+      if (!input || !selectedPet) {
+        statusElement.textContent = "❌ Please enter text and select a pet.";
+        statusElement.className = "status-message error";
+        return;
+      }
+
+      try {
+        await fetch(`/api/pets/${selectedPet}/textinput`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input })
+        });
+
+        statusElement.textContent = "✅ Pet note added successfully!";
+        statusElement.className = "status-message success";
+        document.getElementById("pet-input-text").value = "";
+        
+        setTimeout(() => {
+          statusElement.style.display = "none";
+        }, 3000);
+      } catch (error) {
+        statusElement.textContent = "❌ Error saving pet note: " + error.message;
+        statusElement.className = "status-message error";
+      }
+    };
+
+    // PDF upload functionality
+    document.getElementById("pdf-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedPet) {
+        alert("Please select a pet");
+        return;
+      }
+
+      const file = document.getElementById("pdf-file").files[0];
+      if (!file) {
+        alert("Please select a PDF file");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const resultElement = document.getElementById("pdf-result");
+      resultElement.textContent = "📤 Uploading and analyzing document...";
+      resultElement.classList.add("has-content");
+
+      try {
+        const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${selectedPet}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        resultElement.textContent = `Document uploaded successfully!\nURL: ${data.url}`;
+        document.getElementById("pdf-file").value = "";
+      } catch (error) {
+        resultElement.textContent = `❌ Error uploading document: ${error.message}`;
+      }
+    });
+
+    // File upload drag and drop functionality
+    const fileUpload = document.querySelector('.file-upload');
+    const fileInput = document.getElementById('pdf-file');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      fileUpload.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      fileUpload.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      fileUpload.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+      fileUpload.classList.add('dragover');
+    }
+
+    function unhighlight(e) {
+      fileUpload.classList.remove('dragover');
+    }
+
+    fileUpload.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      
+      if (files.length > 0 && files[0].type === 'application/pdf') {
+        fileInput.files = files;
+      } else {
+        alert('Please drop only PDF files');
+      }
+    }
+
+    window.logout = async function () {
+      await signOut(auth);
+      window.location.href = "/index.html";
+    };
+
+    // Authentication
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "/index.html";
+      } else {
+        currentUser = user;
+        loadPets();
+        
+        // Handle initial navigation based on URL hash
+        handleHashNavigation();
+      }
+    });
+  </script>
+</body>
+</html>

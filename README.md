@@ -27,7 +27,7 @@ The goal: make pet healthcare management **as simple as talking**.
 - 📄 **PDF Processing** - Upload and analyze veterinary documents
 - ☁️ **Cloud Storage** - Secure storage with Firebase Firestore and Storage
 - 👥 **Collaboration** - Share pet pages with family members and veterinarians
-- 📱 **Modern UI** - Beautiful, responsive interface with real-time feedback
+- 📱 **Modern UI** - Beautiful, responsive interface with unified navigation and real-time feedback
 
 ---
 
@@ -111,43 +111,65 @@ pets/
 
 ### **Technical Implementation**
 ```python
-# Real-time audio capture with PyAudio
-def callback(in_data, frame_count, time_info, status):
-    if recording_state["is_recording"]:
-        audio_queue.put(in_data)
-    return (None, pyaudio.paContinue)
+# Enhanced Google Cloud authentication setup
+def setup_google_cloud_auth():
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+    credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
+    
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    
+    return speech.SpeechClient()
 
-# Google Cloud Speech-to-Text streaming
-def transcription_worker():
-    client = speech.SpeechClient()
-    responses = client.streaming_recognize(streaming_config, requests)
-    # Process real-time transcription results
+# Real-time audio capture with manual controls
+def start_recording():
+    recording_state["is_recording"] = True
+    recording_thread = threading.Thread(target=_record_audio)
+    recording_thread.daemon = True
+    recording_thread.start()
+    return {"status": "recording", "message": "Recording started"}
+
+def stop_recording():
+    recording_state["is_recording"] = False
+    audio_data = b''.join(recording_state["audio_data"])
+    transcript = _transcribe_audio_data(audio_data)
+    return {"status": "stopped", "transcript": transcript}
 ```
 
 ---
 
 ## 📄 PDF Processing Pipeline
 
-1. **Upload**: Secure file upload to Firebase Storage
-2. **Text Extraction**: PyMuPDF extracts text content
-3. **AI Analysis**: GPT-4o summarizes medical information
-4. **Storage**: Summary and file URL saved to Firestore
-5. **Access**: Searchable medical document history
+1. **Upload**: Secure file upload to Firebase Storage with drag-and-drop support
+2. **Text Extraction**: PyMuPDF extracts text content from medical documents
+3. **AI Analysis**: GPT-4o analyzes and summarizes medical information with veterinary context
+4. **Storage**: Summary and file URL saved to Firestore with proper document structure
+5. **Access**: Searchable medical document history with unified interface
 
 ```python
 def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
-    # Extract PDF text
-    doc = fitz.open(file_path)
-    text = "\n".join([page.get_text() for page in doc])
+    # Extract PDF text with error handling
+    try:
+        doc = fitz.open(file_path)
+        text = "\n".join([page.get_text() for page in doc])
+        doc.close()
+    except Exception as e:
+        return {"error": f"PDF extraction failed: {str(e)}"}
     
-    # AI summarization
+    # AI summarization with veterinary context
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[{
             "role": "system",
-            "content": "You are a veterinary assistant AI. Summarize this medical document..."
+            "content": "You are a veterinary assistant AI. Analyze this medical document and provide a concise, professional summary focusing on key health indicators, treatments, and recommendations..."
+        }, {
+            "role": "user", 
+            "content": f"Please summarize this veterinary document:\n\n{text}"
         }]
     )
+    
+    # Store with proper document structure
+    store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url)
 ```
 
 ---
@@ -156,11 +178,14 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 
 ### **Responsive Design**
 - **Mobile-First**: Optimized for phones and tablets
-- **Progressive Enhancement**: Works across all devices
+- **Progressive Enhancement**: Works across all devices  
+- **Unified Navigation**: Single-page interface with seamless tabbed navigation between Voice Recording and Notes & Files
 - **Accessibility**: Proper focus states and keyboard navigation
 
 ### **Interactive Elements**
 - **Real-Time Status**: Recording indicators and progress feedback
+- **Unified Navigation Tabs**: Seamless switching between Voice Recording and Notes & Files sections
+- **URL Fragment Support**: Direct navigation with URLs like `/main.html#notes` or `/main.html#recording`
 - **Drag & Drop**: PDF upload with visual feedback
 - **Smooth Animations**: CSS transitions and loading states
 - **Error Handling**: User-friendly error messages
@@ -184,14 +209,37 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 ```bash
 # Python 3.8+
 pip install -r requirements.txt
-
-# Google Cloud credentials
-export GOOGLE_APPLICATION_CREDENTIALS="gcloud-key.json"
-
-# Environment variables
-OPENAI_API_KEY=your_openai_key
-FIREBASE_STORAGE_BUCKET=your_firebase_bucket
 ```
+
+### **Environment Setup**
+Create a `.env` file in the project root:
+```bash
+# .env file
+OPENAI_API_KEY=your_openai_api_key_here
+FIREBASE_STORAGE_BUCKET=puppypages-29427.appspot.com
+GOOGLE_CLOUD_PROJECT=puppypages-29427
+GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
+```
+
+### **Google Cloud APIs Setup**
+Enable the following APIs in Google Cloud Console for project `puppypages-29427`:
+
+1. **🎙️ Cloud Speech-to-Text API** (Required for voice transcription)
+2. **🔥 Firebase Authentication API** (Required for Google Sign-In)
+3. **📁 Cloud Storage API** (Required for file uploads)
+4. **🗄️ Cloud Firestore API** (Required for database)
+5. **📊 Cloud Resource Manager API** (Required for project management)
+
+Direct links:
+- [Enable Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
+- [Enable Firebase Auth API](https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=puppypages-29427)
+- [View All APIs](https://console.cloud.google.com/apis/dashboard?project=puppypages-29427)
+
+### **Firebase Configuration**
+Ensure your `gcloud-key.json` service account file is in the project root with proper permissions for:
+- Firestore Database User
+- Storage Admin
+- Speech API User
 
 ### **Run the Application**
 ```bash
@@ -199,36 +247,91 @@ FIREBASE_STORAGE_BUCKET=your_firebase_bucket
 python -m uvicorn api_server:app --reload
 
 # Access the application
-open http://localhost:8000
+open http://localhost:8000/main.html
 ```
+
+### **Application URLs**
+- **Main Dashboard**: `http://localhost:8000/main.html`
+- **Voice Recording**: `http://localhost:8000/main.html#recording`
+- **Notes & Files**: `http://localhost:8000/main.html#notes`
+- **Login Page**: `http://localhost:8000/index.html`
+
+---
+
+## 🔧 Troubleshooting
+
+### **Common Issues & Solutions**
+
+#### **Google Cloud Authentication Warnings**
+```
+WARNING: Your application has authenticated using end user credentials from Google Cloud SDK without a quota project.
+```
+**Solution**: Ensure your `.env` file contains:
+```bash
+GOOGLE_CLOUD_PROJECT=puppypages-29427
+GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
+```
+
+#### **Speech-to-Text API Errors**
+- **Issue**: API not enabled
+- **Solution**: Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
+- **Verify**: Run `python gcloud_auth.py` to test authentication
+
+#### **Recording Not Working**
+- **Check microphone permissions** in your browser
+- **Verify PyAudio installation**: `pip install pyaudio`
+- **Test audio capture**: Ensure microphone is not being used by other applications
+
+#### **PDF Upload Failures**
+- **File size limit**: Max 10MB per PDF
+- **File format**: Only PDF files are supported
+- **Storage permissions**: Verify Firebase Storage rules allow uploads
+
+#### **Firebase Connection Issues**
+- **Check internet connection**
+- **Verify Firebase configuration** in `public/firebase-config.js`
+- **Ensure billing is enabled** in Google Cloud Console
+
+### **Development Tips**
+- **Use browser developer tools** to debug JavaScript errors
+- **Check FastAPI logs** for backend error details
+- **Monitor Google Cloud Console** for API quota usage
+- **Test with different browsers** for compatibility issues
 
 ---
 
 ## 🧠 Key Technical Achievements
 
 ### **Real-Time Audio Processing**
-- ✅ Streaming audio capture with PyAudio
-- ✅ Google Cloud Speech-to-Text integration
-- ✅ Manual start/stop recording controls
-- ✅ Background transcription processing
+- ✅ Manual start/stop recording controls with visual feedback
+- ✅ Google Cloud Speech-to-Text integration with proper authentication
+- ✅ Background audio processing with PyAudio
+- ✅ Optimized audio configuration (16kHz, 16-bit, mono)
 
 ### **AI-Powered Analysis**
-- ✅ OpenAI GPT-4o integration for summarization
-- ✅ Veterinary-specific prompt engineering
-- ✅ Retry logic and error handling
-- ✅ Context-aware medical summaries
+- ✅ OpenAI GPT-4o integration for medical summarization
+- ✅ Veterinary-specific prompt engineering for accurate health insights
+- ✅ Retry logic and comprehensive error handling
+- ✅ Context-aware medical summaries from voice and PDF content
 
 ### **Cloud Architecture**
 - ✅ Firebase Authentication with Google Sign-In
-- ✅ Firestore NoSQL database design
-- ✅ Firebase Storage for file management
-- ✅ Scalable multi-user architecture
+- ✅ Firestore NoSQL database with optimized document structure
+- ✅ Firebase Storage for secure file management
+- ✅ Scalable multi-user architecture with proper permissions
 
 ### **Modern Web Development**
-- ✅ FastAPI for high-performance APIs
-- ✅ Responsive CSS Grid and Flexbox
-- ✅ ES6+ JavaScript modules
-- ✅ Progressive Web App features
+- ✅ **Unified Single-Page Application**: Tabbed navigation between Voice Recording and Notes & Files
+- ✅ **URL Fragment Support**: Direct navigation with bookmarkable URLs (`#recording`, `#notes`)
+- ✅ **Responsive Design**: Mobile-first approach with CSS Grid and Flexbox
+- ✅ **Progressive Enhancement**: Works across all devices and browsers
+- ✅ **Real-Time Feedback**: Loading states, progress indicators, and status messages
+
+### **Authentication & Security**
+- ✅ Google Cloud service account authentication with quota project configuration
+- ✅ Environment-based configuration for secure credential management
+- ✅ Proper API key management and rate limiting
+- ✅ User session management with Firebase Auth
 
 ---
 
@@ -236,21 +339,27 @@ open http://localhost:8000
 
 ### **Advanced AI Features**
 - 🔮 **RAG-Based Health Assistant**: Query pet's health history with natural language
-- 📊 **Health Trend Analysis**: AI-powered insights from historical data
-- 🔍 **Symptom Recognition**: Pattern detection in voice notes
-- 📱 **Mobile App**: Native iOS/Android applications
+- 📊 **Health Trend Analysis**: AI-powered insights from historical voice notes and documents
+- 🔍 **Symptom Pattern Recognition**: Automatic detection of recurring health issues
+- 📱 **Mobile App**: Native iOS/Android applications with offline voice recording
 
-### **Collaboration Tools**
-- 👥 **Veterinarian Portal**: Professional dashboard for vets
-- 📧 **Smart Notifications**: Email/SMS alerts for health concerns
-- 📅 **Appointment Integration**: Calendar sync with vet appointments
-- 🔗 **Clinic Integration**: Direct sharing with veterinary practices
+### **Enhanced User Experience**
+- 🎙️ **Voice Commands**: Navigate the app using voice controls
+- 📋 **Smart Templates**: Pre-filled forms for common health situations
+- 🔔 **Smart Notifications**: AI-driven health reminders and alerts
+- 🎨 **Customizable Dashboard**: Personalized interface for different user types
+
+### **Collaboration & Integration**
+- 👥 **Veterinarian Portal**: Professional dashboard with advanced analytics
+- 📧 **Smart Notifications**: Email/SMS alerts for health concerns with severity detection
+- 📅 **Appointment Integration**: Calendar sync with vet appointments and medication schedules
+- 🔗 **Clinic Integration**: Direct sharing with veterinary practices and HIPAA compliance
 
 ### **Data & Analytics**
-- 📈 **Health Timeline**: Visual pet health journey
-- 📊 **Analytics Dashboard**: Health metrics and trends
-- 📋 **Report Generation**: Automated health reports
-- 🔒 **Data Export**: HIPAA-compliant data portability
+- 📈 **Interactive Health Timeline**: Visual pet health journey with clickable events
+- 📊 **Advanced Analytics Dashboard**: Health metrics, trends, and predictive insights
+- 📋 **Automated Report Generation**: Professional health reports for veterinary visits
+- 🔒 **Enhanced Data Security**: End-to-end encryption and HIPAA-compliant data export
 
 ---
 

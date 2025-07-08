@@ -6,8 +6,12 @@ import time
 from google.cloud import speech
 import os
 from dotenv import load_dotenv
+from gcloud_auth import setup_google_cloud_auth
 
 load_dotenv()
+
+# Setup Google Cloud authentication
+setup_google_cloud_auth()
 
 # Audio recording parameters
 RATE = 16000
@@ -23,9 +27,22 @@ recording_state = {
     "audio_queue": queue.Queue()
 }
 
+def get_speech_client():
+    """Create Speech client with proper project configuration"""
+    try:
+        # Create client with explicit project
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+        client = speech.SpeechClient()
+        return client
+    except Exception as e:
+        print(f"❌ Error creating Speech client: {e}")
+        return None
+
 def transcribe_audio(duration_seconds=10):
     """Simple transcription for a fixed duration"""
-    client = speech.SpeechClient()
+    client = get_speech_client()
+    if not client:
+        return "Error: Could not initialize Speech client"
     
     # Set up audio recording
     audio = pyaudio.PyAudio()
@@ -165,7 +182,9 @@ def _record_audio():
 def _transcribe_audio_data(audio_data):
     """Transcribe audio data using Google Cloud Speech-to-Text"""
     try:
-        client = speech.SpeechClient()
+        client = get_speech_client()
+        if not client:
+            return "Error: Could not initialize Speech client"
         
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -174,6 +193,7 @@ def _transcribe_audio_data(audio_data):
         )
         
         audio = speech.RecognitionAudio(content=audio_data)
+        print("🔄 Transcribing audio with Google Cloud Speech-to-Text...")
         response = client.recognize(config=config, audio=audio)
         
         if response.results:

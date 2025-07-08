@@ -4,13 +4,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from firebase_admin import storage
+from dotenv import load_dotenv
+
+# Load environment variables first
+load_dotenv()
+
+# Set Google Cloud environment variables
+import os
+os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
 
 from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
 from pdf_parser import extract_text_and_summarize
 from transcribe import start_recording, stop_recording, get_recording_status
 
-import os
 import uuid
 from datetime import datetime
 
