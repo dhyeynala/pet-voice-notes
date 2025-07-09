@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -190,7 +191,7 @@
       right: 16px;
       top: 50%;
       transform: translateY(-50%);
-      color: #7f8c8d;
+      color: #7f8c8c;
       pointer-events: none;
     }
 
@@ -506,11 +507,308 @@
       .grid {
         grid-template-columns: 1fr;
       }
+
+      #dashboard-summary {
+        grid-template-columns: 1fr;
+      }
+
+      #charts-container > div {
+        grid-template-columns: 1fr;
+      }
+
+      .tab-btn {
+        font-size: 0.8rem;
+        padding: 10px 15px;
+      }
     }
 
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+
+    /* Analytics Specific Styles */
+    .metric-card {
+      background: linear-gradient(135deg, #f8fafc, #e1e8ed);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      border: 2px solid #e1e8ed;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .metric-card:hover {
+      border-color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+    }
+
+    .metric-icon {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .metric-label {
+      font-size: 0.9rem;
+      color: #7f8c8d;
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #e1e8ed;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .chart-container h4 {
+      margin-bottom: 15px;
+      color: #2c3e50;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .tab-navigation {
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .tab-btn {
+      background: #f8fafc;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 10px;
+      font-size: 0.9rem;
+    }
+
+    .tab-btn:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .tab-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #5a67d8;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .analytics-form {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 25px;
+      border: 1px solid #e1e8ed;
+    }
+
+    .analytics-form h4 {
+      margin-bottom: 20px;
+      color: #2c3e50;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .energy-selector {
+      position: relative;
+    }
+
+    .energy-selector input[type="range"] {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .energy-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #7f8c8d;
+    }
+
+    select[multiple] {
+      height: auto;
+      min-height: 80px;
+    }
+
+    .recent-entry {
+      background: white;
+      border: 1px solid #e1e8ed;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .recent-entry:hover {
+      border-color: #667eea;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+
+    .entry-content {
+      flex: 1;
+    }
+
+    .entry-category {
+      font-size: 0.8rem;
+      color: #667eea;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .entry-description {
+      font-weight: 500;
+      color: #2c3e50;
+      margin-bottom: 3px;
+    }
+
+    .entry-time {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+    }
+
+    .entry-icon {
+      font-size: 1.5rem;
+      color: #667eea;
+      margin-left: 15px;
+    }
+
+    .daily-headline {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      backdrop-filter: blur(10px);
+    }
+
+    .daily-headline:last-child {
+      margin-bottom: 0;
+    }
+
+    .headline-icon {
+      display: inline-block;
+      margin-right: 10px;
+      font-size: 1.2rem;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Enhanced styling for new features */
+    .mood-selector {
+      text-align: center;
+    }
+
+    .mood-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.8rem;
+    }
+
+    .mood-labels span {
+      font-size: 0.9rem;
+    }
+
+    .health-insights-container {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+
+    .insight-section {
+      margin-bottom: 20px;
+    }
+
+    .insight-section h4 {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .insight-section ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .insight-section li {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border-left: 3px solid currentColor;
+    }
+
+    .alert-section li {
+      background: #fff5f5;
+      border-left-color: #e53e3e;
+    }
+
+    .tab-btn {
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1024px) {
+      .health-insights-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .tab-btn i {
+        display: none;
+      }
+
+      .tab-btn {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+      }
     }
   </style>
 </head>
@@ -530,6 +828,14 @@
           <div class="nav-item" onclick="showSection('notes')">
             <i class="fas fa-file-alt"></i>
             <span>Notes & Files</span>
+          </div>
+          <div class="nav-item" onclick="showSection('tracking')">
+            <i class="fas fa-clipboard-list"></i>
+            <span>Tracking</span>
+          </div>
+          <div class="nav-item" onclick="showSection('analytics')">
+            <i class="fas fa-chart-line"></i>
+            <span>Analytics</span>
           </div>
         </div>
         <button class="logout-btn" onclick="logout()">
@@ -662,6 +968,577 @@
         <div id="pdf-result" class="result-box"></div>
       </div>
     </div>
+
+    <!-- Analytics Section -->
+    <div id="analytics-section" class="section">
+      <div class="section-header">
+        <h1>Analytics</h1>
+        <p>Comprehensive health insights and visualizations for your pet</p>
+      </div>
+
+      <!-- Daily Routine Headlines -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-star"></i>
+          Today's Highlights
+        </div>
+        <div id="daily-headlines" style="min-height: 60px; padding: 20px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; color: white; margin-bottom: 20px;">
+          <div style="text-align: center; color: rgba(255,255,255,0.8);">
+            <i class="fas fa-clock"></i> Loading today's highlights...
+          </div>
+        </div>
+        <button onclick="generateDailyHeadlines()" class="btn btn-secondary">
+          <i class="fas fa-magic"></i>
+          Generate AI Headlines
+        </button>
+      </div>
+
+      <!-- Dashboard Summary -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-chart-line"></i>
+          Health Dashboard
+        </div>
+
+        <div id="dashboard-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+          <div class="metric-card" data-category="diet">
+            <div class="metric-icon">🍽️</div>
+            <div class="metric-label">Diet Entries</div>
+            <div class="metric-value">0</div>
+          </div>
+          <div class="metric-card" data-category="exercise">
+            <div class="metric-icon">🏃</div>
+            <div class="metric-label">Exercise Sessions</div>
+            <div class="metric-value">0</div>
+          </div>
+          <div class="metric-card" data-category="medication">
+            <div class="metric-icon">💊</div>
+            <div class="metric-label">Medications</div>
+            <div class="metric-value">0</div>
+          </div>
+          <div class="metric-card" data-category="energy_levels">
+            <div class="metric-icon">⚡</div>
+            <div class="metric-label">Avg Energy</div>
+            <div class="metric-value">0</div>
+          </div>
+        </div>
+
+        <!-- Charts Container -->
+        <div id="charts-container" style="margin-top: 30px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="chart-container">
+              <h4>Weekly Activity Trend</h4>
+              <canvas id="activityChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Energy Levels Distribution</h4>
+              <canvas id="energyChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="chart-container">
+              <h4>Diet Frequency</h4>
+              <canvas id="dietChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Health Metrics Overview</h4>
+              <canvas id="overviewChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="chart-container">
+              <h4>Exercise Duration Distribution</h4>
+              <canvas id="exerciseHistogram" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+              <h4>Medication Adherence</h4>
+              <canvas id="medicationChart" width="400" height="200"></canvas>
+            </div>
+          </div>
+          <!-- Activity Heatmap -->
+          <div class="chart-container" style="margin-bottom: 20px;">
+            <h4>Daily Activity Heatmap</h4>
+            <div id="activityHeatmap" style="height: 100px; background: #f8fafc; border-radius: 8px; padding: 10px; display: flex; align-items: center; gap: 2px;">
+              <!-- Will be populated with hourly activity blocks -->
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #7f8c8d; margin-top: 5px;">
+              <span>12 AM</span>
+              <span>6 AM</span>
+              <span>12 PM</span>
+              <span>6 PM</span>
+              <span>11 PM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enhanced Health Insights Section -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-brain"></i>
+          AI Health Insights
+        </div>
+        <div id="health-insights" style="min-height: 200px;">
+          <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+            <i class="fas fa-robot"></i>
+            <p>Generating personalized health insights...</p>
+          </div>
+        </div>
+        <button onclick="generateHealthInsights()" class="btn btn-secondary" style="margin-top: 15px;">
+          <i class="fas fa-sync"></i>
+          Refresh Insights
+        </button>
+        <small style="display: block; margin-top: 5px; color: #666;">
+          Debug: Current pet ID: <span id="debug-pet-id">None</span>
+        </small>
+      </div>
+    </div>
+
+    <!-- Tracking Section -->
+    <div id="tracking-section" class="section">
+      <div class="section-header">
+        <h1>Tracking</h1>
+        <p>Track daily activities, health data, and monitor your pet's well-being</p>
+      </div>
+
+      <!-- Data Entry Tabs -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-plus-circle"></i>
+          Track Health Data
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation" style="display: flex; gap: 8px; margin-bottom: 30px; border-bottom: 2px solid #f1f3f4; padding-bottom: 10px; flex-wrap: wrap;">
+          <button class="tab-btn active" onclick="showTab('diet')">
+            <i class="fas fa-utensils"></i> Diet & Nutrition
+          </button>
+          <button class="tab-btn" onclick="showTab('exercise')">
+            <i class="fas fa-running"></i> Exercise
+          </button>
+          <button class="tab-btn" onclick="showTab('medication')">
+            <i class="fas fa-pills"></i> Medication
+          </button>
+          <button class="tab-btn" onclick="showTab('grooming')">
+            <i class="fas fa-cut"></i> Grooming
+          </button>
+          <button class="tab-btn" onclick="showTab('monitoring')">
+            <i class="fas fa-heartbeat"></i> Monitoring
+          </button>
+          <button class="tab-btn" onclick="showTab('weight')">
+            <i class="fas fa-weight"></i> Weight
+          </button>
+          <button class="tab-btn" onclick="showTab('sleep')">
+            <i class="fas fa-bed"></i> Sleep
+          </button>
+          <button class="tab-btn" onclick="showTab('mood')">
+            <i class="fas fa-smile"></i> Mood
+          </button>
+        </div>
+
+        <!-- Diet & Nutrition Tab -->
+        <div id="diet-tab" class="tab-content active">
+          <form id="diet-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="diet-food">Food/Treat</label>
+                <input type="text" id="diet-food" placeholder="e.g., Chicken breast, Dog treats" required />
+              </div>
+              <div class="form-group">
+                <label for="diet-quantity">Quantity</label>
+                <input type="text" id="diet-quantity" placeholder="e.g., 1 cup, 50g" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="diet-time">Time</label>
+                <input type="time" id="diet-time" />
+              </div>
+              <div class="form-group">
+                <label for="diet-type">Meal Type</label>
+                <select id="diet-type">
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="treat">Treat/Snack</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="diet-notes">Notes</label>
+              <textarea id="diet-notes" placeholder="Any special notes about this meal..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Diet Entry
+            </button>
+          </form>
+        </div>
+
+        <!-- Exercise Tab -->
+        <div id="exercise-tab" class="tab-content">
+          <form id="exercise-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="exercise-type">Exercise Type</label>
+                <select id="exercise-type">
+                  <option value="walk">Walk</option>
+                  <option value="run">Run</option>
+                  <option value="play">Play</option>
+                  <option value="fetch">Fetch</option>
+                  <option value="swimming">Swimming</option>
+                  <option value="training">Training</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exercise-duration">Duration (minutes)</label>
+                <input type="number" id="exercise-duration" min="1" max="300" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="exercise-intensity">Intensity</label>
+                <select id="exercise-intensity">
+                  <option value="low">Low</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exercise-location">Location</label>
+                <input type="text" id="exercise-location" placeholder="e.g., Park, Backyard" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="exercise-notes">Notes</label>
+              <textarea id="exercise-notes" placeholder="How did your pet enjoy this exercise?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Exercise Entry
+            </button>
+          </form>
+        </div>
+
+        <!-- Medication Tab -->
+        <div id="medication-tab" class="tab-content">
+          <form id="medication-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="medication-name">Medication Name</label>
+                <input type="text" id="medication-name" placeholder="e.g., Rimadyl, Heartgard" required />
+              </div>
+              <div class="form-group">
+                <label for="medication-dosage">Dosage</label>
+                <input type="text" id="medication-dosage" placeholder="e.g., 50mg, 1 tablet" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="medication-time">Time Given</label>
+                <input type="time" id="medication-time" />
+              </div>
+              <div class="form-group">
+                <label for="medication-frequency">Frequency</label>
+                <select id="medication-frequency">
+                  <option value="once">Once daily</option>
+                  <option value="twice">Twice daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="as-needed">As needed</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="medication-purpose">Purpose</label>
+              <input type="text" id="medication-purpose" placeholder="e.g., Pain relief, Heartworm prevention" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Medication Entry
+            </button>
+          </form>
+        </div>
+
+        <!-- Grooming Tab -->
+        <div id="grooming-tab" class="tab-content">
+          <form id="grooming-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="grooming-type">Grooming Type</label>
+                <select id="grooming-type" multiple>
+                  <option value="bath">Bath</option>
+                  <option value="brushing">Brushing</option>
+                  <option value="nail-trim">Nail Trimming</option>
+                  <option value="ear-cleaning">Ear Cleaning</option>
+                  <option value="teeth-brushing">Teeth Brushing</option>
+                  <option value="professional">Professional Grooming</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="grooming-duration">Duration (minutes)</label>
+                <input type="number" id="grooming-duration" min="1" max="180" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="grooming-products">Products Used</label>
+              <input type="text" id="grooming-products" placeholder="e.g., Oatmeal shampoo, Nail clippers" />
+            </div>
+            <div class="form-group">
+              <label for="grooming-notes">Notes</label>
+              <textarea id="grooming-notes" placeholder="How did your pet behave? Any issues?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Add Grooming Entry
+            </button>
+          </form>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div id="monitoring-tab" class="tab-content">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Energy Levels -->
+            <form id="energy-form" class="analytics-form">
+              <h4><i class="fas fa-bolt"></i> Energy Level</h4>
+              <div class="form-group">
+                <label for="energy-level">Energy Level (1-5)</label>
+                <div class="energy-selector">
+                  <input type="range" id="energy-level" min="1" max="5" value="3" />
+                  <div class="energy-labels">
+                    <span>Very Low</span>
+                    <span>Low</span>
+                    <span>Normal</span>
+                    <span>High</span>
+                    <span>Very High</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="energy-notes">Notes</label>
+                <textarea id="energy-notes" placeholder="Describe your pet's energy level..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Log Energy
+              </button>
+            </form>
+
+            <!-- Bowel Movements -->
+            <form id="bowel-form" class="analytics-form">
+              <h4><i class="fas fa-poop"></i> Bowel Movement</h4>
+              <div class="form-group">
+                <label for="bowel-consistency">Consistency</label>
+                <select id="bowel-consistency">
+                  <option value="normal">Normal</option>
+                  <option value="soft">Soft</option>
+                  <option value="loose">Loose</option>
+                  <option value="hard">Hard</option>
+                  <option value="liquid">Liquid</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="bowel-time">Time</label>
+                <input type="time" id="bowel-time" />
+              </div>
+              <div class="form-group">
+                <label for="bowel-notes">Notes</label>
+                <textarea id="bowel-notes" placeholder="Any unusual observations..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Log Movement
+              </button>
+            </form>
+          </div>
+
+          <!-- Exit Events -->
+          <form id="exit-form" class="analytics-form" style="margin-top: 20px;">
+            <h4><i class="fas fa-door-open"></i> Exit Event</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="exit-type">Event Type</label>
+                <select id="exit-type">
+                  <option value="walk">Walk</option>
+                  <option value="potty">Potty Break</option>
+                  <option value="play">Outdoor Play</option>
+                  <option value="car-ride">Car Ride</option>
+                  <option value="vet-visit">Vet Visit</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exit-duration">Duration (minutes)</label>
+                <input type="number" id="exit-duration" min="1" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="exit-destination">Destination</label>
+              <input type="text" id="exit-destination" placeholder="e.g., Dog park, Vet clinic" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Log Exit Event
+            </button>
+          </form>
+        </div>
+
+        <!-- Weight Tracking Tab -->
+        <div id="weight-tab" class="tab-content">
+          <form id="weight-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="weight-value">Weight</label>
+                <input type="number" id="weight-value" step="0.1" min="0" placeholder="e.g., 25.5" required />
+              </div>
+              <div class="form-group">
+                <label for="weight-unit">Unit</label>
+                <select id="weight-unit">
+                  <option value="lbs">Pounds (lbs)</option>
+                  <option value="kg">Kilograms (kg)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="weight-method">Measurement Method</label>
+                <select id="weight-method">
+                  <option value="home-scale">Home Scale</option>
+                  <option value="vet-visit">Vet Visit</option>
+                  <option value="groomer">At Groomer</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="weight-time">Time</label>
+                <input type="time" id="weight-time" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="weight-notes">Notes</label>
+              <textarea id="weight-notes" placeholder="Any observations about weight change..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Record Weight
+            </button>
+          </form>
+        </div>
+
+        <!-- Sleep Tracking Tab -->
+        <div id="sleep-tab" class="tab-content">
+          <form id="sleep-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="sleep-duration">Sleep Duration (hours)</label>
+                <input type="number" id="sleep-duration" step="0.5" min="0" max="24" placeholder="e.g., 8.5" />
+              </div>
+              <div class="form-group">
+                <label for="sleep-quality">Sleep Quality</label>
+                <select id="sleep-quality">
+                  <option value="excellent">Excellent</option>
+                  <option value="good">Good</option>
+                  <option value="fair">Fair</option>
+                  <option value="poor">Poor</option>
+                  <option value="restless">Restless</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="sleep-location">Sleep Location</label>
+                <input type="text" id="sleep-location" placeholder="e.g., Dog bed, Couch, Owner's bed" />
+              </div>
+              <div class="form-group">
+                <label for="sleep-interruptions">Interruptions</label>
+                <input type="number" id="sleep-interruptions" min="0" placeholder="Number of times woken up" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="sleep-notes">Notes</label>
+              <textarea id="sleep-notes" placeholder="Sleep behavior observations..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Log Sleep
+            </button>
+          </form>
+        </div>
+
+        <!-- Mood Tracking Tab -->
+        <div id="mood-tab" class="tab-content">
+          <form id="mood-form" class="analytics-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="mood-level">Overall Mood (1-5)</label>
+                <div class="mood-selector">
+                  <input type="range" id="mood-level" min="1" max="5" value="3" />
+                  <div class="mood-labels">
+                    <span>😢 Sad</span>
+                    <span>😟 Low</span>
+                    <span>😐 Neutral</span>
+                    <span>😊 Happy</span>
+                    <span>🤩 Excited</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="mood-triggers">Mood Triggers</label>
+                <select id="mood-triggers" multiple>
+                  <option value="food">Food/Treats</option>
+                  <option value="exercise">Exercise</option>
+                  <option value="visitors">Visitors</option>
+                  <option value="weather">Weather</option>
+                  <option value="other-pets">Other Pets</option>
+                  <option value="loud-noises">Loud Noises</option>
+                  <option value="car-ride">Car Ride</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="mood-behavior">Observed Behavior</label>
+                <select id="mood-behavior" multiple>
+                  <option value="playful">Playful</option>
+                  <option value="lethargic">Lethargic</option>
+                  <option value="anxious">Anxious</option>
+                  <option value="aggressive">Aggressive</option>
+                  <option value="affectionate">Affectionate</option>
+                  <option value="withdrawn">Withdrawn</option>
+                  <option value="hyperactive">Hyperactive</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="mood-time">Time Observed</label>
+                <input type="time" id="mood-time" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="mood-notes">Detailed Notes</label>
+              <textarea id="mood-notes" placeholder="Describe your pet's mood and behavior in detail..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-plus"></i>
+              Record Mood
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Recent Entries -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-history"></i>
+          Recent Entries
+        </div>
+        <div id="recent-entries" style="min-height: 100px;">
+          <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+            <i class="fas fa-clock"></i>
+            <p>No recent entries. Start tracking your pet's activities above!</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Loading Overlay -->
@@ -717,7 +1594,9 @@
       const navItems = document.querySelectorAll('.nav-item');
       navItems.forEach(item => {
         if ((sectionName === 'recording' && item.textContent.includes('Voice Recording')) ||
-            (sectionName === 'notes' && item.textContent.includes('Notes & Files'))) {
+            (sectionName === 'notes' && item.textContent.includes('Notes & Files')) ||
+            (sectionName === 'analytics' && item.textContent.includes('Analytics')) ||
+            (sectionName === 'tracking' && item.textContent.includes('Tracking'))) {
           item.classList.add('active');
         }
       });
@@ -734,6 +1613,17 @@
         document.getElementById('notes-section').classList.add('active');
         loadMarkdown(); // Load notes when switching to notes section
         window.location.hash = 'notes';
+      } else if (sectionName === 'analytics') {
+        document.getElementById('analytics-section').classList.add('active');
+        loadDashboard(); // Load dashboard when switching to analytics
+        updateCharts(); // Update charts when switching to analytics
+        generateDailyHeadlines(); // Generate today's headlines
+        generateHealthInsights(); // Generate AI health insights
+        window.location.hash = 'analytics';
+      } else if (sectionName === 'tracking') {
+        document.getElementById('tracking-section').classList.add('active');
+        loadRecentEntries(); // Load recent entries for tracking
+        window.location.hash = 'tracking';
       }
     };
 
@@ -742,6 +1632,10 @@
       const hash = window.location.hash.substring(1);
       if (hash === 'notes') {
         showSection('notes');
+      } else if (hash === 'analytics') {
+        showSection('analytics');
+      } else if (hash === 'tracking') {
+        showSection('tracking');
       } else {
         showSection('recording'); // Default to recording
       }
@@ -772,6 +1666,31 @@
 
     document.getElementById("pet-select").addEventListener("change", async (e) => {
       selectedPet = e.target.value;
+      console.log('Pet selection changed to:', selectedPet);
+      
+      // Get pet name for notification
+      const petSelect = document.getElementById("pet-select");
+      const petName = petSelect.options[petSelect.selectedIndex].text;
+      console.log('Pet name:', petName);
+      
+      // Refresh analytics data immediately when pet changes
+      const currentSection = document.querySelector('.section.active');
+      if (currentSection && currentSection.id === 'analytics-section') {
+        // Show notification that data is being loaded
+        showNotification(`Loading analytics for ${petName}...`, 'info', 2000);
+        
+        // Update analytics section components
+        loadDashboard(); // Load dashboard metrics
+        updateCharts(); // Update visualization charts
+        generateDailyHeadlines(); // Generate today's headlines for new pet
+        generateHealthInsights(); // Generate AI health insights for new pet
+      }
+      
+      // Also refresh tracking section if it's active
+      if (currentSection && currentSection.id === 'tracking-section') {
+        showNotification(`Loading tracking data for ${petName}...`, 'info', 2000);
+        loadRecentEntries(); // Load recent entries for new pet
+      }
     });
 
     window.addNewPet = async function () {
@@ -790,7 +1709,7 @@
     window.toggleRecording = async function () {
       if (!currentUser) return alert("User not authenticated");
       const petId = document.getElementById("pet-select").value;
-      if (!petId) return alert("Please select a pet");
+      if (!petId) return alert("Please select a pet first");
 
       const button = document.getElementById("record-button");
       const statusElement = document.getElementById("status");
@@ -856,145 +1775,1009 @@
       }
     };
 
-    // Notes functions
-    async function loadMarkdown() {
-      try {
-        const res = await fetch(`/api/pages/${pageId}`);
-        const data = await res.json();
-        document.getElementById("markdown-input").value = data.markdown || "";
-      } catch (error) {
-        console.error("Error loading markdown:", error);
+    // Analytics form handlers
+    function setupAnalyticsFormHandlers() {
+      console.log("Setting up analytics form handlers...");
+      
+      // Set default times for forms
+      const now = new Date();
+      document.getElementById("diet-time").value = now.toTimeString().slice(0, 5);
+      document.getElementById("medication-time").value = now.toTimeString().slice(0, 5);
+      document.getElementById("bowel-time").value = now.toTimeString().slice(0, 5);
+      
+      // Diet form
+      const dietForm = document.getElementById("diet-form");
+      if (dietForm) {
+        dietForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            food: document.getElementById("diet-food").value,
+            quantity: document.getElementById("diet-quantity").value,
+            time: document.getElementById("diet-time").value,
+            type: document.getElementById("diet-type").value,
+            notes: document.getElementById("diet-notes").value
+          };
+          await submitAnalyticsForm(formData, "diet");
+          dietForm.reset();
+        });
+      }
+
+      // Exercise form
+      const exerciseForm = document.getElementById("exercise-form");
+      if (exerciseForm) {
+        exerciseForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            type: document.getElementById("exercise-type").value,
+            duration: parseInt(document.getElementById("exercise-duration").value),
+            intensity: document.getElementById("exercise-intensity").value,
+            location: document.getElementById("exercise-location").value,
+            notes: document.getElementById("exercise-notes").value
+          };
+          await submitAnalyticsForm(formData, "exercise");
+          exerciseForm.reset();
+        });
+      }
+
+      // Medication form
+      const medicationForm = document.getElementById("medication-form");
+      if (medicationForm) {
+        medicationForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            name: document.getElementById("medication-name").value,
+            dosage: document.getElementById("medication-dosage").value,
+            time: document.getElementById("medication-time").value,
+            frequency: document.getElementById("medication-frequency").value,
+            purpose: document.getElementById("medication-purpose").value
+          };
+          await submitAnalyticsForm(formData, "medication");
+          medicationForm.reset();
+        });
+      }
+
+      // Grooming form
+      const groomingForm = document.getElementById("grooming-form");
+      if (groomingForm) {
+        groomingForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const selectedTypes = Array.from(document.getElementById("grooming-type").selectedOptions)
+            .map(option => option.value);
+          const formData = {
+            types: selectedTypes,
+            duration: parseInt(document.getElementById("grooming-duration").value) || 0,
+            products: document.getElementById("grooming-products").value,
+            notes: document.getElementById("grooming-notes").value
+          };
+          await submitAnalyticsForm(formData, "grooming");
+          groomingForm.reset();
+        });
+      }
+
+      // Energy form
+      const energyForm = document.getElementById("energy-form");
+      if (energyForm) {
+        energyForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            level: parseInt(document.getElementById("energy-level").value),
+            notes: document.getElementById("energy-notes").value
+          };
+          await submitAnalyticsForm(formData, "energy_levels");
+          energyForm.reset();
+        });
+      }
+
+      // Bowel form
+      const bowelForm = document.getElementById("bowel-form");
+      if (bowelForm) {
+        bowelForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            consistency: document.getElementById("bowel-consistency").value,
+            time: document.getElementById("bowel-time").value,
+            notes: document.getElementById("bowel-notes").value
+          };
+          await submitAnalyticsForm(formData, "bowel_movements");
+          bowelForm.reset();
+        });
+      }
+
+      // Exit form
+      const exitForm = document.getElementById("exit-form");
+      if (exitForm) {
+        exitForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            type: document.getElementById("exit-type").value,
+            duration: parseInt(document.getElementById("exit-duration").value) || 0,
+            destination: document.getElementById("exit-destination").value
+          };
+          await submitAnalyticsForm(formData, "exit_events");
+          exitForm.reset();
+        });
+      }
+
+      // Weight form
+      const weightForm = document.getElementById("weight-form");
+      if (weightForm) {
+        weightForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            value: parseFloat(document.getElementById("weight-value").value),
+            unit: document.getElementById("weight-unit").value,
+            method: document.getElementById("weight-method").value,
+            time: document.getElementById("weight-time").value,
+            notes: document.getElementById("weight-notes").value
+          };
+          await submitAnalyticsForm(formData, "weight");
+          weightForm.reset();
+        });
+      }
+
+      // Sleep form
+      const sleepForm = document.getElementById("sleep-form");
+      if (sleepForm) {
+        sleepForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = {
+            duration: parseFloat(document.getElementById("sleep-duration").value),
+            quality: document.getElementById("sleep-quality").value,
+            location: document.getElementById("sleep-location").value,
+            interruptions: parseInt(document.getElementById("sleep-interruptions").value) || 0,
+            notes: document.getElementById("sleep-notes").value
+          };
+          await submitAnalyticsForm(formData, "sleep");
+          sleepForm.reset();
+        });
+      }
+
+      // Mood form
+      const moodForm = document.getElementById("mood-form");
+      if (moodForm) {
+        moodForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const selectedTriggers = Array.from(document.getElementById("mood-triggers").selectedOptions)
+            .map(option => option.value);
+          const selectedBehaviors = Array.from(document.getElementById("mood-behavior").selectedOptions)
+            .map(option => option.value);
+          const formData = {
+            level: parseInt(document.getElementById("mood-level").value),
+            triggers: selectedTriggers,
+            behavior: selectedBehaviors,
+            time: document.getElementById("mood-time").value,
+            notes: document.getElementById("mood-notes").value
+          };
+          await submitAnalyticsForm(formData, "mood");
+          moodForm.reset();
+        });
       }
     }
 
-    window.saveMarkdown = async function () {
-      const markdown = document.getElementById("markdown-input").value;
-      const statusElement = document.getElementById("markdown-status");
+    // Tab functionality
+    window.showTab = function(tabName) {
+      // Hide all tab contents
+      const tabContents = document.querySelectorAll('.tab-content');
+      tabContents.forEach(content => content.classList.remove('active'));
       
-      try {
-        await fetch(`/api/pages/${pageId}`, {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ markdown })
-        });
-        
-        statusElement.textContent = "✅ Page notes saved successfully!";
-        statusElement.className = "status-message success";
-        
-        setTimeout(() => {
-          statusElement.style.display = "none";
-        }, 3000);
-      } catch (error) {
-        statusElement.textContent = "❌ Error saving notes: " + error.message;
-        statusElement.className = "status-message error";
-      }
+      // Remove active class from all tab buttons
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+      
+      // Show selected tab content
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+      
+      // Add active class to clicked button
+      event.target.classList.add('active');
     };
 
-    window.submitPetText = async function () {
-      const input = document.getElementById("pet-input-text").value;
-      const statusElement = document.getElementById("pet-input-status");
-      
-      if (!input || !selectedPet) {
-        statusElement.textContent = "❌ Please enter text and select a pet.";
-        statusElement.className = "status-message error";
-        return;
-      }
-
-      try {
-        await fetch(`/api/pets/${selectedPet}/textinput`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input })
-        });
-
-        statusElement.textContent = "✅ Pet note added successfully!";
-        statusElement.className = "status-message success";
-        document.getElementById("pet-input-text").value = "";
-        
-        setTimeout(() => {
-          statusElement.style.display = "none";
-        }, 3000);
-      } catch (error) {
-        statusElement.textContent = "❌ Error saving pet note: " + error.message;
-        statusElement.className = "status-message error";
-      }
-    };
-
-    // PDF upload functionality
-    document.getElementById("pdf-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    // Submit analytics form data
+    async function submitAnalyticsForm(formData, category) {
       if (!selectedPet) {
-        alert("Please select a pet");
+        showNotification("Please select a pet first", 'error');
         return;
       }
-
-      const file = document.getElementById("pdf-file").files[0];
-      if (!file) {
-        alert("Please select a PDF file");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const resultElement = document.getElementById("pdf-result");
-      resultElement.textContent = "📤 Uploading and analyzing document...";
-      resultElement.classList.add("has-content");
 
       try {
-        const res = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${selectedPet}`, {
+        const response = await fetch(`/api/pets/${selectedPet}/analytics/${category}`, {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
         });
 
-        const data = await res.json();
-        resultElement.textContent = `Document uploaded successfully!\nURL: ${data.url}`;
-        document.getElementById("pdf-file").value = "";
+        if (response.ok) {
+          showNotification(`${category.replace('_', ' ')} data saved successfully!`, 'success');
+          await loadDashboard();
+          await loadRecentEntries();
+          await updateCharts();
+        } else {
+          showNotification('Failed to save data', 'error');
+        }
       } catch (error) {
-        resultElement.textContent = `❌ Error uploading document: ${error.message}`;
+        console.error('Error submitting form:', error);
+        showNotification('Error saving data', 'error');
       }
-    });
-
-    // File upload drag and drop functionality
-    const fileUpload = document.querySelector('.file-upload');
-    const fileInput = document.getElementById('pdf-file');
-
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-      fileUpload.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-      e.preventDefault();
-      e.stopPropagation();
     }
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-      fileUpload.addEventListener(eventName, highlight, false);
-    });
+    // Load analytics dashboard
+    async function loadDashboard() {
+      if (!selectedPet) return;
 
-    ['dragleave', 'drop'].forEach(eventName => {
-      fileUpload.addEventListener(eventName, unhighlight, false);
-    });
+      // Show loading state on metric cards
+      const metricCards = document.querySelectorAll('.metric-card');
+      metricCards.forEach(card => {
+        const valueElement = card.querySelector('.metric-value');
+        if (valueElement) {
+          valueElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+      });
 
-    function highlight(e) {
-      fileUpload.classList.add('dragover');
+      try {
+        const response = await fetch(`/api/pets/${selectedPet}/analytics/summary`);
+        const data = await response.json();
+        const summary = data.summary || {};
+        
+        // Update metric cards
+        metricCards.forEach(card => {
+          const category = card.dataset.category;
+          const categoryData = summary[category] || { total: 0, this_week: 0, avg_daily: 0 };
+          
+          if (category === 'energy_levels') {
+            // Calculate average energy level
+            const recentEntries = categoryData.recent_entries || [];
+            const avgEnergy = recentEntries.length > 0 
+              ? recentEntries.reduce((sum, entry) => sum + (entry.level || 3), 0) / recentEntries.length
+              : 0;
+            card.querySelector('.metric-value').textContent = avgEnergy.toFixed(1);
+          } else {
+            card.querySelector('.metric-value').textContent = categoryData.total;
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        // Reset loading states on error
+        const metricCards = document.querySelectorAll('.metric-card');
+        metricCards.forEach(card => {
+          const valueElement = card.querySelector('.metric-value');
+          if (valueElement && valueElement.innerHTML.includes('fa-spinner')) {
+            valueElement.textContent = '0';
+          }
+        });
+      }
     }
 
-    function unhighlight(e) {
-      fileUpload.classList.remove('dragover');
+    // Load recent entries
+    async function loadRecentEntries() {
+      if (!selectedPet) return;
+
+      try {
+        const response = await fetch(`/api/pets/${selectedPet}/analytics?days=7`);
+        const data = await response.json();
+        const entries = data.data || [];
+        
+        const container = document.getElementById('recent-entries');
+        
+        if (entries.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+              <i class="fas fa-clock"></i>
+              <p>No recent entries. Start tracking your pet's activities above!</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Sort by timestamp (most recent first)
+        entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        const html = entries.slice(0, 10).map(entry => {
+          const date = new Date(entry.timestamp);
+          const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+          
+          const icons = {
+            diet: '🍽️',
+            exercise: '🏃',
+            medication: '💊',
+            grooming: '✨',
+            energy_levels: '⚡',
+            bowel_movements: '💩',
+            exit_events: '🚪',
+            weight: '⚖️',
+            sleep: '😴',
+            mood: '😊'
+          };
+          
+          const description = getEntryDescription(entry);
+          
+          return `
+            <div class="recent-entry">
+              <div class="entry-content">
+                <div class="entry-category">${entry.category.replace('_', ' ')}</div>
+                <div class="entry-description">${description}</div>
+                <div class="entry-time">${timeStr}</div>
+              </div>
+              <div class="entry-icon">${icons[entry.category] || '📝'}</div>
+            </div>
+          `;
+        }).join('');
+        
+        container.innerHTML = html;
+        
+      } catch (error) {
+        console.error('Error loading recent entries:', error);
+      }
     }
 
-    fileUpload.addEventListener('drop', handleDrop, false);
+    function getEntryDescription(entry) {
+      switch (entry.category) {
+        case 'diet':
+          return `${entry.food || 'Food'} - ${entry.type || 'meal'}`;
+        case 'exercise':
+          return `${entry.type || 'Exercise'} for ${entry.duration || 0} minutes`;
+        case 'medication':
+          return `${entry.name || 'Medication'} - ${entry.dosage || ''}`;
+        case 'grooming':
+          return `${Array.isArray(entry.types) ? entry.types.join(', ') : 'Grooming'}`;
+        case 'energy_levels':
+          return `Energy level: ${entry.level || 3}/5`;
+        case 'bowel_movements':
+          return `${entry.consistency || 'Normal'} consistency`;
+        case 'exit_events':
+          return `${entry.type || 'Exit'} - ${entry.destination || ''}`;
+        case 'weight':
+          return `Weight: ${entry.value || 0} ${entry.unit || 'lbs'}`;
+        case 'sleep':
+          return `Sleep: ${entry.duration || 0} hours - ${entry.quality || 'good'} quality`;
+        case 'mood':
+          return `Mood level: ${entry.level || 3}/5 - ${Array.isArray(entry.behavior) ? entry.behavior.join(', ') : 'mood logged'}`;
+        default:
+          return 'Activity logged';
+      }
+    }
 
-    function handleDrop(e) {
-      const dt = e.dataTransfer;
-      const files = dt.files;
+    // Chart variables
+    let activityChart, energyChart, dietChart, overviewChart, exerciseHistogram, medicationChart;
+
+    // Enhanced update charts function
+    async function updateCharts() {
+      if (!selectedPet) return;
+
+      // Show loading states on all charts
+      const chartIds = ['activityChart', 'energyChart', 'dietChart', 'overviewChart', 'exerciseHistogram', 'medicationChart', 'activityHeatmap'];
+      chartIds.forEach(chartId => showChartLoading(chartId));
+
+      try {
+        // Get visualization data from enhanced API
+        const response = await fetch(`/api/pets/${selectedPet}/visualizations?days=30`);
+        const data = await response.json();
+        
+        if (data.visualizations) {
+          // Create/update all charts
+          updateActivityChart(data.visualizations.weekly_activity);
+          updateEnergyChart(data.visualizations.energy_distribution);
+          updateDietChart(data.visualizations.diet_frequency);
+          updateOverviewChart(data.visualizations.health_overview);
+          updateExerciseHistogram(data.visualizations.exercise_histogram);
+          updateMedicationChart(data.visualizations.medication_adherence);
+          updateActivityHeatmap(data.visualizations.activity_heatmap);
+        }
+        
+        // Hide loading states
+        chartIds.forEach(chartId => hideChartLoading(chartId));
+        
+      } catch (error) {
+        console.error('Error updating charts:', error);
+        // Hide loading states on error and fallback to basic charts
+        chartIds.forEach(chartId => hideChartLoading(chartId));
+        await updateChartsBasic();
+      }
+    }
+
+    // Fallback to basic chart functionality
+    async function updateChartsBasic() {
+      try {
+        const response = await fetch(`/api/pets/${selectedPet}/analytics?days=30`);
+        const data = await response.json();
+        const entries = data.data || [];
+        
+        // Prepare data for charts
+        const chartData = prepareChartData(entries);
+        
+        // Update Activity Chart
+        updateActivityChart(chartData.activity);
+        
+        // Update Energy Chart
+        updateEnergyChart(chartData.energy);
+        
+        // Update Diet Chart
+        updateDietChart(chartData.diet);
+        
+        // Update Overview Chart
+        updateOverviewChart(chartData.overview);
+        
+      } catch (error) {
+        console.error('Error updating charts:', error);
+      }
+    }
+
+    function prepareChartData(entries) {
+      const last7Days = [];
+      const today = new Date();
       
-      if (files.length > 0 && files[0].type === 'application/pdf') {
-        fileInput.files = files;
-      } else {
-        alert('Please drop only PDF files');
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        last7Days.push(date.toISOString().split('T')[0]);
       }
+      
+      // Activity data (exercise entries per day)
+      const activityData = last7Days.map(date => {
+        return entries.filter(entry => 
+          entry.category === 'exercise' && 
+          entry.timestamp.startsWith(date)
+        ).length;
+      });
+      
+      // Energy data
+      const energyData = entries
+        .filter(entry => entry.category === 'energy_levels')
+        .map(entry => entry.level || 3);
+      
+      // Diet data (meals per type)
+      const dietTypes = {};
+      entries.filter(entry => entry.category === 'diet').forEach(entry => {
+        const type = entry.type || 'meal';
+        dietTypes[type] = (dietTypes[type] || 0) + 1;
+      });
+      
+      // Overview data (entries per category)
+      const overview = {};
+      entries.forEach(entry => {
+        const category = entry.category;
+        overview[category] = (overview[category] || 0) + 1;
+      });
+      
+      return {
+        activity: { labels: last7Days.map(date => new Date(date).toLocaleDateString()), data: activityData },
+        energy: energyData,
+        diet: dietTypes,
+        overview: overview
+      };
+    }
+
+    // Helper function to show loading state on charts
+    function showChartLoading(chartId) {
+      const canvas = document.getElementById(chartId);
+      if (canvas) {
+        const container = canvas.parentElement;
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chart-loading';
+        loadingDiv.style.cssText = `
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+          color: #7f8c8d;
+          z-index: 10;
+          font-size: 14px;
+        `;
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><br><span style="margin-top: 8px; display: block;">Loading chart...</span>';
+        
+        // Remove existing loading div if present
+        const existingLoading = container.querySelector('.chart-loading');
+        if (existingLoading) {
+          existingLoading.remove();
+        }
+        
+        container.style.position = 'relative';
+        container.appendChild(loadingDiv);
+      }
+    }
+
+    // Helper function to hide chart loading state
+    function hideChartLoading(chartId) {
+      const canvas = document.getElementById(chartId);
+      if (canvas) {
+        const container = canvas.parentElement;
+        const loadingDiv = container.querySelector('.chart-loading');
+        if (loadingDiv) {
+          loadingDiv.remove();
+        }
+      }
+    }
+
+    // Enhanced chart update functions
+    function updateActivityChart(input) {
+      const ctx = document.getElementById('activityChart');
+      if (!ctx) return;
+      
+      if (activityChart) activityChart.destroy();
+      
+      let chartConfig;
+      
+      // Handle both chartConfig object and raw data
+      if (input && input.type && input.data) {
+        // Input is already a chart configuration
+        chartConfig = input;
+      } else if (input && input.labels && input.data) {
+        // Input is raw data, create chart config
+        chartConfig = {
+          type: 'line',
+          data: {
+            labels: input.labels,
+            datasets: [{
+              label: 'Exercise Sessions',
+              data: input.data,
+              borderColor: '#667eea',
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        };
+      }
+      
+      if (chartConfig) {
+        activityChart = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateEnergyChart(input) {
+      const ctx = document.getElementById('energyChart');
+      if (!ctx) return;
+      
+      if (energyChart) energyChart.destroy();
+      
+      let chartConfig;
+      
+      // Handle both chartConfig object and raw data array
+      if (input && input.type && input.data) {
+        // Input is already a chart configuration
+        chartConfig = input;
+      } else if (input && Array.isArray(input)) {
+        // Input is raw data array, create histogram chart config
+        const histogram = [0, 0, 0, 0, 0]; // for levels 1-5
+        input.forEach(level => {
+          if (level >= 1 && level <= 5) {
+            histogram[level - 1]++;
+          }
+        });
+        
+        chartConfig = {
+          type: 'bar',
+          data: {
+            labels: ['Very Low', 'Low', 'Medium', 'High', 'Very High'],
+            datasets: [{
+              label: 'Energy Level Frequency',
+              data: histogram,
+              backgroundColor: ['#ff6b6b', '#ffa726', '#ffcc02', '#66bb6a', '#42a5f5']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        };
+      }
+      
+      if (chartConfig) {
+        energyChart = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateDietChart(input) {
+      const ctx = document.getElementById('dietChart');
+      if (!ctx) return;
+      
+      if (dietChart) dietChart.destroy();
+      
+      let chartConfig;
+      
+      // Handle both chartConfig object and raw data
+      if (input && input.type && input.data) {
+        // Input is already a chart configuration
+        chartConfig = input;
+      } else if (input && input.labels && input.data) {
+        // Input is raw data, create chart config
+        chartConfig = {
+          type: 'doughnut',
+          data: {
+            labels: input.labels,
+            datasets: [{
+              data: input.data,
+              backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3']
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        };
+      }
+      
+      if (chartConfig) {
+        dietChart = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateOverviewChart(input) {
+      const ctx = document.getElementById('overviewChart');
+      if (!ctx) return;
+      
+      if (overviewChart) overviewChart.destroy();
+      
+      let chartConfig;
+      
+      // Handle both chartConfig object and raw data
+      if (input && input.type && input.data) {
+        // Input is already a chart configuration
+        chartConfig = input;
+      } else if (input && input.labels && input.datasets) {
+        // Input is raw data, create chart config
+        chartConfig = {
+          type: 'radar',
+          data: {
+            labels: input.labels,
+            datasets: input.datasets
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 5
+              }
+            }
+          }
+        };
+      }
+      
+      if (chartConfig) {
+        overviewChart = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateExerciseHistogram(chartConfig) {
+      const ctx = document.getElementById('exerciseHistogram');
+      if (!ctx) return;
+      
+      if (exerciseHistogram) exerciseHistogram.destroy();
+      
+      if (chartConfig && chartConfig.data) {
+        exerciseHistogram = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateMedicationChart(chartConfig) {
+      const ctx = document.getElementById('medicationChart');
+      if (!ctx) return;
+      
+      if (medicationChart) medicationChart.destroy();
+      
+      if (chartConfig && chartConfig.data) {
+        medicationChart = new Chart(ctx, chartConfig);
+      }
+    }
+
+    function updateActivityHeatmap(heatmapData) {
+      const container = document.getElementById('activityHeatmap');
+      if (!container || !heatmapData) return;
+      
+      const { hours, activities, max_activity } = heatmapData;
+      
+      container.innerHTML = '';
+      
+      hours.forEach((hour, index) => {
+        const activity = activities[index] || 0;
+        const intensity = max_activity > 0 ? activity / max_activity : 0;
+        
+        const block = document.createElement('div');
+        block.style.cssText = `
+          width: 100%;
+          height: 80px;
+          background: rgba(102, 126, 234, ${0.1 + intensity * 0.8});
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.7rem;
+          font-weight: 500;
+          color: ${intensity > 0.5 ? 'white' : '#667eea'};
+          position: relative;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        `;
+        
+        block.textContent = activity;
+        block.title = `${hour}:00 - ${activity} activities`;
+        
+        block.addEventListener('mouseenter', () => {
+          block.style.transform = 'scale(1.1)';
+          block.style.zIndex = '10';
+        });
+        
+        block.addEventListener('mouseleave', () => {
+          block.style.transform = 'scale(1)';
+          block.style.zIndex = '1';
+        });
+        
+        container.appendChild(block);
+      });
+    }
+
+    // Generate enhanced health insights
+    async function generateHealthInsights() {
+      if (!selectedPet) return;
+      
+      console.log('Generating health insights for pet:', selectedPet);
+      
+      // Update debug display
+      const debugElement = document.getElementById('debug-pet-id');
+      if (debugElement) {
+        debugElement.textContent = selectedPet;
+      }
+      
+      const container = document.getElementById('health-insights');
+      container.innerHTML = `
+        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+          <div style="
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e1e8ed;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+          "></div>
+          <p>Generating personalized AI insights for ${selectedPet}...</p>
+        </div>
+      `;
+      
+      try {
+        const url = `/api/pets/${selectedPet}/health_insights?days=30&_t=${Date.now()}`;
+        console.log('Fetching health insights from:', url);
+        const response = await fetch(url, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        const data = await response.json();
+        
+        console.log('Health insights response:', data);
+        
+        if (data.insights) {
+          const insights = data.insights;
+          const html = `
+            <div class="health-insights-container">
+              <div class="health-score">
+                <div class="score-circle" style="
+                  width: 80px;
+                  height: 80px;
+                  border-radius: 50%;
+                  background: conic-gradient(#38a169 ${insights.overall_health_score * 36}deg, #e2e8f0 0deg);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  margin: 0 auto 20px;
+                  position: relative;
+                ">
+                  <div style="
+                    width: 60px;
+                    height: 60px;
+                    background: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                    color: #2c3e50;
+                  ">
+                    ${insights.overall_health_score}/10
+                  </div>
+                </div>
+                <p style="text-align: center; font-weight: 600; margin-bottom: 20px;">Overall Health Score</p>
+              </div>
+              
+              ${insights.alerts && insights.alerts.length > 0 ? `
+                <div class="insight-section alert-section">
+                  <h4 style="color: #e53e3e; margin-bottom: 10px;">
+                    <i class="fas fa-exclamation-triangle"></i> Health Alerts
+                  </h4>
+                  <ul>
+                    ${insights.alerts.map(alert => `<li>${alert}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+              
+              <div class="insight-section">
+                <h4 style="color: #667eea; margin-bottom: 10px;">
+                  <i class="fas fa-lightbulb"></i> Key Insights
+                </h4>
+                <ul>
+                  ${insights.key_insights.map(insight => `<li>${insight}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <div class="insight-section">
+                <h4 style="color: #38a169; margin-bottom: 10px;">
+                  <i class="fas fa-chart-line"></i> Positive Trends
+                </h4>
+                <ul>
+                  ${insights.positive_trends.map(trend => `<li>${trend}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <div class="insight-section">
+                <h4 style="color: #3182ce; margin-bottom: 10px;">
+                  <i class="fas fa-clipboard-list"></i> Recommendations
+                </h4>
+                <ul>
+                  ${insights.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          `;
+          
+          container.innerHTML = html;
+        }
+      } catch (error) {
+        console.error('Error generating health insights:', error);
+        container.innerHTML = `
+          <div style="text-align: center; color: #e53e3e; padding: 40px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Unable to generate insights at this time. Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+
+    window.generateDailyHeadlines = async function() {
+      if (!selectedPet) {
+        showNotification("Please select a pet first", 'error');
+        return;
+      }
+
+      const headlinesContainer = document.getElementById('daily-headlines');
+      headlinesContainer.innerHTML = `
+        <div style="text-align: center; color: rgba(255,255,255,0.8);">
+          <i class="fas fa-spinner fa-spin"></i> Generating AI headlines...
+        </div>
+      `;
+
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/api/pets/${selectedPet}/daily_routine`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: today })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const headlines = data.headlines || [];
+          
+          if (headlines.length === 0) {
+            headlinesContainer.innerHTML = `
+              <div style="text-align: center; color: rgba(255,255,255,0.8);">
+                No activities recorded for today. Start tracking to see AI-generated headlines!
+              </div>
+            `;
+            return;
+          }
+          
+          const headlinesHtml = headlines.map(headline => `
+            <div class="daily-headline">
+              ${headline}
+            </div>
+          `).join('');
+          
+          headlinesContainer.innerHTML = headlinesHtml;
+          
+        } else {
+          throw new Error('Failed to generate headlines');
+        }
+      } catch (error) {
+        console.error('Error generating headlines:', error);
+        headlinesContainer.innerHTML = `
+          <div style="text-align: center; color: rgba(255,255,255,0.8);">
+            <i class="fas fa-exclamation-triangle"></i> Error generating headlines
+          </div>
+        `;
+      }
+    };
+
+    // Notes functions  
+    async function loadMarkdown() {
+      if (!selectedPet) return;
+      
+      try {
+        const response = await fetch('/api/markdown');
+        const data = await response.json();
+        
+        if (data.content) {
+          document.getElementById('markdown-content').innerHTML = data.content;
+        }
+      } catch (error) {
+        console.error('Error loading notes:', error);
+      }
+    }
+
+    // Utility function for notifications
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.textContent = message;
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+      `;
+      
+      switch(type) {
+        case 'success':
+          notification.style.background = '#10b981';
+          break;
+        case 'error':
+          notification.style.background = '#ef4444';
+          break;
+        default:
+          notification.style.background = '#667eea';
+      }
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
     }
 
     window.logout = async function () {
@@ -1009,6 +2792,7 @@
       } else {
         currentUser = user;
         loadPets();
+        setupAnalyticsFormHandlers();
         
         // Handle initial navigation based on URL hash
         handleHashNavigation();

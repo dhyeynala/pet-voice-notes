@@ -146,6 +146,12 @@
       Continue with Google
     </button>
 
+    <div style="margin-top: 20px;">
+      <a href="/auth-troubleshoot.html" style="color: #7f8c8d; text-decoration: none; font-size: 0.9rem;">
+        Having login issues? Click here for troubleshooting
+      </a>
+    </div>
+
     <div class="features">
       <div class="feature">
         <i class="fas fa-microphone"></i>
@@ -172,26 +178,110 @@
       getAuth,
       GoogleAuthProvider,
       signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
+    // Add additional scopes and settings
+    provider.addScope('email');
+    provider.addScope('profile');
+    
+    // Set custom parameters for development
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+    
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
+    // Check for redirect result first (in case we used redirect method)
+    getRedirectResult(auth).then((result) => {
+      if (result && result.user) {
+        console.log("Redirect sign-in successful:", result.user.email);
+        window.location.href = "/main.html";
+      }
+    }).catch((error) => {
+      console.log("No redirect result or redirect failed:", error.code);
+    });
+
     window.signInWithGoogle = async function () {
       try {
-        await signInWithPopup(auth, provider);
-        window.location.href = "/main.html";
+        console.log("Attempting Google sign-in...");
+        console.log("Current domain:", window.location.hostname);
+        console.log("Current port:", window.location.port);
+        console.log("Full URL:", window.location.href);
+        console.log("Is development:", isDevelopment);
+        
+        const result = await signInWithPopup(auth, provider);
+        console.log("Sign-in successful:", result.user.email);
+        
+        // Small delay to ensure auth state is properly set
+        setTimeout(() => {
+          window.location.href = "/main.html";
+        }, 100);
+        
       } catch (error) {
-        alert("Login failed: " + error.message);
+        console.error("Login error:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        
+        // More specific error handling
+        if (error.code === 'auth/unauthorized-domain') {
+          console.log("Unauthorized domain error - trying redirect method...");
+          
+          // Show helpful message
+          const currentUrl = window.location.href;
+          const localhostUrl = currentUrl.replace(window.location.hostname, 'localhost');
+          
+          if (confirm(`Domain authorization issue. Would you like to:\n\n1. Try redirect authentication (click OK)\n2. Or manually navigate to: ${localhostUrl} (click Cancel)\n\nNote: If this persists, the domain needs to be added to Firebase console.`)) {
+            try {
+              console.log("Trying redirect method...");
+              await signInWithRedirect(auth, provider);
+              // This will redirect the page, so no further code executes
+            } catch (redirectError) {
+              console.error("Redirect method also failed:", redirectError);
+              alert(`Both authentication methods failed. Please try:\n\n1. Access via: ${localhostUrl}\n2. Clear browser cache and cookies\n3. Contact administrator to add domain to Firebase`);
+            }
+          } else {
+            alert(`Please navigate to: ${localhostUrl}`);
+          }
+          
+        } else if (error.code === 'auth/popup-blocked') {
+          alert("Popup was blocked. Please allow popups for this site and try again.");
+        } else if (error.code === 'auth/popup-closed-by-user') {
+          alert("Login was cancelled. Please try again.");
+        } else {
+          alert("Login failed: " + error.message);
+        }
       }
     };
 
+    // Check auth state on page load
     onAuthStateChanged(auth, user => {
+      console.log("Auth state changed:", user ? user.email : "No user");
       if (user) {
-        window.location.href = "/main.html";
+        setTimeout(() => {
+          window.location.href = "/main.html";
+        }, 100);
       }
     });
+
+    // Add some debugging info
+    console.log("Firebase app initialized:", app);
+    console.log("Auth object:", auth);
+    console.log("Current URL:", window.location.href);
+    console.log("Development mode:", isDevelopment);
+    
+    // Add a helpful message for development
+    if (isDevelopment) {
+      console.log("✅ Development environment detected - should work with localhost");
+    } else {
+      console.log("⚠️ Production environment - make sure domain is authorized in Firebase");
+    }
   </script>
 </body>
 </html>

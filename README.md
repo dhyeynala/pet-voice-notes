@@ -3,6 +3,10 @@
 > "Why should humans have all the smart health tech?"  
 > This project brings **AI-powered health tracking** to pets — featuring real-time voice notes, document uploads, and personalized medical summaries.
 
+## 🔐 Security Notice
+
+**⚠️ IMPORTANT**: This project uses API keys and credentials that must be kept secure. Please read [SECURITY.md](./SECURITY.md) for complete setup instructions before running the application.
+
 ---
 
 ## 🐾 Introduction

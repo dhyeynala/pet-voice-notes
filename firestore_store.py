@@ -98,3 +98,35 @@ def create_user_entry(uid, email):
         "pets": [],
         "pages": []
     })
+
+# Analytics helper functions
+def get_analytics_summary(pet_id, days=30):
+    """Get analytics summary for a pet"""
+    from collections import defaultdict
+    from datetime import timedelta
+    
+    cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    results = db.collection("pets").document(pet_id).collection("analytics").where(
+        "timestamp", ">=", cutoff_date
+    ).stream()
+    
+    summary = defaultdict(lambda: {
+        "total": 0,
+        "this_week": 0,
+        "recent_entries": []
+    })
+    
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    
+    for doc in results:
+        data = doc.to_dict()
+        category = data.get("category", "unknown")
+        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
+        
+        summary[category]["total"] += 1
+        summary[category]["recent_entries"].append(data)
+        
+        if timestamp >= one_week_ago:
+            summary[category]["this_week"] += 1
+    
+    return dict(summary)
