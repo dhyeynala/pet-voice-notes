@@ -3,10 +3,6 @@
 > "Why should humans have all the smart health tech?"  
 > This project brings **AI-powered health tracking** to pets — featuring real-time voice notes, document uploads, and personalized medical summaries.
 
-## 🔐 Security Notice
-
-**⚠️ IMPORTANT**: This project uses API keys and credentials that must be kept secure. Please read [SECURITY.md](./SECURITY.md) for complete setup instructions before running the application.
-
 ---
 
 ## 🐾 Introduction
@@ -27,7 +23,10 @@ The goal: make pet healthcare management **as simple as talking**.
 - 🐶 **Pet Management** - Create and manage multiple pet profiles
 - 🎙️ **Voice Recording** - Record voice notes with manual start/stop controls
 - 🤖 **AI Transcription** - Automatically transcribe speech using Google Cloud Speech-to-Text
-- 📝 **Smart Summarization** - Generate medical summaries using OpenAI GPT-4o
+- 📝 **Smart Summarization** - Generate intelligent summaries for medical concerns AND daily activities
+- 🏥 **Health Tracking** - Professional medical analysis for symptoms, treatments, and vet visits
+- 🎾 **Daily Life Celebration** - Encouraging summaries for exercise, training, play, and achievements
+- 🧠 **Content Classification** - Automatically detect medical vs. daily activity content
 - 📄 **PDF Processing** - Upload and analyze veterinary documents
 - ☁️ **Cloud Storage** - Secure storage with Firebase Firestore and Storage
 - 👥 **Collaboration** - Share pet pages with family members and veterinarians
@@ -111,7 +110,9 @@ pets/
 - **User-Controlled Recording**: Click to start, click to stop
 - **Real-Time Feedback**: Visual indicators during recording
 - **Background Processing**: Audio transcription happens in real-time
-- **Smart Summarization**: AI generates medical summaries automatically
+- **Smart Summarization**: AI generates context-aware summaries for both medical concerns and daily activities
+- **Intelligent Classification**: Automatically detects content type (Medical, Daily Activity, or Mixed)
+- **Adaptive Tone**: Professional tone for health concerns, encouraging tone for daily celebrations
 
 ### **Technical Implementation**
 ```python
@@ -216,14 +217,29 @@ pip install -r requirements.txt
 ```
 
 ### **Environment Setup**
-Create a `.env` file in the project root:
+
+⚠️ **Security Important**: Copy `.env.template` to `.env` and fill in your actual API keys. Never commit `.env` to version control!
+
 ```bash
-# .env file
-OPENAI_API_KEY=your_openai_api_key_here
+# Copy the template and edit with your keys
+cp .env.template .env
+# Edit .env with your actual API keys
+```
+
+Required environment variables in `.env`:
+```bash
+# OpenAI API Key - Get from https://platform.openai.com/api-keys
+OPENAI_API_KEY=your_actual_openai_api_key_here
+
+# Firebase Configuration  
 FIREBASE_STORAGE_BUCKET=puppypages-29427.appspot.com
 GOOGLE_CLOUD_PROJECT=puppypages-29427
+
+# Google Cloud Service Account JSON file path
 GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 ```
+
+🔐 **Security Note**: See `SECURITY.md` for detailed security guidelines and key rotation procedures.
 
 ### **Google Cloud APIs Setup**
 Enable the following APIs in Google Cloud Console for project `puppypages-29427`:

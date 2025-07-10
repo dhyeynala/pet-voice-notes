@@ -130,3 +130,54 @@ def get_analytics_summary(pet_id, days=30):
             summary[category]["this_week"] += 1
     
     return dict(summary)
+
+# Store voice/text daily activities in analytics collection for dashboard visibility
+def store_analytics_from_voice(pet_id, transcript, summary, classification):
+    """Store daily activity data from voice/text input into analytics collection"""
+    try:
+        # Map activity keywords to analytics categories
+        keywords = classification.get('keywords', [])
+        content_type = classification.get('classification', 'DAILY_ACTIVITY')
+        confidence = classification.get('confidence', 0.8)
+        
+        # Determine the most appropriate category based on keywords
+        category_mapping = {
+            'diet': ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'treat', 'feeding'],
+            'exercise': ['walk', 'run', 'play', 'fetch', 'exercise', 'activity', 'training', 'park'],
+            'sleep': ['sleep', 'nap', 'rest', 'tired', 'sleepy', 'bed'],
+            'mood': ['happy', 'excited', 'calm', 'anxious', 'playful', 'mood', 'behavior'],
+            'energy_levels': ['energy', 'active', 'lazy', 'lethargic', 'energetic', 'vigorous'],
+            'grooming': ['bath', 'brush', 'groom', 'clean', 'nail', 'trim'],
+            'bowel_movements': ['poop', 'bathroom', 'potty', 'bowel', 'outdoor'],
+            'social': ['social', 'friend', 'dog', 'cat', 'people', 'visitor']
+        }
+        
+        # Find best matching category
+        best_category = 'daily_activity'  # default
+        max_matches = 0
+        
+        for category, category_keywords in category_mapping.items():
+            matches = sum(1 for keyword in keywords if any(ck in keyword.lower() for ck in category_keywords))
+            if matches > max_matches:
+                max_matches = matches
+                best_category = category
+        
+        # Create analytics entry
+        analytics_entry = {
+            "category": best_category,
+            "source": "voice_input",
+            "transcript": transcript,
+            "summary": summary,
+            "classification_confidence": confidence,
+            "keywords": keywords,
+            "content_type": content_type,
+            "timestamp": datetime.utcnow().isoformat(),
+            "notes": f"Daily activity recorded via voice/text: {summary[:100]}..."
+        }
+        
+        # Store in analytics collection
+        db.collection("pets").document(pet_id).collection("analytics").add(analytics_entry)
+        print(f"✅ Stored daily activity as '{best_category}' in analytics collection")
+        
+    except Exception as e:
+        print(f"❌ Error storing voice analytics: {e}")

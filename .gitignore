@@ -1,27 +1,11 @@
-# Environment Variables
+# Environment variables and sensitive files
 .env
 .env.local
-.env.development
 .env.production
-.env.test
+.env.development
 
-# API Keys and Credentials
+# Google Cloud service account key
 gcloud-key.json
-firebase-key.json
-service-account.json
-*-key.json
-*.pem
-*.p12
-
-# OpenAI API Keys
-openai-key.txt
-.openai_key
-
-# Google Cloud & Firebase
-.gcloudignore
-firebase-debug.log
-firebase-debug.*.log
-.firebase/
 
 # Python
 __pycache__/
@@ -41,27 +25,26 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual Environments
+# Virtual environments
 .venv/
 venv/
 ENV/
 env/
-.env/
 
-# IDE
+# IDE and editors
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -72,46 +55,17 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
 
 # Temporary files
-*.tmp
-*.temp
+/tmp/
 temp/
-tmp/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Backup files
-*.bak
+# Documentation artifacts
 *.backup
+*.old
+explanation.txt
+structure.txt
 
-# Node modules (if any)
-node_modules/
-
-# Coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Secrets and sensitive configuration
-secrets/
-config/secrets/
-.secrets/
-credentials/
-.credentials/
-
-# Local configuration that might contain secrets
-local_settings.py
-local_config.py
-development_settings.py
+# Screenshots and images (if they're temporary)
+Screenshot*.png
+screenshot*.png

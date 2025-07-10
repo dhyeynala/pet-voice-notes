@@ -110,12 +110,41 @@ async def add_pet_textinput(pet_id: str, request: Request):
     if not input_text:
         return { "status": "error", "message": "Input is empty" }
 
-    db.collection("pets").document(pet_id).collection("textinput").add({
+    # Enhanced: Classify and summarize the content
+    from summarize_openai import summarize_text, classify_pet_content
+    
+    # Classify the content type
+    classification = classify_pet_content(input_text)
+    
+    # Generate AI summary
+    summary = summarize_text(input_text)
+    
+    # Store with enhanced metadata
+    entry_data = {
         "input": input_text,
+        "summary": summary,
+        "content_type": classification.get("classification", "MIXED"),
+        "confidence": classification.get("confidence", 0.5),
+        "keywords": classification.get("keywords", []),
         "timestamp": datetime.utcnow().isoformat()
-    })
+    }
+    
+    db.collection("pets").document(pet_id).collection("textinput").add(entry_data)
 
-    return { "status": "success" }
+    # If daily activity content, also store in analytics for dashboard visibility
+    if classification.get('classification') == 'DAILY_ACTIVITY':
+        from firestore_store import store_analytics_from_voice
+        store_analytics_from_voice(pet_id, input_text, summary, classification)
+        print(f"✅ Daily activity from text input also stored in analytics collection")
+
+    return { 
+        "status": "success", 
+        "summary": summary,
+        "content_type": classification.get("classification", "MIXED"),
+        "confidence": classification.get("confidence", 0.5),
+        "keywords": classification.get("keywords", []),
+        "message": f"Added {classification.get('classification', 'MIXED').lower()} note with AI summary"
+    }
 
 # ✅ NEW: Start recording endpoint
 @app.post("/api/start_recording")
@@ -142,18 +171,37 @@ async def stop_recording_endpoint(request: Request):
     
     result = stop_recording()
     
-    # If successful, process the transcript
+    # If successful, process the transcript with enhanced AI
     if result["status"] == "stopped" and result.get("transcript"):
-        from summarize_openai import summarize_text
+        from summarize_openai import summarize_text, classify_pet_content
         
         transcript = result["transcript"]
+        
+        # Classify the content type
+        classification = classify_pet_content(transcript)
+        
+        # Generate enhanced summary
         summary = summarize_text(transcript)
-        store_to_firestore(user_id, pet_id, transcript, summary)
+        
+        # Store with enhanced metadata
+        entry_data = {
+            "transcript": transcript,
+            "summary": summary,
+            "content_type": classification.get("classification", "MIXED"),
+            "confidence": classification.get("confidence", 0.5),
+            "keywords": classification.get("keywords", []),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
         
         return {
             "status": "success",
             "transcript": transcript,
-            "summary": summary
+            "summary": summary,
+            "content_type": classification.get("classification", "MIXED"),
+            "confidence": classification.get("confidence", 0.5),
+            "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note"
         }
     
     return result
@@ -191,6 +239,7 @@ async def add_analytics_entry(pet_id: str, category: str, request: Request):
 
 @app.get("/api/pets/{pet_id}/analytics")
 async def get_analytics_data(pet_id: str, category: str = None, days: int = 30):
+    """Get analytics data including voice recordings for dashboard charts"""
     query = db.collection("pets").document(pet_id).collection("analytics")
     
     if category:
@@ -209,16 +258,72 @@ async def get_analytics_data(pet_id: str, category: str = None, days: int = 30):
         data["id"] = doc.id
         analytics_data.append(data)
     
+    # Also include voice-notes as daily activities if no specific category requested
+    if not category or category == "daily_activity":
+        voice_query = db.collection("pets").document(pet_id).collection("voice-notes")
+        voice_query = voice_query.where("timestamp", ">=", cutoff_date)
+        
+        for doc in voice_query.stream():
+            data = doc.to_dict()
+            # Convert voice note to analytics format
+            voice_entry = {
+                "id": doc.id,
+                "category": "daily_activity",
+                "source": "voice_note",
+                "transcript": data.get("transcript", ""),
+                "summary": data.get("summary", ""),
+                "timestamp": data.get("timestamp", ""),
+                "notes": f"Voice recording: {data.get('summary', '')[:100]}..."
+            }
+            analytics_data.append(voice_entry)
+    
+    # Also include text input as daily activities/medical notes if no specific category requested
+    if not category or category in ["daily_activity", "medical_notes", "mixed_notes"]:
+        text_query = db.collection("pets").document(pet_id).collection("textinput")
+        text_query = text_query.where("timestamp", ">=", cutoff_date)
+        
+        for doc in text_query.stream():
+            data = doc.to_dict()
+            content_type = data.get("content_type", "DAILY_ACTIVITY")
+            
+            # Map content type to category
+            if content_type == "DAILY_ACTIVITY":
+                text_category = "daily_activity"
+            elif content_type == "MEDICAL":
+                text_category = "medical_notes"
+            else:
+                text_category = "mixed_notes"
+            
+            # Only include if matches requested category
+            if not category or category == text_category:
+                text_entry = {
+                    "id": doc.id,
+                    "category": text_category,
+                    "source": "text_input",
+                    "input": data.get("input", ""),
+                    "summary": data.get("summary", ""),
+                    "content_type": content_type,
+                    "timestamp": data.get("timestamp", ""),
+                    "notes": f"Text note: {data.get('summary', '')[:100]}..."
+                }
+                analytics_data.append(text_entry)
+    
     return {"data": analytics_data}
 
 @app.get("/api/pets/{pet_id}/analytics/summary")
 async def get_analytics_summary(pet_id: str):
-    """Get summary statistics for all analytics categories"""
+    """Get summary statistics for all analytics categories including voice-notes"""
     from collections import defaultdict
     from datetime import datetime, timedelta
     
     # Get all analytics data
-    results = db.collection("pets").document(pet_id).collection("analytics").stream()
+    analytics_results = db.collection("pets").document(pet_id).collection("analytics").stream()
+    
+    # Also get voice-notes that might contain daily activities
+    voice_results = db.collection("pets").document(pet_id).collection("voice-notes").stream()
+    
+    # Also get text input notes
+    text_results = db.collection("pets").document(pet_id).collection("textinput").stream()
     
     summary = defaultdict(lambda: {
         "total": 0,
@@ -229,13 +334,64 @@ async def get_analytics_summary(pet_id: str):
     
     one_week_ago = datetime.utcnow() - timedelta(days=7)
     
-    for doc in results:
+    # Process analytics collection data
+    for doc in analytics_results:
         data = doc.to_dict()
         category = data.get("category", "unknown")
         timestamp = datetime.fromisoformat(data.get("timestamp", ""))
         
         summary[category]["total"] += 1
         summary[category]["recent_entries"].append(data)
+        
+        if timestamp >= one_week_ago:
+            summary[category]["this_week"] += 1
+    
+    # Process voice-notes and classify as daily activities
+    for doc in voice_results:
+        data = doc.to_dict()
+        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
+        
+        # Classify as daily activity for now (could enhance with stored classification)
+        category = "daily_activity"
+        voice_entry = {
+            "category": category,
+            "source": "voice_note",
+            "transcript": data.get("transcript", ""),
+            "summary": data.get("summary", ""),
+            "timestamp": data.get("timestamp", "")
+        }
+        
+        summary[category]["total"] += 1
+        summary[category]["recent_entries"].append(voice_entry)
+        
+        if timestamp >= one_week_ago:
+            summary[category]["this_week"] += 1
+    
+    # Process text input data with classification
+    for doc in text_results:
+        data = doc.to_dict()
+        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
+        
+        # Use stored classification or default to daily activity
+        content_type = data.get("content_type", "DAILY_ACTIVITY")
+        if content_type == "DAILY_ACTIVITY":
+            category = "daily_activity"
+        elif content_type == "MEDICAL":
+            category = "medical_notes"
+        else:
+            category = "mixed_notes"
+            
+        text_entry = {
+            "category": category,
+            "source": "text_input",
+            "input": data.get("input", ""),
+            "summary": data.get("summary", ""),
+            "content_type": content_type,
+            "timestamp": data.get("timestamp", "")
+        }
+        
+        summary[category]["total"] += 1
+        summary[category]["recent_entries"].append(text_entry)
         
         if timestamp >= one_week_ago:
             summary[category]["this_week"] += 1
@@ -381,7 +537,7 @@ async def get_health_insights(pet_id: str, days: int = 30):
 
 @app.get("/api/pets/{pet_id}/visualizations")
 async def get_visualization_data(pet_id: str, chart_type: str = "all", days: int = 30):
-    """Get data for various chart visualizations"""
+    """Get data for various chart visualizations including voice recordings"""
     try:
         from visualization_service import visualization_service
         
@@ -396,6 +552,54 @@ async def get_visualization_data(pet_id: str, chart_type: str = "all", days: int
             data_entry = doc.to_dict()
             data_entry["id"] = doc.id
             analytics_data.append(data_entry)
+        
+        # Also include voice-notes as daily activities for charts
+        voice_query = db.collection("pets").document(pet_id).collection("voice-notes").where(
+            "timestamp", ">=", cutoff_date
+        )
+        
+        for doc in voice_query.stream():
+            data = doc.to_dict()
+            # Convert voice note to analytics format for visualization
+            voice_entry = {
+                "id": doc.id,
+                "category": "daily_activity",
+                "source": "voice_note",
+                "transcript": data.get("transcript", ""),
+                "summary": data.get("summary", ""),
+                "timestamp": data.get("timestamp", ""),
+                "notes": f"Voice recording: {data.get('summary', '')[:100]}..."
+            }
+            analytics_data.append(voice_entry)
+        
+        # Also include text input notes as daily activities for charts
+        text_query = db.collection("pets").document(pet_id).collection("textinput").where(
+            "timestamp", ">=", cutoff_date
+        )
+        
+        for doc in text_query.stream():
+            data = doc.to_dict()
+            content_type = data.get("content_type", "DAILY_ACTIVITY")
+            
+            # Map content type to category for visualization
+            if content_type == "DAILY_ACTIVITY":
+                viz_category = "daily_activity"
+            elif content_type == "MEDICAL":
+                viz_category = "medical_notes"
+            else:
+                viz_category = "mixed_notes"
+            
+            text_entry = {
+                "id": doc.id,
+                "category": viz_category,
+                "source": "text_input",
+                "input": data.get("input", ""),
+                "summary": data.get("summary", ""),
+                "content_type": content_type,
+                "timestamp": data.get("timestamp", ""),
+                "notes": f"Text note: {data.get('summary', '')[:100]}..."
+            }
+            analytics_data.append(text_entry)
         
         visualizations = {}
         

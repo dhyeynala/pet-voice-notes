@@ -177,7 +177,7 @@ class PetVisualizationService:
     
     def generate_health_overview_chart(self, analytics_data: List[Dict]) -> Dict[str, Any]:
         """Generate health metrics overview radar chart"""
-        categories = ['diet', 'exercise', 'medication', 'grooming', 'energy_levels']
+        categories = ['diet', 'exercise', 'medication', 'grooming', 'energy_levels', 'daily_activity']
         category_counts = defaultdict(int)
         
         for entry in analytics_data:
@@ -187,7 +187,7 @@ class PetVisualizationService:
         
         # Normalize scores (0-10 scale based on activity frequency)
         max_count = max(category_counts.values()) if category_counts.values() else 1
-        labels = ['Diet', 'Exercise', 'Medication', 'Grooming', 'Energy Tracking']
+        labels = ['Diet', 'Exercise', 'Medication', 'Grooming', 'Energy Tracking', 'Daily Activities']
         values = []
         
         for category in categories:
@@ -231,12 +231,28 @@ class PetVisualizationService:
         }
     
     def generate_exercise_duration_histogram(self, analytics_data: List[Dict]) -> Dict[str, Any]:
-        """Generate exercise duration histogram"""
-        exercise_entries = [entry for entry in analytics_data if entry.get('category') == 'exercise']
+        """Generate exercise duration histogram including daily activities"""
+        # Include both exercise and daily_activity entries
+        exercise_entries = [entry for entry in analytics_data if entry.get('category') in ['exercise', 'daily_activity']]
         durations = []
         
         for entry in exercise_entries:
             duration = int(entry.get('duration', 0))
+            
+            # For daily activities from voice notes, try to extract duration
+            if duration == 0 and entry.get('category') == 'daily_activity':
+                text = (entry.get('summary', '') + ' ' + entry.get('transcript', '')).lower()
+                import re
+                # Look for patterns like "30 minute", "1 hour", etc.
+                minute_match = re.search(r'(\d+)\s*(?:minute|min)', text)
+                hour_match = re.search(r'(\d+)\s*(?:hour|hr)', text)
+                if minute_match:
+                    duration = int(minute_match.group(1))
+                elif hour_match:
+                    duration = int(hour_match.group(1)) * 60
+                else:
+                    duration = 15  # Default duration for daily activities
+            
             if duration > 0:
                 durations.append(duration)
         

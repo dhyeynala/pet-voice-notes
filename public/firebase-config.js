@@ -1,4 +1,9 @@
 // public/firebase-config.js
+// 🔒 SECURITY NOTE: This Firebase configuration is designed to be public.
+// The API key here is a client-side Firebase Web API key, not a server key.
+// However, it should be restricted in Firebase Console to authorized domains only.
+// Learn more: https://firebase.google.com/docs/projects/api-keys
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 const firebaseConfig = {

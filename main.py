@@ -5,8 +5,8 @@ import argparse
 from dotenv import load_dotenv
 import openai
 from transcribe import transcribe_audio
-from summarize_openai import summarize_text
-from firestore_store import store_to_firestore
+from summarize_openai import summarize_text, classify_pet_content
+from firestore_store import store_to_firestore, store_analytics_from_voice
 
 # Load env variables
 load_dotenv()
@@ -24,13 +24,24 @@ def main(user_id, pet_id):
         summary = summarize_text(transcript)
         print("\n SUMMARY:\n", summary)
 
+        # Classify content to check if it's daily activity
+        classification = classify_pet_content(transcript)
+        print(f"\n CLASSIFICATION: {classification}")
+
+        # Store to voice-notes collection
         store_to_firestore(user_id, pet_id, transcript, summary)
-        print(" Data stored to Firestore.")
+        print(" Data stored to Firestore voice-notes.")
+
+        # If daily activity content, also store in analytics for dashboard visibility
+        if classification.get('classification') == 'DAILY_ACTIVITY':
+            store_analytics_from_voice(pet_id, transcript, summary, classification)
+            print(" Daily activity data also stored to analytics.")
 
         # Return for FastAPI
         return {
             "transcript": transcript,
-            "summary": summary
+            "summary": summary,
+            "classification": classification
         }
 
     except Exception as e:
