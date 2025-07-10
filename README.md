@@ -1,40 +1,37 @@
-# 🐾 PetPages - AI-Powered Pet Health Tracking
+# PetPages - AI-Powered Pet Health Tracking
 
-> "Why should humans have all the smart health tech?"  
-> This project brings **AI-powered health tracking** to pets — featuring real-time voice notes, document uploads, and personalized medical summaries.
-
----
-
-## 🐾 Introduction
-
-**PetPages** is an advanced pet health management system that allows pet parents and veterinarians to **record, summarize, and organize pet health updates** using only their voice or PDF documents. With pets unable to speak for themselves, this tool empowers owners to track medical history with ease and confidence.
-
-This application combines **real-time audio processing**, **AI-powered summarization**, **cloud storage**, and **modern web technologies** into a comprehensive pet healthcare solution.
+> Comprehensive pet health management through AI-powered voice notes, document analysis, and intelligent health insights.
 
 ---
 
-## 🎯 The Vision
+## Introduction
 
-The goal: make pet healthcare management **as simple as talking**.
+**PetPages** is an advanced pet health management system that enables pet owners and veterinarians to record, summarize, and organize pet health information using voice input or PDF document uploads. This tool empowers owners to maintain comprehensive medical histories with professional-grade documentation and AI-powered insights.
 
-**PetPages** allows users to:
-
-- ✅ **Secure Authentication** - Log in seamlessly with Google
-- 🐶 **Pet Management** - Create and manage multiple pet profiles
-- 🎙️ **Voice Recording** - Record voice notes with manual start/stop controls
-- 🤖 **AI Transcription** - Automatically transcribe speech using Google Cloud Speech-to-Text
-- 📝 **Smart Summarization** - Generate intelligent summaries for medical concerns AND daily activities
-- 🏥 **Health Tracking** - Professional medical analysis for symptoms, treatments, and vet visits
-- 🎾 **Daily Life Celebration** - Encouraging summaries for exercise, training, play, and achievements
-- 🧠 **Content Classification** - Automatically detect medical vs. daily activity content
-- 📄 **PDF Processing** - Upload and analyze veterinary documents
-- ☁️ **Cloud Storage** - Secure storage with Firebase Firestore and Storage
-- 👥 **Collaboration** - Share pet pages with family members and veterinarians
-- 📱 **Modern UI** - Beautiful, responsive interface with unified navigation and real-time feedback
+The application integrates real-time audio processing, AI-powered summarization, cloud storage, and modern web technologies into a unified pet healthcare solution.
 
 ---
 
-## ⚙️ Tech Stack
+## Core Features
+
+PetPages provides a comprehensive suite of tools for modern pet healthcare management:
+
+- **Secure Authentication** - Google OAuth integration for seamless access control
+- **Pet Profile Management** - Create and manage multiple pet profiles with detailed health histories
+- **Voice Recording System** - Manual start/stop voice recording with real-time transcription
+- **AI Transcription** - Automatic speech-to-text conversion using Google Cloud Speech-to-Text
+- **Intelligent Summarization** - AI-generated summaries for both medical concerns and daily activities
+- **Health Analytics** - Professional medical analysis for symptoms, treatments, and veterinary visits
+- **Activity Tracking** - Comprehensive logging of exercise, training, and behavioral observations
+- **Content Classification** - Automatic detection and categorization of medical vs. daily activity content
+- **PDF Document Processing** - Upload and analysis of veterinary documents with AI summarization
+- **Cloud Storage Integration** - Secure data storage with Firebase Firestore and Cloud Storage
+- **Collaboration Tools** - Share pet health information with family members and veterinarians
+- **Responsive Interface** - Modern, mobile-first design with unified navigation and real-time feedback
+
+---
+
+## Technology Stack
 
 | Component            | Technology                                |
 |---------------------|-------------------------------------------|
@@ -51,7 +48,7 @@ The goal: make pet healthcare management **as simple as talking**.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ### **Backend API Endpoints**
 
@@ -104,7 +101,7 @@ pets/
 
 ---
 
-## 🎙️ Voice Recording Features
+## Voice Recording Features
 
 ### **Manual Start/Stop Control**
 - **User-Controlled Recording**: Click to start, click to stop
@@ -143,7 +140,7 @@ def stop_recording():
 
 ---
 
-## 📄 PDF Processing Pipeline
+## PDF Processing Pipeline
 
 1. **Upload**: Secure file upload to Firebase Storage with drag-and-drop support
 2. **Text Extraction**: PyMuPDF extracts text content from medical documents
@@ -179,7 +176,7 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 
 ---
 
-## 🎨 Modern UI/UX Features
+## Modern UI/UX Features
 
 ### **Responsive Design**
 - **Mobile-First**: Optimized for phones and tablets
@@ -208,7 +205,7 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 
 ---
 
-## 🔧 Installation & Setup
+## Installation & Setup
 
 ### **Prerequisites**
 ```bash
@@ -216,13 +213,13 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 pip install -r requirements.txt
 ```
 
-### **Environment Setup**
+### Environment Setup
 
-⚠️ **Security Important**: Copy `.env.template` to `.env` and fill in your actual API keys. Never commit `.env` to version control!
+**Security Important**: Copy `.env.example` to `.env` and fill in your actual API keys. Never commit `.env` to version control!
 
 ```bash
 # Copy the template and edit with your keys
-cp .env.template .env
+cp .env.example .env
 # Edit .env with your actual API keys
 ```
 
@@ -239,29 +236,29 @@ GOOGLE_CLOUD_PROJECT=puppypages-29427
 GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 ```
 
-🔐 **Security Note**: See `SECURITY.md` for detailed security guidelines and key rotation procedures.
+**Security Note**: See `SECURITY.md` for detailed security guidelines and key rotation procedures.
 
-### **Google Cloud APIs Setup**
+### Google Cloud APIs Setup
 Enable the following APIs in Google Cloud Console for project `puppypages-29427`:
 
-1. **🎙️ Cloud Speech-to-Text API** (Required for voice transcription)
-2. **🔥 Firebase Authentication API** (Required for Google Sign-In)
-3. **📁 Cloud Storage API** (Required for file uploads)
-4. **🗄️ Cloud Firestore API** (Required for database)
-5. **📊 Cloud Resource Manager API** (Required for project management)
+1. **Cloud Speech-to-Text API** (Required for voice transcription)
+2. **Firebase Authentication API** (Required for Google Sign-In)
+3. **Cloud Storage API** (Required for file uploads)
+4. **Cloud Firestore API** (Required for database)
+5. **Cloud Resource Manager API** (Required for project management)
 
 Direct links:
 - [Enable Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
 - [Enable Firebase Auth API](https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=puppypages-29427)
 - [View All APIs](https://console.cloud.google.com/apis/dashboard?project=puppypages-29427)
 
-### **Firebase Configuration**
+### Firebase Configuration
 Ensure your `gcloud-key.json` service account file is in the project root with proper permissions for:
 - Firestore Database User
 - Storage Admin
 - Speech API User
 
-### **Run the Application**
+### Run the Application
 ```bash
 # Start the server
 python -m uvicorn api_server:app --reload
@@ -270,7 +267,7 @@ python -m uvicorn api_server:app --reload
 open http://localhost:8000/main.html
 ```
 
-### **Application URLs**
+### Application URLs
 - **Main Dashboard**: `http://localhost:8000/main.html`
 - **Voice Recording**: `http://localhost:8000/main.html#recording`
 - **Notes & Files**: `http://localhost:8000/main.html#notes`
@@ -278,11 +275,11 @@ open http://localhost:8000/main.html
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
-### **Common Issues & Solutions**
+### Common Issues & Solutions
 
-#### **Google Cloud Authentication Warnings**
+#### Google Cloud Authentication Warnings
 ```
 WARNING: Your application has authenticated using end user credentials from Google Cloud SDK without a quota project.
 ```
@@ -292,27 +289,27 @@ GOOGLE_CLOUD_PROJECT=puppypages-29427
 GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 ```
 
-#### **Speech-to-Text API Errors**
+#### Speech-to-Text API Errors
 - **Issue**: API not enabled
 - **Solution**: Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
 - **Verify**: Run `python gcloud_auth.py` to test authentication
 
-#### **Recording Not Working**
+#### Recording Not Working
 - **Check microphone permissions** in your browser
 - **Verify PyAudio installation**: `pip install pyaudio`
 - **Test audio capture**: Ensure microphone is not being used by other applications
 
-#### **PDF Upload Failures**
+#### PDF Upload Failures
 - **File size limit**: Max 10MB per PDF
 - **File format**: Only PDF files are supported
 - **Storage permissions**: Verify Firebase Storage rules allow uploads
 
-#### **Firebase Connection Issues**
+#### Firebase Connection Issues
 - **Check internet connection**
 - **Verify Firebase configuration** in `public/firebase-config.js`
 - **Ensure billing is enabled** in Google Cloud Console
 
-### **Development Tips**
+### Development Tips
 - **Use browser developer tools** to debug JavaScript errors
 - **Check FastAPI logs** for backend error details
 - **Monitor Google Cloud Console** for API quota usage
@@ -320,70 +317,70 @@ GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 
 ---
 
-## 🧠 Key Technical Achievements
+## Key Technical Achievements
 
-### **Real-Time Audio Processing**
-- ✅ Manual start/stop recording controls with visual feedback
-- ✅ Google Cloud Speech-to-Text integration with proper authentication
-- ✅ Background audio processing with PyAudio
-- ✅ Optimized audio configuration (16kHz, 16-bit, mono)
+### Real-Time Audio Processing
+- Manual start/stop recording controls with visual feedback
+- Google Cloud Speech-to-Text integration with proper authentication
+- Background audio processing with PyAudio
+- Optimized audio configuration (16kHz, 16-bit, mono)
 
-### **AI-Powered Analysis**
-- ✅ OpenAI GPT-4o integration for medical summarization
-- ✅ Veterinary-specific prompt engineering for accurate health insights
-- ✅ Retry logic and comprehensive error handling
-- ✅ Context-aware medical summaries from voice and PDF content
+### AI-Powered Analysis
+- OpenAI GPT-4o integration for medical summarization
+- Veterinary-specific prompt engineering for accurate health insights
+- Retry logic and comprehensive error handling
+- Context-aware medical summaries from voice and PDF content
 
-### **Cloud Architecture**
-- ✅ Firebase Authentication with Google Sign-In
-- ✅ Firestore NoSQL database with optimized document structure
-- ✅ Firebase Storage for secure file management
-- ✅ Scalable multi-user architecture with proper permissions
+### Cloud Architecture
+- Firebase Authentication with Google Sign-In
+- Firestore NoSQL database with optimized document structure
+- Firebase Storage for secure file management
+- Scalable multi-user architecture with proper permissions
 
-### **Modern Web Development**
-- ✅ **Unified Single-Page Application**: Tabbed navigation between Voice Recording and Notes & Files
-- ✅ **URL Fragment Support**: Direct navigation with bookmarkable URLs (`#recording`, `#notes`)
-- ✅ **Responsive Design**: Mobile-first approach with CSS Grid and Flexbox
-- ✅ **Progressive Enhancement**: Works across all devices and browsers
-- ✅ **Real-Time Feedback**: Loading states, progress indicators, and status messages
+### Modern Web Development
+- **Unified Single-Page Application**: Tabbed navigation between Voice Recording and Notes & Files
+- **URL Fragment Support**: Direct navigation with bookmarkable URLs (`#recording`, `#notes`)
+- **Responsive Design**: Mobile-first approach with CSS Grid and Flexbox
+- **Progressive Enhancement**: Works across all devices and browsers
+- **Real-Time Feedback**: Loading states, progress indicators, and status messages
 
-### **Authentication & Security**
-- ✅ Google Cloud service account authentication with quota project configuration
-- ✅ Environment-based configuration for secure credential management
-- ✅ Proper API key management and rate limiting
-- ✅ User session management with Firebase Auth
-
----
-
-## 🚀 Future Enhancements
-
-### **Advanced AI Features**
-- 🔮 **RAG-Based Health Assistant**: Query pet's health history with natural language
-- 📊 **Health Trend Analysis**: AI-powered insights from historical voice notes and documents
-- 🔍 **Symptom Pattern Recognition**: Automatic detection of recurring health issues
-- 📱 **Mobile App**: Native iOS/Android applications with offline voice recording
-
-### **Enhanced User Experience**
-- 🎙️ **Voice Commands**: Navigate the app using voice controls
-- 📋 **Smart Templates**: Pre-filled forms for common health situations
-- 🔔 **Smart Notifications**: AI-driven health reminders and alerts
-- 🎨 **Customizable Dashboard**: Personalized interface for different user types
-
-### **Collaboration & Integration**
-- 👥 **Veterinarian Portal**: Professional dashboard with advanced analytics
-- 📧 **Smart Notifications**: Email/SMS alerts for health concerns with severity detection
-- 📅 **Appointment Integration**: Calendar sync with vet appointments and medication schedules
-- 🔗 **Clinic Integration**: Direct sharing with veterinary practices and HIPAA compliance
-
-### **Data & Analytics**
-- 📈 **Interactive Health Timeline**: Visual pet health journey with clickable events
-- 📊 **Advanced Analytics Dashboard**: Health metrics, trends, and predictive insights
-- 📋 **Automated Report Generation**: Professional health reports for veterinary visits
-- 🔒 **Enhanced Data Security**: End-to-end encryption and HIPAA-compliant data export
+### Authentication & Security
+- Google Cloud service account authentication with quota project configuration
+- Environment-based configuration for secure credential management
+- Proper API key management and rate limiting
+- User session management with Firebase Auth
 
 ---
 
-## 🏆 Impact & Vision
+## Future Enhancements
+
+### Advanced AI Features
+- **RAG-Based Health Assistant**: Query pet's health history with natural language
+- **Health Trend Analysis**: AI-powered insights from historical voice notes and documents
+- **Symptom Pattern Recognition**: Automatic detection of recurring health issues
+- **Mobile App**: Native iOS/Android applications with offline voice recording
+
+### Enhanced User Experience
+- **Voice Commands**: Navigate the app using voice controls
+- **Smart Templates**: Pre-filled forms for common health situations
+- **Smart Notifications**: AI-driven health reminders and alerts
+- **Customizable Dashboard**: Personalized interface for different user types
+
+### Collaboration & Integration
+- **Veterinarian Portal**: Professional dashboard with advanced analytics
+- **Smart Notifications**: Email/SMS alerts for health concerns with severity detection
+- **Appointment Integration**: Calendar sync with vet appointments and medication schedules
+- **Clinic Integration**: Direct sharing with veterinary practices and HIPAA compliance
+
+### Data & Analytics
+- **Interactive Health Timeline**: Visual pet health journey with clickable events
+- **Advanced Analytics Dashboard**: Health metrics, trends, and predictive insights
+- **Automated Report Generation**: Professional health reports for veterinary visits
+- **Enhanced Data Security**: End-to-end encryption and HIPAA-compliant data export
+
+---
+
+## Impact & Vision
 
 **PetPages** represents the convergence of **AI technology** and **pet healthcare**, creating a solution that:
 
@@ -394,20 +391,20 @@ GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-This project is built with love for our furry friends. Contributions are welcome!
+This project is built with dedication to improving pet healthcare. Contributions are welcome!
 
-### **Areas for Contribution**
-- 🐛 **Bug Fixes**: Help improve stability
-- ✨ **Feature Development**: Add new capabilities
-- 🎨 **UI/UX Improvements**: Enhance user experience
-- 📝 **Documentation**: Improve guides and tutorials
-- 🧪 **Testing**: Automated testing and QA
+### Areas for Contribution
+- **Bug Fixes**: Help improve stability and performance
+- **Feature Development**: Add new capabilities and functionality
+- **UI/UX Improvements**: Enhance user experience and accessibility
+- **Documentation**: Improve guides and tutorials
+- **Testing**: Automated testing and quality assurance
 
 ---
 
-## 📞 Connect
+## Connect
 
 If you're passionate about **AI + Pet Healthcare** or want to collaborate:
 
@@ -416,4 +413,4 @@ If you're passionate about **AI + Pet Healthcare** or want to collaborate:
 
 ---
 
-**Made with ❤️ for pets and their humans** 🐾
+**Made with care for pets and their humans**
