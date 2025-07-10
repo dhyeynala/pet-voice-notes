@@ -175,7 +175,7 @@ PetPages includes a robust analytics system for tracking various aspects of pet 
 ```python
 # Enhanced Google Cloud authentication setup
 def setup_google_cloud_auth():
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "project_name")
     credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
     
     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -289,8 +289,8 @@ Required environment variables in `.env`:
 OPENAI_API_KEY=your_actual_openai_api_key_here
 
 # Firebase Configuration  
-FIREBASE_STORAGE_BUCKET=puppypages-29427.appspot.com
-GOOGLE_CLOUD_PROJECT=puppypages-29427
+FIREBASE_STORAGE_BUCKET=
+GOOGLE_CLOUD_PROJECT=
 
 # Google Cloud Service Account JSON file path
 GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
@@ -299,18 +299,13 @@ GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 **Security Note**: See `SECURITY.md` for detailed security guidelines and key rotation procedures.
 
 ### Google Cloud APIs Setup
-Enable the following APIs in Google Cloud Console for project `puppypages-29427`:
+Enable the following APIs in Google Cloud Console for this project:
 
 1. **Cloud Speech-to-Text API** (Required for voice transcription)
 2. **Firebase Authentication API** (Required for Google Sign-In)
 3. **Cloud Storage API** (Required for file uploads)
 4. **Cloud Firestore API** (Required for database)
 5. **Cloud Resource Manager API** (Required for project management)
-
-Direct links:
-- [Enable Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
-- [Enable Firebase Auth API](https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=puppypages-29427)
-- [View All APIs](https://console.cloud.google.com/apis/dashboard?project=puppypages-29427)
 
 ### Firebase Configuration
 Ensure your `gcloud-key.json` service account file is in the project root with proper permissions for:
@@ -332,48 +327,6 @@ open http://localhost:8000/main.html
 - **Voice Recording**: `http://localhost:8000/main.html#recording`
 - **Notes & Files**: `http://localhost:8000/main.html#notes`
 - **Login Page**: `http://localhost:8000/index.html`
-
----
-
-## Troubleshooting
-
-### Common Issues & Solutions
-
-#### Google Cloud Authentication Warnings
-```
-WARNING: Your application has authenticated using end user credentials from Google Cloud SDK without a quota project.
-```
-**Solution**: Ensure your `.env` file contains:
-```bash
-GOOGLE_CLOUD_PROJECT=puppypages-29427
-GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
-```
-
-#### Speech-to-Text API Errors
-- **Issue**: API not enabled
-- **Solution**: Enable the [Cloud Speech-to-Text API](https://console.cloud.google.com/apis/library/speech.googleapis.com?project=puppypages-29427)
-- **Verify**: Run `python gcloud_auth.py` to test authentication
-
-#### Recording Not Working
-- **Check microphone permissions** in your browser
-- **Verify PyAudio installation**: `pip install pyaudio`
-- **Test audio capture**: Ensure microphone is not being used by other applications
-
-#### PDF Upload Failures
-- **File size limit**: Max 10MB per PDF
-- **File format**: Only PDF files are supported
-- **Storage permissions**: Verify Firebase Storage rules allow uploads
-
-#### Firebase Connection Issues
-- **Check internet connection**
-- **Verify Firebase configuration** in `public/firebase-config.js`
-- **Ensure billing is enabled** in Google Cloud Console
-
-### Development Tips
-- **Use browser developer tools** to debug JavaScript errors
-- **Check FastAPI logs** for backend error details
-- **Monitor Google Cloud Console** for API quota usage
-- **Test with different browsers** for compatibility issues
 
 ---
 
