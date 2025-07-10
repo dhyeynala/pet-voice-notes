@@ -28,6 +28,8 @@ PetPages provides a comprehensive suite of tools for modern pet healthcare manag
 - **Cloud Storage Integration** - Secure data storage with Firebase Firestore and Cloud Storage
 - **Collaboration Tools** - Share pet health information with family members and veterinarians
 - **Responsive Interface** - Modern, mobile-first design with unified navigation and real-time feedback
+- **Advanced Analytics Dashboard** - Interactive charts and visualizations for health tracking
+- **AI Health Insights** - Personalized recommendations and pattern recognition
 
 ---
 
@@ -60,8 +62,15 @@ PetPages provides a comprehensive suite of tools for modern pet healthcare manag
 | `/api/upload_pdf` | POST | Upload and analyze PDF documents |
 | `/api/user-pets/{user_id}` | GET | Retrieve user's pet list |
 | `/api/pets/{user_id}` | POST | Create new pet profile |
+| `/api/pets/{pet_id}/textinput` | POST | Add text-based pet notes with AI classification |
+| `/api/pets/{pet_id}/analytics/{category}` | POST | Add health tracking data by category |
+| `/api/pets/{pet_id}/analytics` | GET | Retrieve analytics data with filtering |
+| `/api/pets/{pet_id}/analytics/summary` | GET | Get summary statistics for all categories |
+| `/api/pets/{pet_id}/visualizations` | GET | Get chart data for analytics dashboard |
+| `/api/pets/{pet_id}/daily_routine` | POST | Generate AI-powered daily headlines |
+| `/api/pets/{pet_id}/health_insights` | GET | Get AI health insights and recommendations |
 | `/api/pages/{page_id}` | GET/POST | Manage shared page notes |
-| `/api/pets/{pet_id}/textinput` | POST | Add text-based pet notes |
+| `/api/markdown` | GET/POST | Handle markdown content for notes |
 
 ### **Data Architecture (Firestore)**
 
@@ -93,11 +102,62 @@ pets/
           │       ├── file_url: "https://storage.googleapis.com/..."
           │       ├── file_name: "blood_work_results.pdf"
           │       └── timestamp: "2025-06-27T..."
-          └── textinput/
-              └── {inputId}
-                  ├── input: "Manual note about behavior"
-                  └── timestamp: "2025-06-27T..."
+          ├── textinput/
+          │   └── {inputId}
+          │       ├── input: "Manual note about behavior"
+          │       ├── summary: "AI-generated summary"
+          │       ├── content_type: "DAILY_ACTIVITY" | "MEDICAL" | "MIXED"
+          │       ├── confidence: 0.85
+          │       ├── keywords: ["keyword1", "keyword2"]
+          │       └── timestamp: "2025-06-27T..."
+          └── analytics/
+              └── {analyticsId}
+                  ├── category: "diet" | "exercise" | "medication" | "grooming" | 
+                  │             "energy_levels" | "bowel_movements" | "exit_events" |
+                  │             "weight" | "temperature" | "mood" | "sleep" | "water_intake"
+                  ├── source: "manual_entry" | "voice_input" | "text_input"
+                  ├── timestamp: "2025-06-27T..."
+                  ├── [category-specific fields]:
+                  │   ├── diet: {food, quantity, time, type, notes}
+                  │   ├── exercise: {type, duration, intensity, location, notes}
+                  │   ├── medication: {name, dosage, time, frequency, purpose}
+                  │   ├── energy_levels: {level: 1-5, notes}
+                  │   ├── mood: {level: 1-5, triggers[], behavior[], notes}
+                  │   ├── weight: {value, unit, method, notes}
+                  │   └── sleep: {duration, quality, location, interruptions, notes}
+                  └── notes: "Additional observations"
 ```
+
+---
+
+## Health Analytics & Tracking
+
+### **Comprehensive Health Monitoring**
+PetPages includes a robust analytics system for tracking various aspects of pet health and behavior:
+
+- **Diet & Nutrition**: Track food types, quantities, meal timing, and dietary habits
+- **Exercise & Activity**: Monitor exercise duration, intensity, types, and location data
+- **Medication Management**: Log medications, dosages, frequencies, and compliance
+- **Energy Levels**: Record daily energy levels on a 1-5 scale with contextual notes
+- **Mood & Behavior**: Track behavioral patterns, triggers, and emotional states
+- **Sleep Monitoring**: Record sleep duration, quality, location, and disturbances
+- **Grooming & Hygiene**: Log grooming activities, products used, and pet cooperation
+- **Weight Tracking**: Monitor weight changes with various measurement methods
+- **Bowel Movement Tracking**: Record consistency, timing, and patterns
+- **Exit Events**: Track outdoor activities, destinations, and duration
+
+### **AI-Powered Insights**
+- **Daily Headlines**: AI-generated summaries of daily activities and achievements
+- **Health Recommendations**: Personalized suggestions based on tracking data
+- **Pattern Recognition**: Automatic detection of health trends and anomalies
+- **Veterinary Reports**: Professional summaries for veterinary consultations
+- **Content Classification**: Automatic categorization of medical vs. daily activity content
+
+### **Data Visualization**
+- **Interactive Charts**: Weekly activity trends, energy level distributions, diet frequency
+- **Health Dashboards**: Overview metrics with real-time updates
+- **Progress Tracking**: Visual representation of health improvements over time
+- **Comparative Analysis**: Compare current metrics with historical baselines
 
 ---
 
