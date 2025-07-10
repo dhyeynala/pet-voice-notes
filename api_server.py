@@ -1,5 +1,5 @@
 #api_server.py
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -39,18 +39,51 @@ async def start(request: Request):
     return run_main(data["uid"], data["pet"])
 
 @app.post("/api/upload_pdf")
-async def upload_pdf(uid: str, pet: str, file: UploadFile = File(...)):
-    contents = await file.read()
-    temp_path = f"/tmp/{file.filename}"
-    with open(temp_path, "wb") as f:
-        f.write(contents)
+async def upload_pdf(file: UploadFile = File(...), uid: str = Query(...), pet: str = Query(...)):
+    try:
+        print(f"Upload PDF - Received uid: {uid}, pet: {pet}, filename: {file.filename}")
+        
+        if not uid or not pet:
+            print(f"Missing parameters - uid: {uid}, pet: {pet}")
+            return {"error": "Missing uid or pet parameter"}
+        
+        if not file.filename:
+            print("No filename provided")
+            return {"error": "No file provided"}
+            
+        if not file.filename.endswith('.pdf'):
+            print(f"Invalid file type: {file.filename}")
+            return {"error": "File must be a PDF"}
+        
+        contents = await file.read()
+        print(f"File size: {len(contents)} bytes")
+        
+        temp_path = f"/tmp/{file.filename}"
+        with open(temp_path, "wb") as f:
+            f.write(contents)
 
-    blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
-    blob.upload_from_filename(temp_path)
-    blob.make_public()
+        blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
+        blob.upload_from_filename(temp_path)
+        blob.make_public()
+        print(f"File uploaded to Firebase Storage: {blob.public_url}")
 
-    result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
-    return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+        result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
+        print(f"PDF processing result: {result}")
+        
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        # Check if there was an error in PDF processing
+        if "error" in result:
+            return {"error": result["error"]}
+        
+        return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+    except Exception as e:
+        print(f"Upload PDF error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Failed to process PDF: {str(e)}"}
 
 @app.get("/api/user-pets/{user_id}")
 async def get_user_pets(user_id: str):
@@ -80,7 +113,7 @@ async def update_page(page_id: str, request: Request):
     return {"status": "updated"}
 
 @app.get("/api/markdown")
-async def get_markdown(page: str, pet: str):
+async def get_markdown(page: str = Query(...), pet: str = Query(...)):
     page_doc = db.collection("pages").document(page).get()
     pet_doc = db.collection("pets").document(pet).get()
 

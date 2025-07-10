@@ -375,18 +375,31 @@
     .result-box {
       background: #f7fafc;
       border: 2px solid #e1e8ed;
-      border-radius: 10px;
-      padding: 20px;
+      border-radius: 12px;
+      padding: 0;
       margin-top: 20px;
-      font-family: 'Courier New', monospace;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       line-height: 1.6;
-      white-space: pre-wrap;
       display: none;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.4s ease;
     }
 
     .result-box.has-content {
       display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .output h3 {
@@ -1757,7 +1770,10 @@ The AI will automatically detect the content type and provide the perfect summar
         window.location.hash = 'recording';
       } else if (sectionName === 'notes') {
         document.getElementById('notes-section').classList.add('active');
-        loadMarkdown(); // Load notes when switching to notes section
+        // Only load markdown if a pet is selected, otherwise it will be loaded when pet is selected
+        if (selectedPet) {
+          loadMarkdown(); // Load notes when switching to notes section
+        }
         window.location.hash = 'notes';
       } else if (sectionName === 'analytics') {
         document.getElementById('analytics-section').classList.add('active');
@@ -2096,8 +2112,10 @@ The AI will automatically detect the content type and provide the perfect summar
             return;
           }
           
-          const petId = document.getElementById("pet-select").value;
-          if (!petId) {
+          console.log("PDF Upload Debug - currentUser.uid:", currentUser.uid);
+          console.log("PDF Upload Debug - selectedPet:", selectedPet);
+          
+          if (!selectedPet) {
             showNotification("Please select a pet first", 'error');
             return;
           }
@@ -2127,7 +2145,7 @@ The AI will automatically detect the content type and provide the perfect summar
             formData.append("file", file);
             
             // Upload PDF with uid and pet as query parameters
-            const uploadResponse = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${petId}`, {
+            const uploadResponse = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${selectedPet}`, {
               method: 'POST',
               body: formData
             });
@@ -2138,14 +2156,35 @@ The AI will automatically detect the content type and provide the perfect summar
             
             const uploadData = await uploadResponse.json();
             
-            // Display success message and summary
+            // Check if there was an error from the backend
+            if (uploadData.error) {
+              throw new Error(uploadData.error);
+            }
+            
+            // Display success message and enhanced summary
             resultDiv.innerHTML = `
-              <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; color: #155724;">
-                <h4 style="margin: 0 0 10px 0;"><i class="fas fa-check-circle"></i> PDF Processed Successfully</h4>
-                <p><strong>File:</strong> ${file.name}</p>
-                <p><strong>Summary:</strong> ${uploadData.summary}</p>
+              <div style="padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 10px; color: #155724; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; font-size: 1.1rem;"><i class="fas fa-check-circle"></i> PDF Processed Successfully</h4>
+                <div style="margin-bottom: 15px;">
+                  <strong style="color: #0c5460;"><i class="fas fa-file-pdf"></i> File:</strong> 
+                  <span style="font-weight: 500;">${file.name}</span>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                  <h5 style="margin: 0 0 10px 0; color: #0c5460; font-size: 1rem;">
+                    <i class="fas fa-brain"></i> AI Medical Summary
+                    <button onclick="copyToClipboard('${uploadData.summary.replace(/'/g, "\\'")}', this)" style="float: right; background: none; border: 1px solid #28a745; color: #28a745; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#28a745'; this.style.color='white';" onmouseout="this.style.background='none'; this.style.color='#28a745';">
+                      <i class="fas fa-copy"></i> Copy
+                    </button>
+                  </h5>
+                  <div style="color: #155724; line-height: 1.6; font-size: 0.95rem;">
+                    ${uploadData.summary}
+                  </div>
+                </div>
               </div>
             `;
+            
+            // Also show the summary in a more prominent way by making the result box visible
+            resultDiv.classList.add("has-content");
             
             // Clear the file input
             fileInput.value = "";
@@ -2164,7 +2203,7 @@ The AI will automatically detect the content type and provide the perfect summar
               console.log("Note: markdown refresh failed, but PDF upload succeeded:", error);
             }
             
-            showNotification("PDF uploaded and analyzed successfully!", 'success');
+            showNotification("PDF uploaded and AI summary generated successfully!", 'success');
             
           } catch (error) {
             console.error('Error uploading PDF:', error);
@@ -3261,8 +3300,26 @@ The AI will automatically detect the content type and provide the perfect summar
       }, 3000);
     };
 
+    // Utility function for copy to clipboard
+    window.copyToClipboard = function(text, button) {
+      navigator.clipboard.writeText(text).then(function() {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        button.style.background = '#28a745';
+        button.style.color = 'white';
+        setTimeout(function() {
+          button.innerHTML = originalText;
+          button.style.background = 'none';
+          button.style.color = '#28a745';
+        }, 2000);
+        showNotification('Summary copied to clipboard!', 'success', 2000);
+      }).catch(function() {
+        showNotification('Failed to copy to clipboard', 'error', 2000);
+      });
+    };
+
     // Utility function for notifications
-    function showNotification(message, type = 'info') {
+    function showNotification(message, type = 'info', duration = 3000) {
       const notification = document.createElement('div');
       notification.className = 'notification';
       notification.textContent = message;
@@ -3294,7 +3351,7 @@ The AI will automatically detect the content type and provide the perfect summar
       setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease forwards';
         setTimeout(() => notification.remove(), 300);
-      }, 3000);
+      }, duration);
     }
 
     window.logout = async function () {
