@@ -120,9 +120,13 @@ def stop_recording():
     """Stop recording and process audio"""
     global recording_state
     
+    print(f"🛑 Stop recording called. Current state: {recording_state['is_recording']}")
+    
     if not recording_state["is_recording"]:
+        print("❌ Not currently recording")
         return {"status": "error", "message": "Not recording"}
     
+    print("🔄 Stopping recording...")
     recording_state["is_recording"] = False
     
     # Wait a moment for recording to finish
@@ -130,16 +134,21 @@ def stop_recording():
     
     # Process the recorded audio
     if recording_state["audio_data"]:
+        print(f"📊 Processing {len(recording_state['audio_data'])} audio chunks")
         audio_data = b''.join(recording_state["audio_data"])
+        print(f"📊 Total audio data size: {len(audio_data)} bytes")
+        
         transcript = _transcribe_audio_data(audio_data)
         recording_state["transcript"] = transcript
         
+        print(f"✅ Recording stopped successfully. Transcript: '{transcript[:100]}...'")
         return {
             "status": "stopped",
             "transcript": transcript,
             "message": "Recording stopped and transcribed"
         }
     else:
+        print("❌ No audio data recorded")
         return {"status": "error", "message": "No audio data recorded"}
 
 def get_recording_status():

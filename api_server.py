@@ -1,17 +1,18 @@
 #api_server.py
-from fastapi import FastAPI, Request, UploadFile, File, Query
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from firebase_admin import storage
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import os
+import uuid
 
 # Load environment variables first
 load_dotenv()
 
 # Set Google Cloud environment variables
-import os
 os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
 
@@ -19,9 +20,6 @@ from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
 from pdf_parser import extract_text_and_summarize
 from transcribe import start_recording, stop_recording, get_recording_status
-
-import uuid
-from datetime import datetime, timedelta
 
 app = FastAPI()
 
@@ -39,25 +37,20 @@ async def start(request: Request):
     return run_main(data["uid"], data["pet"])
 
 @app.post("/api/upload_pdf")
-async def upload_pdf(file: UploadFile = File(...), uid: str = Query(...), pet: str = Query(...)):
+async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    # Get form data
+    form = await request.form()
+    uid = form.get("uid")
+    pet = form.get("pet")
+    
+    if not uid or not pet:
+        return {"error": "Missing uid or pet parameter"}
+    
+    if not file.filename:
+        return {"error": "No file provided"}
+    
     try:
-        print(f"Upload PDF - Received uid: {uid}, pet: {pet}, filename: {file.filename}")
-        
-        if not uid or not pet:
-            print(f"Missing parameters - uid: {uid}, pet: {pet}")
-            return {"error": "Missing uid or pet parameter"}
-        
-        if not file.filename:
-            print("No filename provided")
-            return {"error": "No file provided"}
-            
-        if not file.filename.endswith('.pdf'):
-            print(f"Invalid file type: {file.filename}")
-            return {"error": "File must be a PDF"}
-        
         contents = await file.read()
-        print(f"File size: {len(contents)} bytes")
-        
         temp_path = f"/tmp/{file.filename}"
         with open(temp_path, "wb") as f:
             f.write(contents)
@@ -65,24 +58,26 @@ async def upload_pdf(file: UploadFile = File(...), uid: str = Query(...), pet: s
         blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
         blob.upload_from_filename(temp_path)
         blob.make_public()
-        print(f"File uploaded to Firebase Storage: {blob.public_url}")
 
         result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
-        print(f"PDF processing result: {result}")
         
-        # Clean up temp file
-        if os.path.exists(temp_path):
+        # Clean up temporary file
+        try:
             os.remove(temp_path)
-        
-        # Check if there was an error in PDF processing
+        except:
+            pass
+            
         if "error" in result:
             return {"error": result["error"]}
-        
+            
         return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+        
     except Exception as e:
-        print(f"Upload PDF error: {e}")
-        import traceback
-        traceback.print_exc()
+        # Clean up temporary file on error
+        try:
+            os.remove(temp_path)
+        except:
+            pass
         return {"error": f"Failed to process PDF: {str(e)}"}
 
 @app.get("/api/user-pets/{user_id}")
@@ -92,7 +87,18 @@ async def get_user_pets(user_id: str):
 @app.post("/api/pets/{user_id}")
 async def create_pet(user_id: str, request: Request):
     data = await request.json()
-    return add_pet_to_page_and_user(user_id, data["name"], data.get("pageId", "default-page"))
+    
+    # Validate required fields
+    if not data.get("name"):
+        return {"error": "Pet name is required"}
+    if not data.get("animal_type"):
+        return {"error": "Animal type is required"}
+    
+    try:
+        result = add_pet_to_page_and_user(user_id, data, data.get("pageId", "default-page"))
+        return {"status": "success", "pet": result}
+    except Exception as e:
+        return {"error": f"Failed to create pet: {str(e)}"}
 
 @app.post("/api/pages/invite")
 async def invite_user(request: Request):
@@ -113,7 +119,10 @@ async def update_page(page_id: str, request: Request):
     return {"status": "updated"}
 
 @app.get("/api/markdown")
-async def get_markdown(page: str = Query(...), pet: str = Query(...)):
+async def get_markdown(page: str = None, pet: str = None):
+    if not page or not pet:
+        return {"markdown": ""}
+    
     page_doc = db.collection("pages").document(page).get()
     pet_doc = db.collection("pets").document(pet).get()
 
@@ -202,42 +211,83 @@ async def stop_recording_endpoint(request: Request):
     if not user_id or not pet_id:
         return {"status": "error", "message": "Missing uid or pet"}
     
-    result = stop_recording()
-    
-    # If successful, process the transcript with enhanced AI
-    if result["status"] == "stopped" and result.get("transcript"):
-        from summarize_openai import summarize_text, classify_pet_content
+    try:
+        result = stop_recording()
         
-        transcript = result["transcript"]
+        # Handle the transcription result
+        if result["status"] == "stopped" and result.get("transcript"):
+            # We have a transcript, try to process with AI
+            try:
+                from summarize_openai import summarize_text, classify_pet_content
+                
+                transcript = result["transcript"]
+                
+                # Classify the content type
+                classification = classify_pet_content(transcript)
+                
+                # Generate enhanced summary
+                summary = summarize_text(transcript)
+                
+                # Store with enhanced metadata
+                entry_data = {
+                    "transcript": transcript,
+                    "summary": summary,
+                    "content_type": classification.get("classification", "MIXED"),
+                    "confidence": classification.get("confidence", 0.5),
+                    "keywords": classification.get("keywords", []),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+                
+                return {
+                    "status": "success",
+                    "transcript": transcript,
+                    "summary": summary,
+                    "content_type": classification.get("classification", "MIXED"),
+                    "confidence": classification.get("confidence", 0.5),
+                    "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note"
+                }
+                
+            except Exception as ai_error:
+                print(f"AI processing failed: {ai_error}")
+                # AI processing failed, but we still have transcript
+                # Store basic transcript without AI enhancement
+                entry_data = {
+                    "transcript": result["transcript"],
+                    "summary": "Transcription completed. AI processing unavailable.",
+                    "content_type": "TRANSCRIPTION_ONLY",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+                
+                return {
+                    "status": "stopped",
+                    "transcript": result["transcript"],
+                    "message": "Transcription successful, AI processing unavailable"
+                }
         
-        # Classify the content type
-        classification = classify_pet_content(transcript)
+        elif result["status"] == "stopped":
+            # Recording stopped but no transcript (no speech detected)
+            return {
+                "status": "stopped",
+                "message": "Recording stopped but no speech was detected"
+            }
         
-        # Generate enhanced summary
-        summary = summarize_text(transcript)
-        
-        # Store with enhanced metadata
-        entry_data = {
-            "transcript": transcript,
-            "summary": summary,
-            "content_type": classification.get("classification", "MIXED"),
-            "confidence": classification.get("confidence", 0.5),
-            "keywords": classification.get("keywords", []),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
-        
+        else:
+            # Recording failed or other error
+            return {
+                "status": "error",
+                "message": result.get("message", "Recording failed")
+            }
+            
+    except Exception as e:
+        print(f"Error in stop_recording_endpoint: {e}")
         return {
-            "status": "success",
-            "transcript": transcript,
-            "summary": summary,
-            "content_type": classification.get("classification", "MIXED"),
-            "confidence": classification.get("confidence", 0.5),
-            "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note"
+            "status": "error", 
+            "message": f"Server error: {str(e)}"
         }
-    
-    return result
 
 # ✅ NEW: Get recording status endpoint
 @app.get("/api/recording_status")
@@ -735,6 +785,99 @@ def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
         headlines.insert(0, f"🌟 Busy day: {total_activities} activities tracked for {pet_name}!")
     
     return headlines
+
+# ✅ NEW: RAG-powered AI Assistant endpoints
+@app.post("/api/pets/{pet_id}/chat")
+async def chat_with_assistant(pet_id: str, request: Request):
+    """Chat with AI Assistant using RAG (Retrieval-Augmented Generation)"""
+    try:
+        from simple_rag_service import simple_rag_service
+        
+        data = await request.json()
+        query = data.get("query", "")
+        
+        if not query:
+            return {"error": "Query is required"}
+        
+        # Generate RAG response
+        response = await simple_rag_service.generate_rag_response(pet_id, query)
+        
+        return {
+            "status": "success",
+            "response": response.get("response", ""),
+            "sources": response.get("sources", []),
+            "context_used": response.get("context_used", False),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to process chat request: {str(e)}"
+        }
+
+@app.post("/api/pets/{pet_id}/knowledge_search")
+async def search_knowledge_base(pet_id: str, request: Request):
+    """Search veterinary knowledge base"""
+    try:
+        from simple_rag_service import simple_rag_service
+        
+        data = await request.json()
+        query = data.get("query", "")
+        
+        if not query:
+            return {"error": "Query is required"}
+        
+        # Search knowledge base
+        knowledge_results = simple_rag_service.search_knowledge_base(query, top_k=5)
+        
+        results = []
+        for result in knowledge_results:
+            knowledge = result["knowledge"]
+            results.append({
+                "title": knowledge.get("title", ""),
+                "content": knowledge.get("content", ""),
+                "category": knowledge.get("category", ""),
+                "symptoms": knowledge.get("keywords", []),
+                "severity": knowledge.get("severity", ""),
+                "score": result["score"]
+            })
+        
+        return {
+            "status": "success",
+            "results": results,
+            "query": query,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to search knowledge base: {str(e)}"
+        }
+
+@app.get("/api/pets/{pet_id}/assistant_summary")
+async def get_assistant_summary(pet_id: str):
+    """Get AI-powered health summary for assistant dashboard"""
+    try:
+        from simple_rag_service import simple_rag_service
+        
+        # Generate comprehensive health summary
+        summary_query = "Provide a comprehensive health summary with insights, patterns, and recommendations based on all available health data."
+        response = await simple_rag_service.generate_rag_response(pet_id, summary_query)
+        
+        return {
+            "status": "success",
+            "summary": response.get("response", ""),
+            "data_sources": response.get("sources", []),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to generate assistant summary: {str(e)}"
+        }
 
 # ✅ NEW: Simple test endpoint for diagnostics
 @app.get("/api/test")

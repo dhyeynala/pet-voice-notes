@@ -6,7 +6,6 @@
 
 # Google Cloud service account key
 gcloud-key.json
-*-key.json
 
 # Python
 __pycache__/
