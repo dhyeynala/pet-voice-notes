@@ -17,48 +17,18 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
-      background-size: 300% 300%;
-      animation: gradientShift 15s ease infinite;
+      background: #f8fafc;
       min-height: 100vh;
       color: #2c3e50;
-      line-height: 1.6;
-      position: relative;
-    }
-
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-                  radial-gradient(circle at 40% 40%, rgba(120, 200, 255, 0.2) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    @keyframes gradientShift {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
     }
 
     .header {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 
-                  0 2px 8px rgba(102, 126, 234, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.8);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      background: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       padding: 20px 0;
       position: sticky;
       top: 0;
       z-index: 100;
-      transition: all 0.3s ease;
     }
 
     .header-content {
@@ -73,244 +43,86 @@
     .logo {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 1.8rem;
+      gap: 10px;
+      font-size: 1.5rem;
       font-weight: 700;
       color: #667eea;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-decoration: none;
-      position: relative;
-    }
-
-    .logo::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      width: 0;
-      height: 2px;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      transition: width 0.3s ease;
-    }
-
-    .logo:hover::after {
-      width: 100%;
-    }
-
-    .logo:hover {
-      transform: scale(1.05);
-      text-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    .logo span:first-child {
-      font-size: 2rem;
-      filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
-      animation: float 3s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-5px); }
     }
 
     .nav-menu {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
-      background: rgba(248, 250, 252, 0.9);
-      backdrop-filter: blur(20px);
-      padding: 8px;
-      border-radius: 24px;
-      border: 1px solid rgba(225, 232, 237, 0.6);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.8);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .nav-menu::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-      transition: left 0.6s ease;
-    }
-
-    .nav-menu:hover::before {
-      left: 100%;
     }
 
     .nav-item {
-      padding: 14px 22px;
-      border-radius: 16px;
+      padding: 10px 20px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 500;
-      background: transparent;
-      border: 2px solid transparent;
-      position: relative;
-      font-size: 0.95rem;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    .nav-item::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-      transition: left 0.5s ease;
-    }
-
-    .nav-item:hover::before {
-      left: 100%;
-    }
-
-    .nav-item:hover {
-      background: rgba(102, 126, 234, 0.1);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-    }
-
-    .nav-item.active {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      border-color: transparent;
-      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .nav-item.active:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
-    }
-
-    .nav-item i {
-      font-size: 1rem;
-      width: 18px;
-      text-align: center;
-    }
-
-    .logout-btn {
-      background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 600;
       transition: all 0.3s ease;
-      margin-left: 20px;
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+      font-weight: 500;
+      background: #f8fafc;
+      border: 2px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: #e1e8ed;
+    }
+
+    .nav-item.active {
+      background: #667eea;
+      color: white;
+      border-color: #5a67d8;
+    }
+
+    .logout-btn {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-left: 20px;
     }
 
     .logout-btn:hover {
-      background: linear-gradient(135deg, #ff5252, #e53e3e);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+      background: #ff5252;
+      transform: translateY(-1px);
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 40px 20px;
-      position: relative;
     }
 
     .section {
       display: none;
-      animation: fadeInUp 0.6s ease-out;
     }
 
     .section.active {
       display: block;
     }
 
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
     .section-header {
       text-align: center;
-      margin-bottom: 50px;
-      position: relative;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      padding: 40px 30px;
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      margin-bottom: 40px;
     }
 
     .section-header h1 {
-      font-size: 3rem;
+      font-size: 2.5rem;
       font-weight: 700;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4ecdc4 100%);
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      position: relative;
-      display: inline-block;
-      text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
-    }
-
-    .section-header h1::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80px;
-      height: 4px;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      border-radius: 2px;
-    }
-
-    .section-header p {
-      color: #4a5568;
-      font-size: 1.2rem;
-      font-weight: 500;
-      max-width: 600px;
-      margin: 0 auto;
-      line-height: 1.6;
-      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-    }
-
-    .section-header h2 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4ecdc4 100%);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      position: relative;
-      display: inline-block;
-      text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
     }
 
     .section-header p {
@@ -319,98 +131,24 @@
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(30px);
-      -webkit-backdrop-filter: blur(30px);
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1),
-                  0 2px 8px rgba(102, 126, 234, 0.1),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      padding: 36px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      padding: 30px;
       margin-bottom: 30px;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #667eea, #764ba2, #4ecdc4, #f093fb);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .card::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-      transition: left 0.6s ease;
-      pointer-events: none;
-    }
-
-    .card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15),
-                  0 8px 32px rgba(102, 126, 234, 0.2);
-    }
-
-    .card:hover::before {
-      opacity: 1;
-    }
-
-    .card:hover::after {
-      left: 100%;
+      border: 1px solid #e1e8ed;
     }
 
     .section-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 28px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 20px;
       color: #2c3e50;
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
       border-bottom: 2px solid #f1f3f4;
-      padding-bottom: 15px;
-      position: relative;
-      text-transform: none;
-      letter-spacing: 0.3px;
-    }
-
-    .section-title::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 0;
-      width: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #667eea, #764ba2, #4ecdc4);
-      transition: width 0.8s ease;
-      border-radius: 2px;
-    }
-
-    .section-title:hover::after {
-      width: 80px;
-    }
-
-    .section-title i {
-      color: #667eea;
-      font-size: 1.4rem;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: float 3s ease-in-out infinite;
+      padding-bottom: 10px;
     }
 
     .pet-controls {
@@ -428,27 +166,21 @@
 
     select {
       width: 100%;
-      padding: 14px 18px;
-      border: 2px solid rgba(225, 232, 237, 0.8);
-      border-radius: 12px;
+      padding: 12px 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
       font-size: 1rem;
-      background: rgba(255, 255, 255, 0.9);
+      background: white;
       color: #2c3e50;
       cursor: pointer;
       appearance: none;
       transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
     }
 
     select:focus {
       outline: none;
       border-color: #667eea;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-      transform: translateY(-1px);
-    }
-
-    select:hover {
-      border-color: rgba(102, 126, 234, 0.5);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
     .select-wrapper::after {
@@ -464,203 +196,84 @@
     }
 
     input[type="text"] {
-      padding: 16px 20px;
-      border: 2px solid rgba(225, 232, 237, 0.8);
-      border-radius: 16px;
+      padding: 12px 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
       font-size: 1rem;
       flex: 1;
       min-width: 150px;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      position: relative;
+      transition: all 0.3s ease;
     }
 
     input[type="text"]:focus {
       outline: none;
       border-color: #667eea;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15), 
-                  0 4px 16px rgba(102, 126, 234, 0.2);
-      transform: translateY(-2px);
-      background: rgba(255, 255, 255, 1);
-    }
-
-    input[type="text"]:hover {
-      border-color: rgba(102, 126, 234, 0.6);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
     textarea {
       width: 100%;
-      padding: 20px;
-      border: 2px solid rgba(225, 232, 237, 0.8);
-      border-radius: 16px;
+      padding: 16px;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
       font-size: 1rem;
       font-family: inherit;
       resize: vertical;
-      min-height: 140px;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      line-height: 1.6;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      min-height: 120px;
+      transition: all 0.3s ease;
+      line-height: 1.5;
     }
 
     textarea:focus {
       outline: none;
       border-color: #667eea;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15),
-                  0 4px 16px rgba(102, 126, 234, 0.2);
-      transform: translateY(-2px);
-      background: rgba(255, 255, 255, 1);
-    }
-
-    textarea:hover {
-      border-color: rgba(102, 126, 234, 0.6);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
     .btn {
-      padding: 16px 32px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 16px;
+      border-radius: 10px;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s ease;
       display: inline-flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       text-decoration: none;
       justify-content: center;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-      text-transform: none;
-      letter-spacing: 0.3px;
-    }
-
-    .btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      transition: left 0.6s ease;
-    }
-
-    .btn::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.3);
-      transform: translate(-50%, -50%);
-      transition: width 0.6s ease, height 0.6s ease;
-    }
-
-    .btn:hover::before {
-      left: 100%;
-    }
-
-    .btn:hover::after {
-      width: 300px;
-      height: 300px;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
-      background-size: 200% 200%;
+      background: #667eea;
       color: white;
-      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-      animation: gradientShiftBtn 3s ease infinite;
-    }
-
-    @keyframes gradientShiftBtn {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
     }
 
     .btn-primary:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 16px 40px rgba(102, 126, 234, 0.6);
-      animation-play-state: paused;
+      background: #5a67d8;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
     }
 
     .btn-secondary {
-      background: rgba(225, 232, 237, 0.8);
+      background: #e1e8ed;
       color: #2c3e50;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .btn-secondary:hover {
-      background: rgba(209, 217, 224, 0.9);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      background: #d1d9e0;
     }
 
     .btn-success {
-      background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+      background: #4ecdc4;
       color: white;
-      box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
     }
 
     .btn-success:hover {
-      background: linear-gradient(135deg, #3db7b0 0%, #3a8f7c 100%);
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(78, 205, 196, 0.5);
-    }
-
-    .quick-question-btn {
-      font-size: 0.95rem; 
-      padding: 14px 24px; 
-      border-radius: 16px; 
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(78, 205, 196, 0.1)); 
-      border: 2px solid rgba(102, 126, 234, 0.2); 
-      color: #667eea; 
-      font-weight: 600;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(10px);
-      text-transform: none;
-    }
-
-    .quick-question-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.2), transparent);
-      transition: left 0.6s ease;
-    }
-
-    .quick-question-btn:hover::before {
-      left: 100%;
-    }
-
-    .quick-question-btn:hover {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(78, 205, 196, 0.2));
-      border-color: rgba(102, 126, 234, 0.4);
+      background: #3db7b0;
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-      color: #5a67d8;
+      box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
     }
 
     .record-button {
@@ -863,31 +476,22 @@
     @media (max-width: 768px) {
       .nav-menu {
         flex-direction: column;
-        gap: 8px;
-        background: #f8fafc;
-        padding: 8px;
-        border-radius: 16px;
-        border: 1px solid #e1e8ed;
-        width: 100%;
+        gap: 5px;
       }
 
       .nav-item {
-        padding: 12px 16px;
+        padding: 8px 16px;
         font-size: 0.9rem;
-        width: 100%;
-        justify-content: center;
       }
 
       .logout-btn {
         margin-left: 0;
-        margin-top: 15px;
-        width: 100%;
-        justify-content: center;
+        margin-top: 10px;
       }
 
       .header-content {
         flex-direction: column;
-        gap: 20px;
+        gap: 15px;
       }
 
       .section-header h1 {
@@ -927,73 +531,37 @@
 
     /* Analytics Specific Styles */
     .metric-card {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
-      padding: 24px;
+      background: linear-gradient(135deg, #f8fafc, #e1e8ed);
+      border-radius: 16px;
+      padding: 20px;
       text-align: center;
-      border: 2px solid rgba(225, 232, 237, 0.6);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid #e1e8ed;
+      transition: all 0.3s ease;
       cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    }
-
-    .metric-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-      transition: left 0.6s ease;
-    }
-
-    .metric-card:hover::before {
-      left: 100%;
     }
 
     .metric-card:hover {
       border-color: #667eea;
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
     }
 
     .metric-icon {
-      font-size: 2.5rem;
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+      font-size: 2rem;
+      margin-bottom: 10px;
     }
 
     .metric-label {
       font-size: 0.9rem;
       color: #7f8c8d;
-      font-weight: 600;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 500;
+      margin-bottom: 5px;
     }
 
     .metric-value {
-      font-size: 2rem;
-      font-weight: 800;
+      font-size: 1.8rem;
+      font-weight: 700;
       color: #2c3e50;
-      background: linear-gradient(135deg, #2c3e50, #667eea);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
     }
 
     .chart-container {
@@ -1017,57 +585,29 @@
     }
 
     .tab-btn {
-      background: rgba(248, 250, 252, 0.9);
-      backdrop-filter: blur(10px);
-      border: 2px solid rgba(225, 232, 237, 0.6);
-      border-radius: 16px;
-      padding: 14px 24px;
+      background: #f8fafc;
+      border: 2px solid #e1e8ed;
+      border-radius: 10px;
+      padding: 12px 20px;
       cursor: pointer;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      font-weight: 600;
+      transition: all 0.3s ease;
+      font-weight: 500;
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      margin-right: 12px;
-      font-size: 0.95rem;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
-    .tab-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-      transition: left 0.6s ease;
-    }
-
-    .tab-btn:hover::before {
-      left: 100%;
+      gap: 8px;
+      margin-right: 10px;
+      font-size: 0.9rem;
     }
 
     .tab-btn:hover {
       border-color: #667eea;
-      background: rgba(240, 244, 255, 0.9);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.15);
+      background: #f0f4ff;
     }
 
     .tab-btn.active {
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: #667eea;
       color: white;
-      border-color: transparent;
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-    }
-
-    .tab-btn.active:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+      border-color: #5a67d8;
     }
 
     .tab-content {
@@ -1214,6 +754,13 @@
       font-size: 0.9rem;
     }
 
+    .health-insights-container {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+
     .insight-section {
       margin-bottom: 20px;
     }
@@ -1246,6 +793,13 @@
     .tab-btn {
       font-size: 0.9rem;
       white-space: nowrap;
+    }
+
+    @media (max-width: 1024px) {
+      .health-insights-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
     }
 
     @media (max-width: 768px) {
@@ -1287,883 +841,6 @@
       color: #6c5ce7;
       border: 1px solid #a29bfe;
     }
-
-    /* Enhanced Visual Effects */
-    @keyframes shimmer {
-      0% { background-position: -200px 0; }
-      100% { background-position: calc(200px + 100%) 0; }
-    }
-
-    .shimmer {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200px 100%;
-      animation: shimmer 2s infinite;
-    }
-
-    /* Improved Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: rgba(241, 243, 244, 0.5);
-      border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      border-radius: 10px;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(135deg, #5a67d8, #6c5b7b);
-    }
-
-    /* Selection styling */
-    ::selection {
-      background: rgba(102, 126, 234, 0.3);
-      color: #2c3e50;
-    }
-
-    /* Enhanced Focus States & Accessibility */
-    *:focus {
-      outline: 2px solid rgba(102, 126, 234, 0.4);
-      outline-offset: 2px;
-    }
-
-    /* Focus indicators for specific elements */
-    .btn:focus,
-    .nav-item:focus,
-    .tab-btn:focus {
-      outline: 3px solid rgba(102, 126, 234, 0.6);
-      outline-offset: 2px;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
-    }
-
-    /* Loading states for buttons */
-    .btn.loading {
-      pointer-events: none;
-      position: relative;
-      color: transparent !important;
-    }
-
-    .btn.loading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top: 2px solid rgba(255, 255, 255, 0.8);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    /* Form validation styles */
-    .form-group.error input,
-    .form-group.error select,
-    .form-group.error textarea {
-      border-color: #e53e3e;
-      box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.1);
-    }
-
-    .form-group.success input,
-    .form-group.success select,
-    .form-group.success textarea {
-      border-color: #38a169;
-      box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.1);
-    }
-
-    .form-error {
-      color: #e53e3e;
-      font-size: 0.875rem;
-      margin-top: 4px;
-      display: none;
-    }
-
-    .form-error.show {
-      display: block;
-      animation: fadeIn 0.3s ease;
-    }
-
-    /* Tooltip styles */
-    .tooltip {
-      position: relative;
-      cursor: help;
-    }
-
-    .tooltip::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-      z-index: 1000;
-    }
-
-    .tooltip:hover::after {
-      opacity: 1;
-    }
-
-    /* Progress indicators */
-    .progress-bar {
-      width: 100%;
-      height: 4px;
-      background: rgba(225, 232, 237, 0.5);
-      border-radius: 2px;
-      overflow: hidden;
-      margin: 10px 0;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #667eea, #764ba2);
-      width: 0%;
-      transition: width 0.3s ease;
-      border-radius: 2px;
-    }
-
-    /* Enhanced feedback for interactions */
-    .feedback-success {
-      background: linear-gradient(135deg, #f0fff4, #e6fffa);
-      border: 1px solid #9ae6b4;
-      color: #38a169;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      animation: slideInDown 0.3s ease;
-    }
-
-    .feedback-error {
-      background: linear-gradient(135deg, #fff5f5, #fef7f7);
-      border: 1px solid #fed7d7;
-      color: #e53e3e;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      animation: slideInDown 0.3s ease;
-    }
-
-    @keyframes slideInDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Skeleton loading for content */
-    .skeleton {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200px 100%;
-      animation: shimmer 2s infinite;
-      border-radius: 4px;
-    }
-
-    .skeleton-text {
-      height: 1rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .skeleton-text:last-child {
-      width: 80%;
-    }
-
-    /* Smart form enhancements */
-    .form-group {
-      position: relative;
-      margin-bottom: 24px;
-    }
-
-    .floating-label {
-      position: absolute;
-      top: 16px;
-      left: 18px;
-      color: #7f8c8d;
-      transition: all 0.3s ease;
-      pointer-events: none;
-      background: white;
-      padding: 0 4px;
-    }
-
-    .floating-label.active,
-    input:focus ~ .floating-label,
-    input:not(:placeholder-shown) ~ .floating-label {
-      top: -8px;
-      font-size: 0.75rem;
-      color: #667eea;
-      font-weight: 500;
-    }
-
-    /* Copy to clipboard feedback */
-    .copy-feedback {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      z-index: 1000;
-      opacity: 0;
-      transform: translateY(-10px);
-      transition: all 0.3s ease;
-    }
-
-    .copy-feedback.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Loading animation for cards */
-    .card-loading {
-      background: linear-gradient(90deg, rgba(255, 255, 255, 0.9) 25%, rgba(248, 250, 252, 0.5) 50%, rgba(255, 255, 255, 0.9) 75%);
-      background-size: 200px 100%;
-      animation: shimmer 2s infinite;
-    }
-
-    /* Real-time status indicators */
-    .status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .status-indicator.online {
-      background: rgba(56, 161, 105, 0.1);
-      color: #38a169;
-    }
-
-    .status-indicator.saving {
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-    }
-
-    .status-indicator.error {
-      background: rgba(229, 62, 62, 0.1);
-      color: #e53e3e;
-    }
-
-    /* Enhanced micro-interactions */
-    .clickable {
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .clickable:hover {
-      transform: scale(1.02);
-    }
-
-    .clickable:active {
-      transform: scale(0.98);
-    }
-
-    /* Improved empty states */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: #7f8c8d;
-    }
-
-    .empty-state i {
-      font-size: 3rem;
-      margin-bottom: 16px;
-      opacity: 0.5;
-    }
-
-    .empty-state h3 {
-      font-size: 1.2rem;
-      margin-bottom: 8px;
-      color: #2c3e50;
-    }
-
-    .empty-state p {
-      margin-bottom: 20px;
-      max-width: 300px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    /* Smart loading placeholders */
-    .content-placeholder {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 20px;
-    }
-
-    .content-placeholder .skeleton-line {
-      height: 12px;
-      background: #f0f0f0;
-      border-radius: 6px;
-      animation: shimmer 2s infinite;
-    }
-
-    .content-placeholder .skeleton-line:nth-child(1) { width: 80%; }
-    .content-placeholder .skeleton-line:nth-child(2) { width: 100%; }
-    .content-placeholder .skeleton-line:nth-child(3) { width: 60%; }
-
-    /* Micro-interactions */
-    .interactive:hover {
-      transform: translateY(-1px);
-      transition: transform 0.2s ease;
-    }
-
-    /* Glass morphism containers */
-    .glass {
-      background: rgba(255, 255, 255, 0.25);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-    }
-
-    /* Status indicators */
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 8px;
-    }
-
-    .status-dot.active {
-      background: #38a169;
-      box-shadow: 0 0 8px rgba(56, 161, 105, 0.4);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    .status-dot.inactive {
-      background: #e53e3e;
-    }
-
-    /* Notification enhancement */
-    .notification {
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    /* Improved typography */
-    h1, h2, h3, h4, h5, h6 {
-      text-rendering: optimizeLegibility;
-    }
-
-    body {
-      text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* Enhanced button hover states */
-    .btn:active {
-      transform: translateY(-1px) scale(0.98);
-    }
-
-    /* Enhanced UX Improvements */
-    
-    /* Smart Loading States */
-    .loading-shimmer {
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-
-    .loading-dots::after {
-      content: '';
-      animation: loadingDots 1.5s infinite;
-    }
-
-    @keyframes loadingDots {
-      0%, 20% { content: '.'; }
-      40% { content: '..'; }
-      60%, 100% { content: '...'; }
-    }
-
-    /* Contextual Notifications */
-    .notification-toast {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      max-width: 400px;
-      padding: 16px 20px;
-      border-radius: 12px;
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: white;
-      font-weight: 500;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      transform: translateX(100%);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .notification-toast.show {
-      transform: translateX(0);
-    }
-
-    .notification-toast.success {
-      background: linear-gradient(135deg, rgba(56, 161, 105, 0.9), rgba(72, 187, 120, 0.9));
-      border-color: rgba(154, 230, 180, 0.5);
-    }
-
-    .notification-toast.error {
-      background: linear-gradient(135deg, rgba(229, 62, 62, 0.9), rgba(245, 101, 101, 0.9));
-      border-color: rgba(252, 165, 165, 0.5);
-    }
-
-    .notification-toast.info {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(118, 169, 250, 0.9));
-      border-color: rgba(191, 219, 254, 0.5);
-    }
-
-    .notification-toast.warning {
-      background: linear-gradient(135deg, rgba(214, 158, 46, 0.9), rgba(245, 158, 11, 0.9));
-      border-color: rgba(253, 230, 138, 0.5);
-    }
-
-    /* Smart Form Enhancements */
-    .form-step {
-      opacity: 0.5;
-      pointer-events: none;
-      transition: all 0.3s ease;
-    }
-
-    .form-step.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .form-step.completed {
-      opacity: 0.8;
-    }
-
-    .field-hint {
-      position: absolute;
-      top: 50%;
-      right: 12px;
-      transform: translateY(-50%);
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .form-group:hover .field-hint {
-      opacity: 1;
-    }
-
-    /* Interactive Feedback */
-    .success-checkmark {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #38a169;
-      position: relative;
-      animation: checkmarkBounce 0.6s ease;
-    }
-
-    .success-checkmark::after {
-      content: '✓';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    @keyframes checkmarkBounce {
-      0% { transform: scale(0); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-
-    /* Smart Auto-Save Indicators */
-    .auto-save-status {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #38a169;
-      border: 2px solid white;
-      opacity: 0;
-      transition: all 0.3s ease;
-      animation: saveIndicator 2s ease;
-    }
-
-    @keyframes saveIndicator {
-      0%, 100% { opacity: 0; transform: scale(1); }
-      20% { opacity: 1; transform: scale(1.2); }
-      80% { opacity: 1; transform: scale(1); }
-    }
-
-    /* Predictive Search */
-    .search-suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(225, 232, 237, 0.6);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 100;
-      opacity: 0;
-      transform: translateY(-10px);
-      transition: all 0.3s ease;
-      pointer-events: none;
-    }
-
-    .search-suggestions.show {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    .suggestion-item {
-      padding: 12px 16px;
-      cursor: pointer;
-      border-bottom: 1px solid rgba(225, 232, 237, 0.3);
-      transition: background 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .suggestion-item:hover {
-      background: rgba(102, 126, 234, 0.1);
-    }
-
-    .suggestion-item:last-child {
-      border-bottom: none;
-    }
-
-    /* Smart Contextual Help */
-    .contextual-help {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 24px;
-      box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      z-index: 999;
-    }
-
-    .contextual-help:hover {
-      transform: scale(1.1);
-      box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
-    }
-
-    .help-tooltip {
-      position: absolute;
-      bottom: 70px;
-      right: 0;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      white-space: nowrap;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.3s ease;
-      pointer-events: none;
-    }
-
-    .contextual-help:hover .help-tooltip {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Progressive Disclosure */
-    .expandable-section {
-      overflow: hidden;
-      transition: max-height 0.4s ease;
-    }
-
-    .expandable-section.collapsed {
-      max-height: 0;
-    }
-
-    .expand-trigger {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #667eea;
-      font-weight: 500;
-      transition: color 0.3s ease;
-    }
-
-    .expand-trigger:hover {
-      color: #5a67d8;
-    }
-
-    .expand-trigger .icon {
-      transition: transform 0.3s ease;
-    }
-
-    .expand-trigger.expanded .icon {
-      transform: rotate(180deg);
-    }
-
-    /* Intelligent Form Validation */
-    .validation-message {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #fff5f5;
-      border: 1px solid #fed7d7;
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 0.8rem;
-      color: #e53e3e;
-      margin-top: 4px;
-      opacity: 0;
-      transform: translateY(-10px);
-      transition: all 0.3s ease;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    .validation-message.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .validation-message.success {
-      background: #f0fff4;
-      border-color: #9ae6b4;
-      color: #38a169;
-    }
-
-    /* Smart Keyboard Navigation */
-    .keyboard-shortcut {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-family: monospace;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .btn:hover .keyboard-shortcut,
-    .form-group:hover .keyboard-shortcut {
-      opacity: 1;
-    }
-
-    /* Enhanced Loading States */
-    .content-skeleton {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 20px;
-    }
-
-    .skeleton-line {
-      height: 12px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      border-radius: 6px;
-    }
-
-    .skeleton-line.wide { width: 100%; }
-    .skeleton-line.medium { width: 75%; }
-    .skeleton-line.narrow { width: 50%; }
-
-    /* Smart Onboarding */
-    .onboarding-highlight {
-      position: relative;
-      z-index: 1001;
-    }
-
-    .onboarding-highlight::before {
-      content: '';
-      position: absolute;
-      top: -4px;
-      left: -4px;
-      right: -4px;
-      bottom: -4px;
-      background: rgba(102, 126, 234, 0.2);
-      border-radius: 8px;
-      animation: pulse 2s ease-in-out infinite;
-      z-index: -1;
-    }
-
-    .onboarding-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.3s ease;
-    }
-
-    .onboarding-overlay.show {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    /* Optimistic UI Updates */
-    .optimistic-update {
-      background: rgba(102, 126, 234, 0.1);
-      border-left: 4px solid #667eea;
-      animation: optimisticPulse 2s ease-in-out;
-    }
-
-    @keyframes optimisticPulse {
-      0%, 100% { background: rgba(102, 126, 234, 0.1); }
-      50% { background: rgba(102, 126, 234, 0.2); }
-    }
-
-    /* Enhanced Responsive Interactions */
-    @media (max-width: 768px) {
-      .notification-toast {
-        right: 10px;
-        left: 10px;
-        max-width: none;
-        transform: translateY(-100%);
-      }
-
-      .notification-toast.show {
-        transform: translateY(0);
-      }
-
-      .contextual-help {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-        bottom: 20px;
-        right: 20px;
-      }
-    }
-
-    /* Voice Command Indicators */
-    .voice-indicator {
-      position: absolute;
-      top: 50%;
-      right: 12px;
-      transform: translateY(-50%);
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #e53e3e;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .voice-indicator.active {
-      opacity: 1;
-      animation: voicePulse 1s ease-in-out infinite;
-    }
-
-    @keyframes voicePulse {
-      0%, 100% { transform: translateY(-50%) scale(1); }
-      50% { transform: translateY(-50%) scale(1.2); }
-    }
-
-    /* Smart Data Persistence Indicators */
-    .data-sync-indicator {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(10px);
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1px solid rgba(225, 232, 237, 0.6);
-      font-size: 0.8rem;
-      color: #667eea;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      opacity: 0;
-      transform: translateY(100%);
-      transition: all 0.3s ease;
-    }
-
-    .data-sync-indicator.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .sync-status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #38a169;
-    }
-
-    .sync-status-dot.syncing {
-      background: #667eea;
-      animation: pulse 1s ease-in-out infinite;
-    }
-
-    .sync-status-dot.error {
-      background: #e53e3e;
-    }
   </style>
 </head>
 <body>
@@ -2175,15 +852,7 @@
       </div>
       <div style="display: flex; align-items: center;">
         <div class="nav-menu">
-          <div class="nav-item" onclick="showSection('add-pet')">
-            <i class="fas fa-plus"></i>
-            <span>Add a Pet</span>
-          </div>
-          <div class="nav-item active" onclick="showSection('assistant')">
-            <i class="fas fa-robot"></i>
-            <span>Pet Health Assistant</span>
-          </div>
-          <div class="nav-item" onclick="showSection('recording')">
+          <div class="nav-item active" onclick="showSection('recording')">
             <i class="fas fa-microphone"></i>
             <span>Voice Recording</span>
           </div>
@@ -2209,320 +878,33 @@
   </div>
 
   <div class="container">
-    <!-- Simplified Pet Selection (Common for all pages except Add a Pet) -->
-    <div class="card" id="pet-selector-card">        <div class="section-title">
-          <i class="fas fa-paw"></i>
-          Select Your Pet
-          <span class="status-indicator online" id="pet-status">
-            <i class="fas fa-circle"></i>
-            Ready
-          </span>
-        </div>
-        <div class="select-wrapper">
-          <select id="pet-select" aria-label="Select your pet"></select>
-          <div class="form-error" id="pet-select-error"></div>
-        </div>
-    </div>
-
-    <!-- Add a Pet Section -->
-    <div id="add-pet-section" class="section">
-      <div class="section-header">
-        <h1>🐾 Add a Pet</h1>
-        <p>Create a new pet profile with complete breed and animal information</p>
+    <!-- Pet Selection Section (Common) -->
+    <div class="card">
+      <div class="section-title">
+        <i class="fas fa-paw"></i>
+        Select Your Pet
       </div>
-
-      <div class="card">
+      <div class="select-wrapper">
+        <select id="pet-select"></select>
+      </div>
+      
+      <div style="margin-top: 20px;">
         <div class="section-title">
           <i class="fas fa-plus-circle"></i>
-          Pet Information
+          Add New Pet
         </div>
-        <form id="add-pet-form" role="form" aria-label="Add new pet">
-          <div class="progress-bar">
-            <div class="progress-fill" id="form-progress"></div>
-          </div>
-          
-          <div class="form-group">
-            <label for="pet-name">Pet Name *</label>
-            <input 
-              type="text" 
-              id="pet-name" 
-              placeholder=" " 
-              required 
-              aria-describedby="pet-name-error"
-              data-tooltip="Enter your pet's full name"
-              class="tooltip"
-            />
-            <span class="floating-label">Enter your pet's name</span>
-            <div class="form-error" id="pet-name-error"></div>
-          </div>
-          
-          <div class="form-group">
-            <label for="animal-type">Animal Type *</label>
-            <select id="animal-type" required aria-describedby="animal-type-error">
-              <option value="">Select animal type</option>
-              <option value="dog">🐕 Dog</option>
-              <option value="cat">🐱 Cat</option>
-              <option value="bird">🐦 Bird</option>
-              <option value="rabbit">🐰 Rabbit</option>
-              <option value="hamster">🐹 Hamster</option>
-              <option value="guinea-pig">🐹 Guinea Pig</option>
-              <option value="fish">🐠 Fish</option>
-              <option value="reptile">🦎 Reptile</option>
-              <option value="other">🐾 Other</option>
-            </select>
-            <div class="form-error" id="animal-type-error"></div>
-          </div>
-          
-          <div class="form-group">
-            <label for="pet-breed">Breed</label>
-            <input 
-              type="text" 
-              id="pet-breed" 
-              placeholder=" " 
-              aria-describedby="pet-breed-help"
-              data-tooltip="Specific breed or mix helps us provide better health recommendations"
-              class="tooltip"
-            />
-            <span class="floating-label">Enter breed (e.g., Golden Retriever, Persian, etc.)</span>
-            <small id="pet-breed-help" style="color: #7f8c8d; font-size: 0.9rem;">
-              This helps us provide breed-specific health recommendations
-            </small>
-          </div>
-          
-          <div class="form-group">
-            <label for="pet-age">Age (optional)</label>
-            <input 
-              type="number" 
-              id="pet-age" 
-              placeholder=" " 
-              min="0" 
-              max="30" 
-              step="0.1"
-              aria-describedby="pet-age-error"
-              data-tooltip="Age helps us provide age-appropriate care recommendations"
-              class="tooltip"
-            />
-            <span class="floating-label">Age in years</span>
-            <div class="form-error" id="pet-age-error"></div>
-          </div>
-          
-          <div class="form-group">
-            <label for="pet-weight">Weight (optional)</label>
-            <input 
-              type="number" 
-              id="pet-weight" 
-              placeholder=" " 
-              min="0" 
-              step="0.1"
-              aria-describedby="pet-weight-error"
-              data-tooltip="Current weight helps monitor health trends"
-              class="tooltip"
-            />
-            <span class="floating-label">Weight in lbs</span>
-            <div class="form-error" id="pet-weight-error"></div>
-          </div>
-          
-          <div class="form-group">
-            <label for="pet-gender">Gender (optional)</label>
-            <select id="pet-gender" aria-describedby="pet-gender-error">
-              <option value="">Select gender</option>
-              <option value="male">♂️ Male</option>
-              <option value="female">♀️ Female</option>
-              <option value="male-neutered">♂️ Male (Neutered)</option>
-              <option value="female-spayed">♀️ Female (Spayed)</option>
-            </select>
-            <div class="form-error" id="pet-gender-error"></div>
-          </div>
-          
-          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;" id="create-pet-btn">
+        <div class="add-pet-form">
+          <input type="text" id="new-pet-name" placeholder="Enter pet name" />
+          <button class="btn btn-secondary" onclick="addNewPet()">
             <i class="fas fa-plus"></i>
-            Create Pet Profile
+            Add Pet
           </button>
-        </form>
-        
-        <div id="add-pet-status" class="status-message"></div>
-      </div>
-    </div>
-
-    <!-- AI Assistant Section -->
-    <div id="assistant-section" class="section active">
-      <div class="section-header">
-        <h1>🤖 Pet Health Assistant</h1>
-        <p>Chat with your AI assistant for personalized health advice based on your pet's complete health history</p>
-      </div>
-
-      <!-- Chat Interface -->
-      <div class="card" style="
-        background: white; 
-        border-radius: 20px; 
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.1); 
-        padding: 40px; 
-        margin-bottom: 40px; 
-        border: 2px solid rgba(102, 126, 234, 0.1);
-        position: relative;
-        overflow: hidden;
-      ">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(135deg, #667eea, #764ba2);"></div>
-        <div class="section-title" style="font-size: 1.5rem; margin-bottom: 25px;">
-          <i class="fas fa-comments"></i>
-          Chat with AI Assistant
-        </div>
-        
-        <!-- Chat Messages Container -->
-        <div id="chat-container" style="
-          height: 650px;
-          border: 2px solid rgba(225, 232, 237, 0.6);
-          border-radius: 24px;
-          overflow-y: auto;
-          padding: 30px;
-          background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.9));
-          backdrop-filter: blur(20px);
-          margin-bottom: 25px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          box-shadow: inset 0 4px 16px rgba(0, 0, 0, 0.05),
-                      0 4px 16px rgba(102, 126, 234, 0.1);
-          position: relative;
-          overflow-x: hidden;
-        ">
-          <div class="assistant-message">
-            <div style="display: flex; align-items: flex-start; gap: 16px;">
-              <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2, #4ecdc4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 22px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); animation: float 3s ease-in-out infinite;">
-                🤖
-              </div>
-              <div style="background: rgba(255, 255, 255, 0.95); padding: 24px; border-radius: 20px; border: 1px solid rgba(225, 232, 237, 0.6); flex: 1; line-height: 1.7; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); backdrop-filter: blur(10px); position: relative; overflow: hidden;">
-                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #4ecdc4); opacity: 0.7;"></div>
-                <strong style="color: #667eea; font-size: 1.2rem; background: linear-gradient(135deg, #667eea, #764ba2); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hello! I'm your Pet Health Assistant.</strong><br><br>
-                I have access to all your pet's health data including:
-                <ul style="margin: 16px 0; padding-left: 24px; color: #4a5568; line-height: 1.6;">
-                  <li style="margin: 8px 0;">📝 Voice notes and text entries</li>
-                  <li style="margin: 8px 0;">🏥 Medical records from PDFs</li>
-                  <li style="margin: 8px 0;">📊 Health tracking data</li>
-                  <li style="margin: 8px 0;">🩺 Veterinary knowledge base</li>
-                </ul>
-                <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(78, 205, 196, 0.1)); padding: 18px; border-radius: 16px; margin-top: 16px; border: 1px solid rgba(102, 126, 234, 0.2);">
-                  <strong style="color: #667eea; background: linear-gradient(135deg, #667eea, #764ba2); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Ask me questions like:</strong>
-                  <br><em style="color: #4a5568; font-style: italic;">"How has my pet's energy been lately?" or "What patterns do you see in their health data?"</em>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Enhanced Chat Input with Smart UX -->
-        <div style="display: flex; gap: 15px; align-items: flex-end;">
-          <div style="flex: 1; position: relative;">
-            <textarea 
-              id="chat-input" 
-              class="search-input"
-              placeholder="Ask me about your pet's health, symptoms, patterns, or get recommendations..."
-              style="min-height: 100px; resize: vertical; width: 100%; font-size: 1rem; line-height: 1.5; padding: 16px; border-radius: 12px; border: 2px solid #e1e8ed; transition: all 0.3s ease;"
-              aria-label="Chat with AI assistant"
-              maxlength="1000"
-            ></textarea>
-            <div style="font-size: 0.75rem; color: #7f8c8d; text-align: right; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: #667eea; font-weight: 500;">💡 Try: "Is my dog's weight normal?" or "What vaccines does my cat need?"</span>
-              <span id="char-count">0</span>/1000 characters
-            </div>
-          </div>
-          <button 
-            id="send-chat" 
-            class="btn btn-primary" 
-            onclick="sendChatMessage()"
-            style="height: fit-content; white-space: nowrap; padding: 16px 24px; font-size: 1rem; font-weight: 600; position: relative;"
-            aria-label="Send message to AI assistant"
-          >
-            <span class="keyboard-shortcut">Enter</span>
-            <i class="fas fa-paper-plane"></i>
-            Ask Assistant
-          </button>
-        </div>
-        
-        <!-- Quick Questions -->
-        <div style="margin-top: 20px;">
-          <div style="font-weight: 600; margin-bottom: 15px; color: #667eea; font-size: 1.1rem;">
-            <i class="fas fa-bolt"></i> Quick Questions:
-          </div>
-          <div id="quick-questions-container" style="display: flex; flex-wrap: wrap; gap: 12px;">
-            <div id="quick-questions-loading" style="color: #7f8c8d; font-style: italic;">
-              <i class="fas fa-spinner fa-spin"></i> Loading quick questions...
-            </div>
-            <div id="quick-questions-buttons" style="display: none;">
-              <div style="display: flex; flex-wrap: wrap; gap: 12px; width: 100%;">
-                <button class="quick-question-btn" onclick="askQuickQuestion('How has my pet been feeling lately?')">
-                  <i class="fas fa-heart"></i> Recent Health Summary
-                </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('What patterns do you see in my pet\'s behavior?')">
-                  <i class="fas fa-chart-line"></i> Behavior Patterns
-                </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('Any health concerns I should be aware of?')">
-                  <i class="fas fa-exclamation-triangle"></i> Health Alerts
-                </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('Generate a health report for my vet visit')">
-                  <i class="fas fa-file-medical"></i> Vet Report
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Health Insights Section -->
-      <div style="margin-bottom: 40px;">
-        <div class="section-header" style="margin-bottom: 30px; padding: 30px 25px;">
-          <h2 style="color: #667eea; font-size: 2rem; margin-bottom: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #4ecdc4 100%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);">🔍 Health Insights</h2>
-          <p style="color: #4a5568; font-size: 1.1rem; font-weight: 500; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);">Search our knowledge base and get AI-powered insights from your pet's health data</p>
-        </div>
-
-        <!-- Knowledge Search -->
-        <div class="card" style="margin-bottom: 30px;">
-          <div class="section-title">
-            <i class="fas fa-search"></i>
-            Search Pet Health Knowledge
-          </div>
-          
-          <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-            <input 
-              type="text" 
-              id="knowledge-search" 
-              placeholder="Search symptoms, treatments, conditions..."
-              style="flex: 1;"
-            />
-            <button class="btn btn-secondary" onclick="searchKnowledge()">
-              <i class="fas fa-search"></i>
-              Search
-            </button>
-          </div>
-          
-          <div id="knowledge-results" style="min-height: 100px; background: #f8fafc; border-radius: 8px; padding: 20px; border: 1px solid #e1e8ed;">
-            <div style="text-align: center; color: #7f8c8d;">
-              <i class="fas fa-book-medical"></i>
-              <p>Search our veterinary knowledge base for symptoms, treatments, and health information</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Health Analytics Summary -->
-        <div class="card">
-          <div class="section-title">
-            <i class="fas fa-chart-pie"></i>
-            AI Health Insights
-          </div>
-          
-          <div id="ai-health-summary" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 12px;">
-            <div style="text-align: center;">
-              <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-              <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Health Insights</div>
-              <div style="opacity: 0.9;">Ask a question below or use the chat to get personalized health insights based on your pet's data</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
 
     <!-- Voice Recording Section -->
-    <div id="recording-section" class="section">
+    <div id="recording-section" class="section active">
       <div class="section-header">
         <h1>Voice Recording</h1>
         <p>Record voice notes about your pet's health, daily activities, or general observations</p>
@@ -2570,12 +952,12 @@
           </div>
         </div>
         
-        <button id="record-button" class="btn btn-primary record-button" onclick="toggleRecording()" aria-label="Start or stop voice recording">
+        <button id="record-button" class="btn btn-primary record-button" onclick="toggleRecording()">
           <i class="fas fa-microphone"></i>
-          <span id="record-button-text">Start Recording</span>
+          Start Recording
         </button>
 
-        <div id="status" class="status" role="status" aria-live="polite"></div>
+        <div id="status" class="status"></div>
 
         <div id="output" class="output">
           <div class="transcript">
@@ -2612,6 +994,16 @@
             Save Page Notes
           </button>
           <div id="markdown-status" class="status-message"></div>
+          
+          <!-- Display saved notes -->
+          <div style="margin-top: 15px;">
+            <h4 style="color: #2c3e50; margin-bottom: 10px;">
+              <i class="fas fa-eye"></i> Current Notes
+            </h4>
+            <div id="markdown-content" style="padding: 10px; background: #f8fafc; border-radius: 5px; border-left: 4px solid #667eea; min-height: 40px;">
+              <em style="color: #7f8c8d;">No notes saved yet</em>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -2655,12 +1047,7 @@
             </small>
           </div>
           <div class="form-group">
-            <label for="pet-input-text" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">
-              Share what's happening with your pet:
-            </label>
-            <textarea 
-              id="pet-input-text" 
-              placeholder="Share anything about your pet... 
+            <textarea id="pet-input-text" placeholder="Share anything about your pet... 
 
 Examples:
 • Medical: 'Noticed limping on back leg after walk, seems to favor it when walking'
@@ -2670,21 +1057,9 @@ Examples:
 • Routine: 'Perfect morning - ate breakfast eagerly, energetic walk, now napping in sunny spot'
 • Mixed: 'Great walk but noticed heavier breathing than usual during exercise'
 
-The AI will automatically detect the content type and provide the perfect summary!"
-              style="width: 100%; min-height: 150px; padding: 20px; border: 2px solid #e1e8ed; border-radius: 12px; font-size: 1rem; line-height: 1.6; resize: vertical;"
-              maxlength="2000"
-              aria-describedby="text-input-help"
-            ></textarea>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-              <small id="text-input-help" style="color: #7f8c8d; font-size: 0.9rem;">
-                <i class="fas fa-brain"></i> AI will automatically categorize and summarize your input
-              </small>
-              <span style="font-size: 0.75rem; color: #7f8c8d;">
-                <span id="text-char-count">0</span>/2000 characters
-              </span>
-            </div>
+The AI will automatically detect the content type and provide the perfect summary!"></textarea>
           </div>
-          <button class="btn btn-success" onclick="submitPetText()" id="submit-note-btn" aria-label="Submit pet note for AI processing">
+          <button class="btn btn-success" onclick="submitPetText()">
             <i class="fas fa-plus"></i>
             Add Smart Note
           </button>
@@ -2843,7 +1218,26 @@ The AI will automatically detect the content type and provide the perfect summar
         </div>
       </div>
 
-
+      <!-- Enhanced Health Insights Section -->
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-brain"></i>
+          AI Health Insights
+        </div>
+        <div id="health-insights" style="min-height: 200px;">
+          <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+            <i class="fas fa-robot"></i>
+            <p>Generating personalized health insights...</p>
+          </div>
+        </div>
+        <button onclick="generateHealthInsights()" class="btn btn-secondary" style="margin-top: 15px;">
+          <i class="fas fa-sync"></i>
+          Refresh Insights
+        </button>
+        <small style="display: block; margin-top: 5px; color: #666;">
+          Debug: Current pet ID: <span id="debug-pet-id">None</span>
+        </small>
+      </div>
     </div>
 
     <!-- Tracking Section -->
@@ -3334,7 +1728,6 @@ The AI will automatically detect the content type and provide the perfect summar
     let currentUser = null;
     let selectedPet = "";
     let isRecording = false;
-    let assistantDataLoaded = false; // Track if assistant data has been loaded
 
     // Navigation functionality
     window.showSection = function(sectionName) {
@@ -3346,9 +1739,7 @@ The AI will automatically detect the content type and provide the perfect summar
       // Find and activate the correct nav item
       const navItems = document.querySelectorAll('.nav-item');
       navItems.forEach(item => {
-        if ((sectionName === 'add-pet' && item.textContent.includes('Add a Pet')) ||
-            (sectionName === 'assistant' && item.textContent.includes('Pet Health Assistant')) ||
-            (sectionName === 'recording' && item.textContent.includes('Voice Recording')) ||
+        if ((sectionName === 'recording' && item.textContent.includes('Voice Recording')) ||
             (sectionName === 'notes' && item.textContent.includes('Notes & Files')) ||
             (sectionName === 'analytics' && item.textContent.includes('Analytics')) ||
             (sectionName === 'tracking' && item.textContent.includes('Tracking'))) {
@@ -3356,23 +1747,12 @@ The AI will automatically detect the content type and provide the perfect summar
         }
       });
 
-      // Show/hide pet selector card based on section
-      const petSelectorCard = document.getElementById('pet-selector-card');
-      if (sectionName === 'add-pet') {
-        petSelectorCard.style.display = 'none';
-      } else {
-        petSelectorCard.style.display = 'block';
-      }
-
       // Update sections
       document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
       });
 
-      if (sectionName === 'add-pet') {
-        document.getElementById('add-pet-section').classList.add('active');
-        window.location.hash = 'add-pet';
-      } else if (sectionName === 'recording') {
+      if (sectionName === 'recording') {
         document.getElementById('recording-section').classList.add('active');
         window.location.hash = 'recording';
       } else if (sectionName === 'notes') {
@@ -3384,33 +1764,26 @@ The AI will automatically detect the content type and provide the perfect summar
         loadDashboard(); // Load dashboard when switching to analytics
         updateCharts(); // Update charts when switching to analytics
         generateDailyHeadlines(); // Generate today's headlines
+        generateHealthInsights(); // Generate AI health insights
         window.location.hash = 'analytics';
       } else if (sectionName === 'tracking') {
         document.getElementById('tracking-section').classList.add('active');
         loadRecentEntries(); // Load recent entries for tracking
         window.location.hash = 'tracking';
-      } else if (sectionName === 'assistant') {
-        document.getElementById('assistant-section').classList.add('active');
-        // Don't load assistant data automatically - only when user interacts
-        window.location.hash = 'assistant';
       }
     };
 
     // Handle URL hash navigation
     function handleHashNavigation() {
       const hash = window.location.hash.substring(1);
-      if (hash === 'add-pet') {
-        showSection('add-pet');
-      } else if (hash === 'notes') {
+      if (hash === 'notes') {
         showSection('notes');
       } else if (hash === 'analytics') {
         showSection('analytics');
       } else if (hash === 'tracking') {
         showSection('tracking');
-      } else if (hash === 'recording') {
-        showSection('recording');
       } else {
-        showSection('assistant'); // Default to assistant
+        showSection('recording'); // Default to recording
       }
     }
 
@@ -3419,62 +1792,33 @@ The AI will automatically detect the content type and provide the perfect summar
 
     // Pet management functions
     async function loadPets() {
-      try {
-        const res = await fetch(`/api/user-pets/${currentUser.uid}`);
-        const pets = await res.json();
-        const select = document.getElementById("pet-select");
-        select.innerHTML = "";
+      console.log("loadPets: Starting to load pets...");
+      const res = await fetch(`/api/user-pets/${currentUser.uid}`);
+      const pets = await res.json();
+      console.log("loadPets: Received pets:", pets);
+      
+      const select = document.getElementById("pet-select");
+      select.innerHTML = "";
 
-        if (pets.length === 0) {
-          // No pets found - add a placeholder option and show add-pet section
-          const option = document.createElement("option");
-          option.value = "";
-          option.textContent = "No pets added yet";
-          select.appendChild(option);
-          
-          console.log('No pets found - redirecting to add-pet section');
-          hideQuickQuestions();
-          
-          // Auto-navigate to add-pet section if no pets exist
-          setTimeout(() => showSection('add-pet'), 100);
-          return;
-        }
+      pets.forEach(pet => {
+        const option = document.createElement("option");
+        option.value = pet.id;
+        option.textContent = pet.name || pet.id;
+        select.appendChild(option);
+      });
 
-        pets.forEach(pet => {
-          const option = document.createElement("option");
-          option.value = pet.id;
-          option.textContent = pet.name || pet.id;
-          select.appendChild(option);
-        });
-
-        if (pets.length > 0) {
-          selectedPet = pets[0].id;
-          select.value = selectedPet;
-          console.log('First pet selected:', selectedPet);
-          
-          // Show quick questions now that we have a pet selected
-          showQuickQuestions();
-        } else {
-          console.log('No pets found');
-          hideQuickQuestions();
-        }
-      } catch (error) {
-        console.error('Error loading pets:', error);
+      if (pets.length > 0) {
+        selectedPet = pets[0].id;
+        select.value = selectedPet;
+        console.log("loadPets: Set selectedPet to:", selectedPet);
+      } else {
+        console.log("loadPets: No pets found");
       }
     }
 
     document.getElementById("pet-select").addEventListener("change", async (e) => {
       selectedPet = e.target.value;
       console.log('Pet selection changed to:', selectedPet);
-      
-      // Reset all assistant/chat/insight UI and state when pet changes
-      resetAssistantState();
-      
-      if (selectedPet) {
-        showQuickQuestions();
-      } else {
-        hideQuickQuestions();
-      }
       
       // Get pet name for notification
       const petSelect = document.getElementById("pet-select");
@@ -3491,6 +1835,7 @@ The AI will automatically detect the content type and provide the perfect summar
         loadDashboard(); // Load dashboard metrics
         updateCharts(); // Update visualization charts
         generateDailyHeadlines(); // Generate today's headlines for new pet
+        generateHealthInsights(); // Generate AI health insights for new pet
       }
       
       // Also refresh tracking section if it's active
@@ -3498,261 +1843,118 @@ The AI will automatically detect the content type and provide the perfect summar
         showNotification(`Loading tracking data for ${petName}...`, 'info', 2000);
         loadRecentEntries(); // Load recent entries for new pet
       }
+      
+      // Refresh notes section if it's active
+      if (currentSection && currentSection.id === 'notes-section') {
+        console.log('Refreshing notes for new pet:', selectedPet);
+        await loadMarkdown(); // Load notes for new pet
+      }
     });
 
-    // Enhanced Pet Creation Function
-    window.handleAddPetForm = async function(event) {
-      event.preventDefault();
-      
-      if (!currentUser) {
-        showNotification("Please log in first", 'error');
-        return;
-      }
-
-      const form = document.getElementById('add-pet-form');
-      const statusElement = document.getElementById('add-pet-status');
-      
-      // Get form data
-      const formData = new FormData(form);
-      const petData = {
-        name: document.getElementById('pet-name').value.trim(),
-        animal_type: document.getElementById('animal-type').value,
-        breed: document.getElementById('pet-breed').value.trim(),
-        age: document.getElementById('pet-age').value ? parseInt(document.getElementById('pet-age').value) : null,
-        weight: document.getElementById('pet-weight').value ? parseFloat(document.getElementById('pet-weight').value) : null,
-        gender: document.getElementById('pet-gender').value
-      };
-
-      // Validation
-      if (!petData.name) {
-        statusElement.textContent = "Please enter a pet name";
-        statusElement.className = "status-message error";
-        return;
-      }
-
-      if (!petData.animal_type) {
-        statusElement.textContent = "Please select an animal type";
-        statusElement.className = "status-message error";
-        return;
-      }
-
-      try {
-        statusElement.textContent = "Creating pet profile...";
-        statusElement.className = "status-message";
-        statusElement.style.display = "block";
-
-        const response = await fetch(`/api/pets/${currentUser.uid}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(petData)
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          statusElement.textContent = `✅ ${petData.name} has been added successfully!`;
-          statusElement.className = "status-message success";
-          
-          // Reset form
-          form.reset();
-          
-          // Reload pets list
-          await loadPets();
-          
-          // Navigate to assistant page with the new pet
-          setTimeout(() => {
-            showSection('assistant');
-            showNotification(`Welcome ${petData.name}! You can now start using the health assistant.`, 'success');
-          }, 1500);
-          
-        } else {
-          throw new Error(result.error || 'Failed to create pet');
-        }
-
-      } catch (error) {
-        console.error('Error creating pet:', error);
-        statusElement.textContent = `❌ Error: ${error.message}`;
-        statusElement.className = "status-message error";
-      }
+    window.addNewPet = async function () {
+      const name = document.getElementById("new-pet-name").value;
+      if (!name) return alert("Please enter a pet name");
+      await fetch(`/api/pets/${currentUser.uid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      document.getElementById("new-pet-name").value = "";
+      await loadPets();
     };
 
     // Voice recording functions
     window.toggleRecording = async function () {
-      if (!currentUser) {
-        showNotification("Please log in first", 'error');
-        return;
-      }
-      
+      if (!currentUser) return alert("User not authenticated");
       const petId = document.getElementById("pet-select").value;
-      if (!petId) {
-        showNotification("Please select a pet first", 'warning');
-        return;
-      }
+      if (!petId) return alert("Please select a pet first");
 
       const button = document.getElementById("record-button");
       const statusElement = document.getElementById("status");
       const outputElement = document.getElementById("output");
       const loadingOverlay = document.getElementById("loading-overlay");
 
-      // Prevent double-clicks during processing
-      if (button.disabled) {
-        console.log("Button disabled, ignoring click");
-        return;
-      }
-
-      console.log("🔍 Current recording state:", isRecording);
-      console.log("🔍 Button classes:", button.className);
-      console.log("🔍 Button innerHTML:", button.innerHTML);
-
       if (!isRecording) {
         // Start recording
-        try {
-          console.log("🎙️ Starting recording...");
-          button.disabled = true; // Prevent double-click
-          
-          const res = await fetch('/api/start_recording', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: currentUser.uid, pet: petId })
-          });
+        const res = await fetch('/api/start_recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: currentUser.uid, pet: petId })
+        });
 
-          const data = await res.json();
-          console.log('Start recording response:', data);
-          
-          if (data.status === "recording") {
-            isRecording = true;
-            button.innerHTML = '<i class="fas fa-stop"></i> <span>Stop Recording</span>';
-            button.classList.add('recording');
-            button.disabled = false; // Re-enable for stop action
-            statusElement.textContent = "🎙️ Recording in progress... Click Stop when finished";
-            statusElement.className = "status recording";
-            statusElement.style.display = "block";
-            outputElement.classList.remove("has-content");
-            showNotification('Recording started! Speak clearly into your microphone.', 'info');
-          } else {
-            button.disabled = false; // Re-enable on error
-            statusElement.textContent = "❌ Failed to start recording: " + (data.message || data.error || "Unknown error");
-            statusElement.className = "status error";
-            statusElement.style.display = "block";
-            showNotification('Failed to start recording. Please try again.', 'error');
-          }
-        } catch (error) {
-          console.error('Error starting recording:', error);
-          button.disabled = false; // Re-enable on error
+        const data = await res.json();
+        if (data.status === "recording") {
+          isRecording = true;
+          button.innerHTML = '<i class="fas fa-stop"></i> Stop Recording';
+          button.classList.add('recording');
+          statusElement.textContent = "🎙️ Recording in progress... Click Stop when finished";
+          statusElement.className = "status recording";
+          outputElement.classList.remove("has-content");
+        } else {
           statusElement.textContent = "❌ Failed to start recording";
           statusElement.className = "status error";
-          statusElement.style.display = "block";
-          showNotification('Network error. Please check your connection and try again.', 'error');
         }
       } else {
         // Stop recording
-        try {
-          console.log("🛑 Stopping recording...");
-          button.disabled = true;
-          button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Processing...</span>';
-          statusElement.textContent = "⏳ Processing your recording...";
-          statusElement.className = "status processing";
-          statusElement.style.display = "block";
-          loadingOverlay.style.display = "flex";
-          
-          const res = await fetch('/api/stop_recording', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: currentUser.uid, pet: petId })
-          });
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        statusElement.textContent = "⏳ Processing your recording...";
+        statusElement.className = "status processing";
+        loadingOverlay.style.display = "flex";
+        
+        const res = await fetch('/api/stop_recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: currentUser.uid, pet: petId })
+        });
 
-          const data = await res.json();
-          console.log('Stop recording response:', data);
+        const data = await res.json();
+        loadingOverlay.style.display = "none";
+        
+        isRecording = false;
+        button.innerHTML = '<i class="fas fa-microphone"></i> Start Recording';
+        button.classList.remove('recording');
+        button.disabled = false;
+        
+        if (data.status === "success" && data.transcript && data.summary) {
+          document.getElementById("transcript-content").textContent = data.transcript;
+          document.getElementById("summary-content").textContent = data.summary;
           
-          // Handle both successful AI processing and basic transcription
-          if (data.status === "success" && data.transcript && data.summary) {
-            // Full AI processing successful
-            document.getElementById("transcript-content").textContent = data.transcript;
-            document.getElementById("summary-content").textContent = data.summary;
-            
-            // Show content type badge
-            const contentTypeBadge = document.getElementById("content-type-badge");
-            const contentType = data.content_type || "MIXED";
-            const confidence = data.confidence || 0.5;
-            
-            let badgeClass = "badge-mixed";
-            let badgeIcon = "fas fa-brain";
-            let badgeText = contentType;
-            
-            if (contentType === "MEDICAL") {
-              badgeClass = "badge-medical";
-              badgeIcon = "fas fa-heartbeat";
-              badgeText = "Health & Medical";
-            } else if (contentType === "DAILY_ACTIVITY") {
-              badgeClass = "badge-activity";
-              badgeIcon = "fas fa-heart";
-              badgeText = "Daily Life & Activities";
-            } else {
-              badgeText = "Mixed Content";
-            }
-            
-            contentTypeBadge.innerHTML = `<i class="${badgeIcon}"></i> ${badgeText}`;
-            contentTypeBadge.className = `content-type-badge ${badgeClass}`;
-            contentTypeBadge.style.display = "inline-block";
-            
-            outputElement.classList.add("has-content");
-            statusElement.textContent = `✅ ${badgeText} processed successfully!`;
-            statusElement.className = "status success";
-            
-            showNotification('Recording processed successfully!', 'success');
-            
-            setTimeout(() => {
-              statusElement.style.display = "none";
-            }, 5000);
-          } else if (data.status === "stopped" && data.transcript) {
-            // Basic transcription successful (no AI processing)
-            document.getElementById("transcript-content").textContent = data.transcript;
-            document.getElementById("summary-content").textContent = "Transcription completed successfully. AI processing was not available.";
-            
-            // Hide content type badge for basic transcription
-            const contentTypeBadge = document.getElementById("content-type-badge");
-            contentTypeBadge.style.display = "none";
-            
-            outputElement.classList.add("has-content");
-            statusElement.textContent = "✅ Recording transcribed successfully!";
-            statusElement.className = "status success";
-            
-            showNotification('Recording transcribed successfully!', 'success');
-            
-            setTimeout(() => {
-              statusElement.style.display = "none";
-            }, 5000);
-          } else if (data.status === "stopped" || data.status === "success") {
-            // Recording stopped but no transcript (likely no speech detected)
-            statusElement.textContent = "⚠️ Recording stopped but no speech was detected. Try speaking louder or closer to your microphone.";
-            statusElement.className = "status error";
-            showNotification('No speech detected in recording. Please try again.', 'warning');
+          // Show content type badge
+          const contentTypeBadge = document.getElementById("content-type-badge");
+          const contentType = data.content_type || "MIXED";
+          const confidence = data.confidence || 0.5;
+          
+          let badgeClass = "badge-mixed";
+          let badgeIcon = "fas fa-brain";
+          let badgeText = contentType;
+          
+          if (contentType === "MEDICAL") {
+            badgeClass = "badge-medical";
+            badgeIcon = "fas fa-heartbeat";
+            badgeText = "Health & Medical";
+          } else if (contentType === "DAILY_ACTIVITY") {
+            badgeClass = "badge-activity";
+            badgeIcon = "fas fa-heart";
+            badgeText = "Daily Life & Activities";
           } else {
-            // Error case
-            const errorMsg = data.error || data.message || "Unknown error";
-            statusElement.textContent = "❌ Error processing recording: " + errorMsg;
-            statusElement.className = "status error";
-            console.error('Recording processing error:', data);
-            showNotification('Error processing recording: ' + errorMsg, 'error');
+            badgeText = "Mixed Content";
           }
-        } catch (error) {
-          console.error('Error stopping recording:', error);
-          statusElement.textContent = "❌ Network error while processing recording";
-          statusElement.className = "status error";
-          showNotification('Network error. Please check your connection and try again.', 'error');
-        } finally {
-          // Always reset the button state regardless of success or failure
-          console.log("🔄 Resetting recording UI state");
-          loadingOverlay.style.display = "none";
-          isRecording = false;
-          button.innerHTML = '<i class="fas fa-microphone"></i> <span>Start Recording</span>';
-          button.classList.remove('recording');
-          button.disabled = false;
           
-          // Ensure status is visible if there was an error
-          if (statusElement.className.includes('error')) {
-            statusElement.style.display = "block";
-          }
+          contentTypeBadge.innerHTML = `<i class="${badgeIcon}"></i> ${badgeText}`;
+          contentTypeBadge.className = `content-type-badge ${badgeClass}`;
+          contentTypeBadge.style.display = "inline-block";
+          
+          outputElement.classList.add("has-content");
+          statusElement.textContent = `✅ ${badgeText} processed successfully!`;
+          statusElement.className = "status success";
+          
+          setTimeout(() => {
+            statusElement.style.display = "none";
+          }, 5000);
+        } else {
+          statusElement.textContent = "❌ Error processing recording: " + (data.error || "Unknown error");
+          statusElement.className = "status error";
         }
       }
     };
@@ -3882,24 +2084,21 @@ The AI will automatically detect the content type and provide the perfect summar
       }
     };
 
-    // Analytics form handlers
-    function setupAnalyticsFormHandlers() {
-      console.log("Setting up analytics form handlers...");
-      
-      // PDF upload form handler
+    // PDF form handler
+    function setupPdfFormHandler() {
       const pdfForm = document.getElementById("pdf-form");
       if (pdfForm) {
         pdfForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           
           if (!currentUser) {
-            alert("User not authenticated");
+            showNotification("User not authenticated", 'error');
             return;
           }
           
           const petId = document.getElementById("pet-select").value;
           if (!petId) {
-            alert("Please select a pet first");
+            showNotification("Please select a pet first", 'error');
             return;
           }
           
@@ -3907,74 +2106,86 @@ The AI will automatically detect the content type and provide the perfect summar
           const file = fileInput.files[0];
           
           if (!file) {
-            alert("Please select a PDF file");
+            showNotification("Please select a PDF file", 'error');
             return;
           }
           
           if (file.type !== "application/pdf") {
-            alert("Please select a valid PDF file");
+            showNotification("Please select a valid PDF file", 'error');
             return;
           }
           
-          if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            alert("File size too large. Please select a file under 10MB");
-            return;
-          }
+          const loadingOverlay = document.getElementById("loading-overlay");
+          const resultDiv = document.getElementById("pdf-result");
           
           try {
-            // Show loading state
-            const resultBox = document.getElementById("pdf-result");
-            resultBox.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Uploading and analyzing PDF...</div>';
-            resultBox.classList.add("has-content");
+            loadingOverlay.style.display = "flex";
+            resultDiv.innerHTML = '<p style="color: #667eea;">🔄 Uploading and analyzing PDF...</p>';
             
             // Create FormData for file upload
             const formData = new FormData();
             formData.append("file", file);
-            formData.append("uid", currentUser.uid);
-            formData.append("pet", petId);
             
-            const response = await fetch("/api/upload_pdf", {
-              method: "POST",
+            // Upload PDF with uid and pet as query parameters
+            const uploadResponse = await fetch(`/api/upload_pdf?uid=${currentUser.uid}&pet=${petId}`, {
+              method: 'POST',
               body: formData
             });
             
-            const data = await response.json();
-            
-            if (response.ok && data.summary) {
-              resultBox.innerHTML = `
-                <div style="color: #38a169; margin-bottom: 15px;">
-                  <i class="fas fa-check-circle"></i> PDF uploaded and analyzed successfully!
-                </div>
-                <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #4ecdc4;">
-                  <h4 style="margin-bottom: 10px;"><i class="fas fa-file-medical"></i> ${file.name}</h4>
-                  <div style="margin-bottom: 10px;"><strong>AI Summary:</strong></div>
-                  <div style="line-height: 1.6;">${data.summary}</div>
-                  ${data.url ? `<div style="margin-top: 10px;"><a href="${data.url}" target="_blank" style="color: #667eea;"><i class="fas fa-external-link-alt"></i> View Original Document</a></div>` : ''}
-                </div>
-              `;
-              
-              // Clear the file input
-              fileInput.value = "";
-              
-              // Show success notification
-              showNotification("PDF uploaded and analyzed successfully!", "success");
-              
-            } else {
-              throw new Error(data.error || "Failed to process PDF");
+            if (!uploadResponse.ok) {
+              throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
             }
             
-          } catch (error) {
-            console.error("PDF upload error:", error);
-            const resultBox = document.getElementById("pdf-result");
-            resultBox.innerHTML = `
-              <div style="color: #e53e3e; padding: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px;">
-                <i class="fas fa-exclamation-triangle"></i> Error uploading PDF: ${error.message}
+            const uploadData = await uploadResponse.json();
+            
+            // Display success message and summary
+            resultDiv.innerHTML = `
+              <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; color: #155724;">
+                <h4 style="margin: 0 0 10px 0;"><i class="fas fa-check-circle"></i> PDF Processed Successfully</h4>
+                <p><strong>File:</strong> ${file.name}</p>
+                <p><strong>Summary:</strong> ${uploadData.summary}</p>
               </div>
             `;
-            showNotification("Error uploading PDF", "error");
+            
+            // Clear the file input
+            fileInput.value = "";
+            
+            // Refresh analytics/charts if we're on analytics section
+            const currentSection = document.querySelector('.section.active');
+            if (currentSection && currentSection.id === 'analytics-section') {
+              await loadDashboard();
+              await updateCharts();
+            }
+            
+            // Try to refresh markdown (this might call /api/markdown internally)
+            try {
+              await loadMarkdown();
+            } catch (error) {
+              console.log("Note: markdown refresh failed, but PDF upload succeeded:", error);
+            }
+            
+            showNotification("PDF uploaded and analyzed successfully!", 'success');
+            
+          } catch (error) {
+            console.error('Error uploading PDF:', error);
+            resultDiv.innerHTML = `
+              <div style="padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px; color: #721c24;">
+                <h4 style="margin: 0 0 10px 0;"><i class="fas fa-exclamation-triangle"></i> Upload Failed</h4>
+                <p>Error: ${error.message}</p>
+                <p>Please try again or contact support if the issue persists.</p>
+              </div>
+            `;
+            showNotification("PDF upload failed", 'error');
+          } finally {
+            loadingOverlay.style.display = "none";
           }
         });
       }
+    }
+
+    // Analytics form handlers
+    function setupAnalyticsFormHandlers() {
+      console.log("Setting up analytics form handlers...");
       
       // Set default times for forms
       const now = new Date();
@@ -4766,6 +2977,134 @@ The AI will automatically detect the content type and provide the perfect summar
       });
     }
 
+    // Generate enhanced health insights
+    async function generateHealthInsights() {
+      if (!selectedPet) return;
+      
+      console.log('Generating health insights for pet:', selectedPet);
+      
+      // Update debug display
+      const debugElement = document.getElementById('debug-pet-id');
+      if (debugElement) {
+        debugElement.textContent = selectedPet;
+      }
+      
+      const container = document.getElementById('health-insights');
+      container.innerHTML = `
+        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+          <div style="
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e1e8ed;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+          "></div>
+          <p>Generating personalized AI insights for ${selectedPet}...</p>
+        </div>
+      `;
+      
+      try {
+        const url = `/api/pets/${selectedPet}/health_insights?days=30&_t=${Date.now()}`;
+        console.log('Fetching health insights from:', url);
+        const response = await fetch(url, {
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        const data = await response.json();
+        
+        console.log('Health insights response:', data);
+        
+        if (data.insights) {
+          const insights = data.insights;
+          const html = `
+            <div class="health-insights-container">
+              <div class="health-score">
+                <div class="score-circle" style="
+                  width: 80px;
+                  height: 80px;
+                  border-radius: 50%;
+                  background: conic-gradient(#38a169 ${insights.overall_health_score * 36}deg, #e2e8f0 0deg);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  margin: 0 auto 20px;
+                  position: relative;
+                ">
+                  <div style="
+                    width: 60px;
+                    height: 60px;
+                    background: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 700;
+                    font-size: 1.2rem;
+                    color: #2c3e50;
+                  ">
+                    ${insights.overall_health_score}/10
+                  </div>
+                </div>
+                <p style="text-align: center; font-weight: 600; margin-bottom: 20px;">Overall Health Score</p>
+              </div>
+              
+              ${insights.alerts && insights.alerts.length > 0 ? `
+                <div class="insight-section alert-section">
+                  <h4 style="color: #e53e3e; margin-bottom: 10px;">
+                    <i class="fas fa-exclamation-triangle"></i> Health Alerts
+                  </h4>
+                  <ul>
+                    ${insights.alerts.map(alert => `<li>${alert}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+              
+              <div class="insight-section">
+                <h4 style="color: #667eea; margin-bottom: 10px;">
+                  <i class="fas fa-lightbulb"></i> Key Insights
+                </h4>
+                <ul>
+                  ${insights.key_insights.map(insight => `<li>${insight}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <div class="insight-section">
+                <h4 style="color: #38a169; margin-bottom: 10px;">
+                  <i class="fas fa-chart-line"></i> Positive Trends
+                </h4>
+                <ul>
+                  ${insights.positive_trends.map(trend => `<li>${trend}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <div class="insight-section">
+                <h4 style="color: #3182ce; margin-bottom: 10px;">
+                  <i class="fas fa-clipboard-list"></i> Recommendations
+                </h4>
+                <ul>
+                  ${insights.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          `;
+          
+          container.innerHTML = html;
+        }
+      } catch (error) {
+        console.error('Error generating health insights:', error);
+        container.innerHTML = `
+          <div style="text-align: center; color: #e53e3e; padding: 40px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Unable to generate insights at this time. Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+
     window.generateDailyHeadlines = async function() {
       if (!selectedPet) {
         showNotification("Please select a pet first", 'error');
@@ -4823,22 +3162,107 @@ The AI will automatically detect the content type and provide the perfect summar
 
     // Notes functions  
     async function loadMarkdown() {
-      if (!selectedPet) return;
+      if (!selectedPet) {
+        console.log("loadMarkdown: No pet selected, skipping");
+        // Set placeholder content
+        const markdownContent = document.getElementById('markdown-content');
+        if (markdownContent) {
+          markdownContent.innerHTML = '<em style="color: #7f8c8d;">Please select a pet to view notes</em>';
+        }
+        return;
+      }
       
       try {
-        const response = await fetch('/api/markdown');
+        console.log("loadMarkdown: Loading for pet", selectedPet);
+        // Include required query parameters
+        const params = new URLSearchParams({
+          page: 'main', // Using 'main' as the page identifier
+          pet: selectedPet
+        });
+        const response = await fetch(`/api/markdown?${params}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
         
-        if (data.content) {
-          document.getElementById('markdown-content').innerHTML = data.content;
+        const markdownContent = document.getElementById('markdown-content');
+        if (markdownContent) {
+          if (data.markdown) {
+            markdownContent.innerHTML = data.markdown;
+          } else {
+            markdownContent.innerHTML = '<em style="color: #7f8c8d;">No notes saved yet</em>';
+          }
         }
       } catch (error) {
         console.error('Error loading notes:', error);
+        const markdownContent = document.getElementById('markdown-content');
+        if (markdownContent) {
+          markdownContent.innerHTML = '<em style="color: #e53e3e;">Error loading notes</em>';
+        }
       }
     }
 
+    // Save markdown function
+    window.saveMarkdown = async function() {
+      if (!currentUser) {
+        showNotification("User not authenticated", 'error');
+        return;
+      }
+      
+      const petId = document.getElementById("pet-select").value;
+      if (!petId) {
+        showNotification("Please select a pet first", 'error');
+        return;
+      }
+      
+      const markdownInput = document.getElementById("markdown-input");
+      const markdown = markdownInput.value.trim();
+      const statusElement = document.getElementById("markdown-status");
+      
+      try {
+        statusElement.textContent = "💾 Saving notes...";
+        statusElement.className = "status-message processing";
+        statusElement.style.display = "block";
+        
+        const response = await fetch('/api/markdown', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            page: 'main',
+            pet: petId,
+            markdown: markdown
+          })
+        });
+        
+        if (response.ok) {
+          statusElement.textContent = "✅ Notes saved successfully!";
+          statusElement.className = "status-message success";
+          
+          // Clear the input
+          markdownInput.value = "";
+          
+          // Refresh the notes display
+          await loadMarkdown();
+          
+        } else {
+          throw new Error(`Failed to save: ${response.status}`);
+        }
+        
+      } catch (error) {
+        console.error('Error saving notes:', error);
+        statusElement.textContent = "❌ Failed to save notes";
+        statusElement.className = "status-message error";
+      }
+      
+      setTimeout(() => {
+        statusElement.style.display = "none";
+      }, 3000);
+    };
+
     // Utility function for notifications
-    window.showNotification = function(message, type = 'info') {
+    function showNotification(message, type = 'info') {
       const notification = document.createElement('div');
       notification.className = 'notification';
       notification.textContent = message;
@@ -4878,1218 +3302,18 @@ The AI will automatically detect the content type and provide the perfect summar
       window.location.href = "/index.html";
     };
 
-    // AI Assistant Functions
-    async function loadAssistantData() {
-      if (!selectedPet) return;
-      
-      // Update AI health summary with loading state
-      const summaryDiv = document.getElementById('ai-health-summary');
-      summaryDiv.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 2.5rem; margin-bottom: 10px;">🔄</div>
-          <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Loading Health Summary...</div>
-          <div style="opacity: 0.9;">
-            <i class="fas fa-spinner fa-spin"></i> Analyzing your pet's health data...
-          </div>
-        </div>
-      `;
-      
-      try {
-        // Load AI health summary
-        const response = await fetch(`/api/pets/${selectedPet}/assistant_summary`);
-        const data = await response.json();
-        
-        if (data.status === 'success' && data.summary) {
-          summaryDiv.innerHTML = `
-            <div style="text-align: left;">
-              <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <div style="font-size: 2rem; margin-right: 10px;">🏥</div>
-                <div style="font-size: 1.2rem; font-weight: 600;">AI Health Summary</div>
-              </div>
-              <div style="line-height: 1.6; opacity: 0.95; font-size: 0.95rem; white-space: pre-line;">
-                ${data.summary}
-              </div>
-              <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-                Based on ${data.data_sources?.length || 0} data sources • Updated ${new Date().toLocaleString()}
-              </div>
-            </div>
-          `;
-        } else {
-          summaryDiv.innerHTML = `
-            <div style="text-align: center;">
-              <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-              <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Assistant Ready</div>
-              <div style="opacity: 0.9;">Ask me anything about your pet's health, behavior, or symptoms</div>
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('Error loading assistant data:', error);
-        summaryDiv.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Assistant Ready</div>
-            <div style="opacity: 0.9;">Ask me anything about your pet's health, behavior, or symptoms</div>
-          </div>
-        `;
-      }
-    }
-
-    async function loadInsightsData() {
-      if (!selectedPet) return;
-      
-      // Update AI health summary with loading state
-      const summaryDiv = document.getElementById('ai-health-summary');
-      summaryDiv.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 2.5rem; margin-bottom: 10px;">🔄</div>
-          <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Loading Health Insights...</div>
-          <div style="opacity: 0.9;">
-            <i class="fas fa-spinner fa-spin"></i> Analyzing your pet's health patterns...
-          </div>
-        </div>
-      `;
-      
-      try {
-        // Load AI health summary
-        const response = await fetch(`/api/pets/${selectedPet}/assistant_summary`);
-        const data = await response.json();
-        
-        if (data.status === 'success' && data.summary) {
-          summaryDiv.innerHTML = `
-            <div style="text-align: left;">
-              <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <div style="font-size: 2rem; margin-right: 10px;">🏥</div>
-                <div style="font-size: 1.2rem; font-weight: 600;">AI Health Insights</div>
-              </div>
-              <div style="line-height: 1.6; opacity: 0.95; font-size: 0.95rem; white-space: pre-line;">
-                ${data.summary}
-              </div>
-              <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-                Based on ${data.data_sources?.length || 0} data sources • Updated ${new Date().toLocaleString()}
-              </div>
-            </div>
-          `;
-        } else {
-          summaryDiv.innerHTML = `
-            <div style="text-align: center;">
-              <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
-              <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ready for Analysis</div>
-              <div style="opacity: 0.9;">Use the search tool above or ask the AI assistant questions to get personalized insights</div>
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('Error loading insights data:', error);
-        summaryDiv.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
-            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ready for Analysis</div>
-            <div style="opacity: 0.9;">Use the search tool above or ask the AI assistant questions to get personalized insights</div>
-          </div>
-        `;
-      }
-    }
-
-    // Reset all assistant UI and state when pet changes
-    function resetAssistantState() {
-      console.log('Resetting assistant state for new pet...');
-      
-      // Reset assistant data loaded flag
-      assistantDataLoaded = false;
-      
-      // Clear chat history - get the chat container and reset it to initial state
-      const chatContainer = document.getElementById('chat-container');
-      if (chatContainer) {
-        chatContainer.innerHTML = `
-          <div class="assistant-message">
-            <div style="display: flex; align-items: flex-start; gap: 15px;">
-              <div style="width: 45px; height: 45px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
-                🤖
-              </div>
-              <div style="background: white; padding: 20px; border-radius: 16px; border: 1px solid #e1e8ed; flex: 1; line-height: 1.6; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
-                <strong style="color: #667eea; font-size: 1.1rem;">Hello! I'm your Pet Health Assistant.</strong><br><br>
-                I have access to all your pet's health data including:
-                <br><br>
-                🎙️ <strong>Voice recordings</strong> with AI summaries<br>
-                📄 <strong>Medical documents</strong> and veterinary records<br>
-                📊 <strong>Health tracking data</strong> and patterns<br>
-                📝 <strong>Notes and observations</strong><br><br>
-                <strong style="color: #667eea;">How can I help you today?</strong> Ask me about symptoms, patterns, medications, or anything related to your pet's health!
-              </div>
-            </div>
-          </div>
-        `;
-      }
-      
-      // Clear chat input
-      const chatInput = document.getElementById('chat-input');
-      if (chatInput) {
-        chatInput.value = '';
-      }
-      
-      // Reset AI health summary to default state
-      const summaryDiv = document.getElementById('ai-health-summary');
-      if (summaryDiv) {
-        summaryDiv.innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Health Insights</div>
-            <div style="opacity: 0.9;">Ask a question below or use the chat to get personalized health insights based on your pet's data</div>
-          </div>
-        `;
-      }
-      
-      // Clear knowledge search input and results
-      const knowledgeSearch = document.getElementById('knowledge-search');
-      if (knowledgeSearch) {
-        knowledgeSearch.value = '';
-      }
-      
-      const knowledgeResults = document.getElementById('knowledge-results');
-      if (knowledgeResults) {
-        knowledgeResults.innerHTML = `
-          <div style="text-align: center; color: #7f8c8d;">
-            <i class="fas fa-book-medical"></i>
-            <p>Search our veterinary knowledge base for symptoms, treatments, and health information</p>
-          </div>
-        `;
-      }
-      
-      console.log('Assistant state reset complete');
-    }
-
-    window.sendChatMessage = async function() {
-      console.log('sendChatMessage called');
-      const input = document.getElementById('chat-input');
-      const sendButton = document.getElementById('send-chat');
-      console.log('Chat input element:', input);
-      
-      if (!input) {
-        console.error('Chat input element not found');
-        showNotification('Chat input not found', 'error');
-        return;
-      }
-      
-      const message = input.value.trim();
-      console.log('Message:', message);
-      
-      if (!message) {
-        console.log('Empty message');
-        showNotification('Please enter a message first', 'warning');
-        input.focus();
-        return;
-      }
-      
-      if (!selectedPet) {
-        console.log('No pet selected');
-        showNotification('Please select a pet first', 'warning');
-        return;
-      }
-      
-      if (!currentUser) {
-        console.log('User not authenticated');
-        showNotification('Please log in first', 'error');
-        return;
-      }
-
-      console.log('Adding user message to chat...');
-      // Show loading state on button
-      if (sendButton) {
-        showLoadingState(sendButton, 'Sending');
-      }
-      input.disabled = true;
-      
-      // Add user message to chat
-      addChatMessage(message, 'user');
-      
-      // Clear input and show loading
-      input.value = '';
-      updateCharacterCount('chat-input', 'char-count', 1000);
-      console.log('Adding loading message...');
-      addChatMessage('🤔 Analyzing your pet\'s data and generating response...', 'assistant', true);
-
-      try {
-        console.log('Sending request to API...');
-        const response = await fetch(`/api/pets/${selectedPet}/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            query: message
-          })
-        });
-
-        console.log('Response received:', response.status);
-        const data = await response.json();
-        console.log('Response data:', data);
-        
-        // Remove loading message and add real response
-        removeLastChatMessage();
-        
-        if (data.status === 'success' && data.response) {
-          console.log('Adding assistant response...');
-          addChatMessage(data.response, 'assistant');
-          
-          // If sources are provided, add them
-          if (data.sources && data.sources.length > 0) {
-            console.log('Adding sources...');
-            addChatSources(data.sources);
-          }
-          
-          // Load health insights on first interaction
-          if (!assistantDataLoaded) {
-            console.log('Loading health insights on first interaction...');
-            assistantDataLoaded = true;
-            loadInsightsData();
-          }
-        } else {
-          console.error('API error:', data.error);
-          addChatMessage('Sorry, I encountered an error processing your request: ' + (data.error || 'Unknown error'), 'assistant');
-        }
-        
-        // Reset UI state
-        if (sendButton) {
-          hideLoadingState(sendButton);
-        }
-        input.disabled = false;
-        input.focus();
-        
-      } catch (error) {
-        console.error('Error sending chat message:', error);
-        removeLastChatMessage();
-        addChatMessage('Sorry, I\'m having trouble connecting right now. Please check your internet connection and try again.', 'assistant');
-        
-        // Reset UI state
-        if (sendButton) {
-          hideLoadingState(sendButton);
-        }
-        input.disabled = false;
-        input.focus();
-        showNotification('Failed to send message. Please try again.', 'error');
-      }
-    }
-
-    window.addChatMessage = function(message, sender, isLoading = false) {
-      const container = document.getElementById('chat-container');
-      const messageDiv = document.createElement('div');
-      
-      if (sender === 'user') {
-        messageDiv.innerHTML = `
-          <div style="display: flex; align-items: flex-start; gap: 12px; justify-content: flex-end;">
-            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px; border-radius: 12px; max-width: 70%; line-height: 1.6;">
-              ${message}
-            </div>
-            <div style="width: 40px; height: 40px; background: #667eea; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0;">
-              👤
-            </div>
-          </div>
-        `;
-      } else {
-        messageDiv.innerHTML = `
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0;">
-              🤖
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 12px; border: 1px solid #e1e8ed; flex: 1; line-height: 1.6; ${isLoading ? 'opacity: 0.7;' : ''}">
-              ${isLoading ? '<i class="fas fa-spinner fa-spin"></i> ' : ''}${message}
-            </div>
-          </div>
-        `;
-      }
-      
-      if (isLoading) {
-        messageDiv.classList.add('loading-message');
-      }
-      
-      container.appendChild(messageDiv);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    window.addChatSources = function(sources) {
-      const container = document.getElementById('chat-container');
-      const sourcesDiv = document.createElement('div');
-      
-      sourcesDiv.innerHTML = `
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="width: 40px; height: 40px; background: #e1e8ed; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #667eea; font-size: 18px; flex-shrink: 0;">
-            📚
-          </div>
-          <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e1e8ed; flex: 1; font-size: 0.9rem;">
-            <strong>Sources:</strong><br>
-            ${sources.map(source => `• ${source.type}: ${source.summary || source.content}`.slice(0, 100) + '...').join('<br>')}
-          </div>
-        </div>
-      `;
-      
-      container.appendChild(sourcesDiv);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    window.removeLastChatMessage = function() {
-      const container = document.getElementById('chat-container');
-      const loadingMessage = container.querySelector('.loading-message');
-      if (loadingMessage) {
-        loadingMessage.remove();
-      }
-    }
-
-    window.showQuickQuestions = function() {
-      const loading = document.getElementById('quick-questions-loading');
-      const buttons = document.getElementById('quick-questions-buttons');
-      if (loading) loading.style.display = 'none';
-      if (buttons) buttons.style.display = 'block';
-    }
-
-    window.hideQuickQuestions = function() {
-      const loading = document.getElementById('quick-questions-loading');
-      const buttons = document.getElementById('quick-questions-buttons');
-      if (buttons) buttons.style.display = 'none';
-      if (loading) {
-        loading.innerHTML = '<i class="fas fa-info-circle"></i> Please add a pet first to use quick questions';
-        loading.style.display = 'block';
-      }
-    }
-
-    window.askQuickQuestion = function(question) {
-      console.log('Quick question clicked:', question);
-      console.log('Selected pet:', selectedPet);
-      console.log('Current user:', currentUser);
-      
-      if (!currentUser) {
-        console.error('User not authenticated');
-        showNotification('Please log in first', 'error');
-        return;
-      }
-      
-      if (!selectedPet) {
-        console.error('No pet selected');
-        showNotification('Please select a pet first', 'error');
-        return;
-      }
-      
-      const chatInput = document.getElementById('chat-input');
-      if (!chatInput) {
-        console.error('Chat input element not found');
-        showNotification('Chat interface not found', 'error');
-        return;
-      }
-      
-      console.log('Setting chat input value to:', question);
-      chatInput.value = question;
-      
-      console.log('Calling sendChatMessage...');
-      sendChatMessage();
-    }
-
-    window.searchKnowledge = async function() {
-      const query = document.getElementById('knowledge-search').value.trim();
-      const resultsDiv = document.getElementById('knowledge-results');
-      
-      if (!query) {
-        showNotification('Please enter a search query', 'error');
-        return;
-      }
-
-      if (!selectedPet) {
-        showNotification('Please select a pet first', 'error');
-        return;
-      }
-
-      resultsDiv.innerHTML = `
-        <div style="text-align: center; color: #667eea;">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Searching veterinary knowledge base...</p>
-        </div>
-      `;
-
-      try {
-        const response = await fetch(`/api/pets/${selectedPet}/knowledge_search`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: query })
-        });
-
-        const data = await response.json();
-        
-        if (data.status === 'success' && data.results && data.results.length > 0) {
-          resultsDiv.innerHTML = data.results.map(result => `
-            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea;">
-              <h4 style="margin-bottom: 8px; color: #2c3e50;">${result.title}</h4>
-              <p style="color: #666; line-height: 1.6;">${result.content}</p>
-              <div style="margin-top: 8px; font-size: 0.85rem; color: #7f8c8d;">
-                <strong>Category:</strong> ${result.category || 'General'} | 
-                <strong>Severity:</strong> ${result.severity || 'N/A'} |
-                <strong>Confidence:</strong> ${Math.round(result.score * 100)}%
-              </div>
-              ${result.symptoms && result.symptoms.length > 0 ? `
-                <div style="margin-top: 8px; font-size: 0.85rem; color: #667eea;">
-                  <strong>Related symptoms:</strong> ${result.symptoms.join(', ')}
-                </div>
-              ` : ''}
-            </div>
-          `).join('');
-          
-          // Load health insights on first interaction
-          if (!assistantDataLoaded) {
-            console.log('Loading health insights on first knowledge search...');
-            assistantDataLoaded = true;
-            loadInsightsData();
-          }
-        } else {
-          resultsDiv.innerHTML = `
-            <div style="text-align: center; color: #7f8c8d;">
-              <i class="fas fa-search"></i>
-              <p>No results found for "${query}". Try different keywords or broader terms.</p>
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('Error searching knowledge:', error);
-        resultsDiv.innerHTML = `
-          <div style="text-align: center; color: #e53e3e;">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>Error searching knowledge base. Please try again.</p>
-          </div>
-        `;
-      }
-    }
-
-    // Enable Enter key for chat input and form handlers
-    document.addEventListener('DOMContentLoaded', function() {
-      const chatInput = document.getElementById('chat-input');
-      const knowledgeSearch = document.getElementById('knowledge-search');
-      const addPetForm = document.getElementById('add-pet-form');
-      
-      if (chatInput) {
-        chatInput.addEventListener('keypress', function(e) {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendChatMessage();
-          }
-        });
-      }
-      
-      if (knowledgeSearch) {
-        knowledgeSearch.addEventListener('keypress', function(e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            searchKnowledge();
-          }
-        });
-      }
-      
-      if (addPetForm) {
-        addPetForm.addEventListener('submit', handleAddPetForm);
-      }
-    });
-
-    // Enhanced UX helper functions
-    function addLoadingState(element) {
-      if (element) {
-        element.classList.add('loading');
-        element.disabled = true;
-      }
-    }
-
-    function removeLoadingState(element) {
-      if (element) {
-        element.classList.remove('loading');
-        element.disabled = false;
-      }
-    }
-
-    function validateFormField(fieldId, validationFn, errorMessage) {
-      const field = document.getElementById(fieldId);
-      const formGroup = field?.closest('.form-group');
-      const errorDiv = document.getElementById(fieldId + '-error');
-
-      if (!field) return true;
-
-      const isValid = validationFn(field.value);
-      
-      if (formGroup) {
-        formGroup.classList.remove('error', 'success');
-        formGroup.classList.add(isValid ? 'success' : 'error');
-      }
-
-      if (errorDiv) {
-        errorDiv.textContent = isValid ? '' : errorMessage;
-        errorDiv.classList.toggle('show', !isValid);
-      }
-
-      return isValid;
-    }
-
-    function updateCharacterCount(textareaId, countId, maxLength) {
-      const textarea = document.getElementById(textareaId);
-      const counter = document.getElementById(countId);
-      
-      if (textarea && counter) {
-        const count = textarea.value.length;
-        counter.textContent = count;
-        counter.style.color = count > maxLength * 0.9 ? '#e53e3e' : '#7f8c8d';
-      }
-    }
-
-    function showFeedback(message, type = 'success', duration = 3000) {
-      const feedback = document.createElement('div');
-      feedback.className = `feedback-${type}`;
-      feedback.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-        ${message}
-      `;
-      
-      document.body.appendChild(feedback);
-      
-      setTimeout(() => {
-        feedback.style.animation = 'slideInDown 0.3s ease reverse';
-        setTimeout(() => feedback.remove(), 300);
-      }, duration);
-    }
-
-    function copyToClipboard(text, feedbackMessage = 'Copied to clipboard!') {
-      navigator.clipboard.writeText(text).then(() => {
-        const copyFeedback = document.createElement('div');
-        copyFeedback.className = 'copy-feedback show';
-        copyFeedback.innerHTML = `<i class="fas fa-clipboard-check"></i> ${feedbackMessage}`;
-        
-        document.body.appendChild(copyFeedback);
-        
-        setTimeout(() => {
-          copyFeedback.classList.remove('show');
-          setTimeout(() => copyFeedback.remove(), 300);
-        }, 2000);
-      });
-    }
-
-    function updateFormProgress() {
-      const form = document.getElementById('add-pet-form');
-      const progressFill = document.getElementById('form-progress');
-      
-      if (!form || !progressFill) return;
-      
-      const fields = form.querySelectorAll('input[required], select[required]');
-      const filledFields = Array.from(fields).filter(field => field.value.trim() !== '');
-      const progress = fields.length > 0 ? (filledFields.length / fields.length) * 100 : 0;
-      
-      progressFill.style.width = `${progress}%`;
-    }
-
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
-    }
-
-    // Enhanced pet selection with validation
-    function validatePetSelection() {
-      const petSelect = document.getElementById('pet-select');
-      const petStatus = document.getElementById('pet-status');
-      const errorDiv = document.getElementById('pet-select-error');
-      
-      if (!selectedPet) {
-        if (errorDiv) {
-          errorDiv.textContent = 'Please select a pet to continue';
-          errorDiv.classList.add('show');
-        }
-        if (petStatus) {
-          petStatus.className = 'status-indicator error';
-          petStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Select Pet';
-        }
-        return false;
-      }
-      
-      if (errorDiv) {
-        errorDiv.classList.remove('show');
-      }
-      if (petStatus) {
-        petStatus.className = 'status-indicator online';
-        petStatus.innerHTML = '<i class="fas fa-circle"></i> Ready';
-      }
-      return true;
-    }
-
-    // Setup character counters and form validation
-    document.addEventListener('DOMContentLoaded', function() {
-      // Character counters
-      const chatInput = document.getElementById('chat-input');
-      const textInput = document.getElementById('pet-input-text');
-      
-      if (chatInput) {
-        const charCounter = document.getElementById('char-count');
-        if (charCounter) {
-          chatInput.addEventListener('input', () => updateCharacterCount('chat-input', 'char-count', 1000));
-        }
-      }
-      
-      if (textInput) {
-        const textCharCounter = document.getElementById('text-char-count');
-        if (textCharCounter) {
-          textInput.addEventListener('input', () => updateCharacterCount('pet-input-text', 'text-char-count', 2000));
-        }
-      }
-
-      // Form progress tracking
-      const addPetForm = document.getElementById('add-pet-form');
-      if (addPetForm) {
-        const formFields = addPetForm.querySelectorAll('input, select');
-        formFields.forEach(field => {
-          field.addEventListener('input', debounce(updateFormProgress, 300));
-          field.addEventListener('change', updateFormProgress);
-        });
-      }
-
-      // Real-time validation for add pet form
-      const petName = document.getElementById('pet-name');
-      const animalType = document.getElementById('animal-type');
-      
-      if (petName) {
-        petName.addEventListener('blur', () => {
-          validateFormField('pet-name', 
-            value => value.trim().length >= 2,
-            'Pet name must be at least 2 characters long'
-          );
-        });
-      }
-      
-      if (animalType) {
-        animalType.addEventListener('change', () => {
-          validateFormField('animal-type',
-            value => value !== '',
-            'Please select an animal type'
-          );
-        });
-      }
-
-      // Auto-save indicators for forms
-      const forms = document.querySelectorAll('form');
-      forms.forEach(form => {
-        form.addEventListener('input', debounce(() => {
-          const statusIndicator = form.querySelector('.status-indicator.saving');
-          if (statusIndicator) {
-            statusIndicator.style.display = 'inline-flex';
-            setTimeout(() => {
-              statusIndicator.style.display = 'none';
-            }, 1000);
-          }
-        }, 1000));
-      });
-    });
-
-    // Enable keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-      // Ctrl/Cmd + Enter to send chat message
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        const activeElement = document.activeElement;
-        if (activeElement && activeElement.id === 'chat-input') {
-          e.preventDefault();
-          sendChatMessage();
-        }
-      }
-      
-      // Escape to close any open modals or reset focus
-      if (e.key === 'Escape') {
-        const activeElement = document.activeElement;
-        if (activeElement && activeElement.blur) {
-          activeElement.blur();
-        }
-      }
-    });
-
-    // ===================== Enhanced UX JavaScript Functions =====================
-
-    // Smart Notification System
-    function showNotification(message, type = 'info', duration = 4000) {
-        const notification = document.createElement('div');
-        notification.className = `notification-toast ${type}`;
-        
-        const icon = type === 'success' ? '✓' : 
-                     type === 'error' ? '✕' : 
-                     type === 'warning' ? '⚠' : 'ℹ';
-        
-        notification.innerHTML = `
-            <span style="font-size: 16px;">${icon}</span>
-            <span>${message}</span>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Trigger animation
-        setTimeout(() => notification.classList.add('show'), 100);
-        
-        // Auto remove
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                if (notification.parentElement) {
-                    document.body.removeChild(notification);
-                }
-            }, 400);
-        }, duration);
-    }
-
-    // Enhanced Loading States
-    function showLoadingState(element, message = 'Loading') {
-        const originalContent = element.innerHTML;
-        element.dataset.originalContent = originalContent;
-        element.innerHTML = `
-            <span class="loading-dots">${message}</span>
-        `;
-        element.disabled = true;
-        element.classList.add('loading-shimmer');
-    }
-
-    function hideLoadingState(element) {
-        if (element.dataset.originalContent) {
-            element.innerHTML = element.dataset.originalContent;
-            delete element.dataset.originalContent;
-        }
-        element.disabled = false;
-        element.classList.remove('loading-shimmer');
-    }
-
-    // Smart Form Validation with Real-time Feedback
-    function setupSmartValidation() {
-        const inputs = document.querySelectorAll('input, textarea, select');
-        
-        inputs.forEach(input => {
-            // Skip if already processed
-            if (input.dataset.validationSetup) return;
-            input.dataset.validationSetup = 'true';
-            
-            // Add validation container
-            if (!input.parentElement.querySelector('.validation-message')) {
-                const validationDiv = document.createElement('div');
-                validationDiv.className = 'validation-message';
-                input.parentElement.style.position = 'relative';
-                input.parentElement.appendChild(validationDiv);
-            }
-            
-            // Real-time validation
-            input.addEventListener('input', () => validateField(input));
-            input.addEventListener('blur', () => validateField(input));
-            
-            // Success indicators
-            input.addEventListener('input', () => {
-                if (input.value && !input.dataset.hasError) {
-                    addSuccessIndicator(input);
-                }
-            });
-        });
-    }
-
-    function validateField(input) {
-        const validationDiv = input.parentElement.querySelector('.validation-message');
-        if (!validationDiv) return true;
-        
-        let isValid = true;
-        let message = '';
-        
-        // Email validation
-        if (input.type === 'email' && input.value) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(input.value)) {
-                isValid = false;
-                message = 'Please enter a valid email address';
-            }
-        }
-        
-        // Required field validation
-        if (input.required && !input.value.trim()) {
-            isValid = false;
-            message = 'This field is required';
-        }
-        
-        // Phone validation
-        if (input.name === 'phone' && input.value) {
-            const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-            if (!phoneRegex.test(input.value.replace(/[\s\-\(\)]/g, ''))) {
-                isValid = false;
-                message = 'Please enter a valid phone number';
-            }
-        }
-        
-        // Update validation UI
-        if (!isValid) {
-            validationDiv.textContent = message;
-            validationDiv.classList.remove('success');
-            validationDiv.classList.add('show');
-            input.classList.add('error');
-            input.dataset.hasError = 'true';
-        } else {
-            validationDiv.classList.remove('show');
-            input.classList.remove('error');
-            delete input.dataset.hasError;
-            
-            if (input.value) {
-                validationDiv.textContent = 'Looks good!';
-                validationDiv.classList.add('success');
-                validationDiv.classList.add('show');
-                setTimeout(() => validationDiv.classList.remove('show'), 2000);
-            }
-        }
-        
-        return isValid;
-    }
-
-    function addSuccessIndicator(input) {
-        // Remove existing indicator
-        const existing = input.parentElement.querySelector('.auto-save-status');
-        if (existing) existing.remove();
-        
-        // Add new indicator
-        const indicator = document.createElement('div');
-        indicator.className = 'auto-save-status';
-        input.parentElement.style.position = 'relative';
-        input.parentElement.appendChild(indicator);
-        
-        // Remove after animation
-        setTimeout(() => {
-            if (indicator.parentElement) {
-                indicator.parentElement.removeChild(indicator);
-            }
-        }, 2000);
-    }
-
-    // Smart Search with Suggestions
-    function setupSmartSearch() {
-        const searchInputs = document.querySelectorAll('input[type="search"], .search-input');
-        
-        searchInputs.forEach(input => {
-            if (input.dataset.searchSetup) return;
-            input.dataset.searchSetup = 'true';
-            
-            const suggestionsDiv = document.createElement('div');
-            suggestionsDiv.className = 'search-suggestions';
-            input.parentElement.style.position = 'relative';
-            input.parentElement.appendChild(suggestionsDiv);
-            
-            let searchTimeout;
-            input.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    if (input.value.length > 2) {
-                        showSearchSuggestions(input, suggestionsDiv);
-                    } else {
-                        hideSuggestions(suggestionsDiv);
-                    }
-                }, 300);
-            });
-            
-            // Hide suggestions when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!input.parentElement.contains(e.target)) {
-                    hideSuggestions(suggestionsDiv);
-                }
-            });
-        });
-    }
-
-    function showSearchSuggestions(input, suggestionsDiv) {
-        // Smart suggestions based on current context
-        const suggestions = [
-            { icon: '🐕', text: `Search for "${input.value}" in pets` },
-            { icon: '📋', text: `Find records containing "${input.value}"` },
-            { icon: '💊', text: `Medications related to "${input.value}"` },
-            { icon: '🏥', text: `Veterinarians named "${input.value}"` }
-        ];
-        
-        suggestionsDiv.innerHTML = suggestions.map(suggestion => `
-            <div class="suggestion-item" onclick="selectSuggestion('${suggestion.text}', this)">
-                <span>${suggestion.icon}</span>
-                <span>${suggestion.text}</span>
-            </div>
-        `).join('');
-        
-        suggestionsDiv.classList.add('show');
-    }
-
-    function hideSuggestions(suggestionsDiv) {
-        suggestionsDiv.classList.remove('show');
-    }
-
-    function selectSuggestion(text, element) {
-        const input = element.closest('.search-suggestions').previousElementSibling;
-        input.value = text;
-        hideSuggestions(element.parentElement);
-        input.focus();
-    }
-
-    // Contextual Help System
-    function setupContextualHelp() {
-        if (document.querySelector('.contextual-help')) return;
-        
-        // Add contextual help button
-        const helpButton = document.createElement('div');
-        helpButton.className = 'contextual-help';
-        helpButton.innerHTML = `
-            <i class="fas fa-question"></i>
-            <div class="help-tooltip">Get help with this page</div>
-        `;
-        document.body.appendChild(helpButton);
-        
-        helpButton.addEventListener('click', () => {
-            showContextualHelp();
-        });
-    }
-
-    function showContextualHelp() {
-        const currentPage = getCurrentPageContext();
-        const helpContent = getHelpContent(currentPage);
-        
-        showNotification(helpContent, 'info', 6000);
-    }
-
-    function getCurrentPageContext() {
-        // Determine current page context
-        const activeNavItem = document.querySelector('.nav-item.active');
-        if (activeNavItem) {
-            const navText = activeNavItem.textContent.toLowerCase();
-            if (navText.includes('pet')) return 'pet-registration';
-            if (navText.includes('health')) return 'health-records';
-            if (navText.includes('chat')) return 'ai-chat';
-            if (navText.includes('analytics')) return 'analytics';
-        }
-        
-        if (document.querySelector('.pet-form')) return 'pet-registration';
-        if (document.querySelector('.health-records')) return 'health-records';
-        if (document.querySelector('.chat-container')) return 'ai-chat';
-        if (document.querySelector('.analytics-dashboard')) return 'analytics';
-        return 'general';
-    }
-
-    function getHelpContent(context) {
-        const helpTexts = {
-            'pet-registration': 'Fill out your pet\'s basic information. All required fields are marked with *. Use the voice input for easier data entry.',
-            'health-records': 'Track your pet\'s health history. Upload photos of medical records for AI analysis. Click on any record to view details.',
-            'ai-chat': 'Ask questions about your pet\'s health. The AI can analyze uploaded documents and provide personalized advice.',
-            'analytics': 'View your pet\'s health trends and insights. Charts are interactive - click to drill down into specific data.',
-            'general': 'Welcome to PetPages! Navigate using the menu. Need help? Contact support or check our FAQ.'
-        };
-        
-        return helpTexts[context] || helpTexts.general;
-    }
-
-    // Auto-save Functionality
-    function setupAutoSave() {
-        const forms = document.querySelectorAll('form');
-        
-        forms.forEach(form => {
-            if (form.dataset.autoSaveSetup) return;
-            form.dataset.autoSaveSetup = 'true';
-            
-            const inputs = form.querySelectorAll('input, textarea, select');
-            
-            inputs.forEach(input => {
-                let saveTimeout;
-                input.addEventListener('input', () => {
-                    clearTimeout(saveTimeout);
-                    saveTimeout = setTimeout(() => {
-                        autoSaveData(form, input);
-                    }, 2000); // Save after 2 seconds of inactivity
-                });
-            });
-        });
-    }
-
-    function autoSaveData(form, input) {
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData);
-        
-        // Save to localStorage as backup
-        localStorage.setItem(`autoSave_${form.id || 'form'}`, JSON.stringify({
-            data: data,
-            timestamp: new Date().toISOString()
-        }));
-        
-        // Show save indicator
-        addSuccessIndicator(input);
-        showDataSyncIndicator('Auto-saved', 'syncing');
-        
-        // Simulate API call
-        setTimeout(() => {
-            showDataSyncIndicator('Saved to cloud', 'success');
-        }, 1000);
-    }
-
-    function showDataSyncIndicator(message, status) {
-        let indicator = document.querySelector('.data-sync-indicator');
-        
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.className = 'data-sync-indicator';
-            document.body.appendChild(indicator);
-        }
-        
-        indicator.innerHTML = `
-            <div class="sync-status-dot ${status}"></div>
-            <span>${message}</span>
-        `;
-        
-        indicator.classList.add('show');
-        
-        setTimeout(() => {
-            indicator.classList.remove('show');
-        }, 3000);
-    }
-
-    // Keyboard Shortcuts
-    function setupKeyboardShortcuts() {
-        if (document.dataset.keyboardSetup) return;
-        document.dataset.keyboardSetup = 'true';
-        
-        document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + S for save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                const activeForm = document.querySelector('form:focus-within');
-                if (activeForm) {
-                    showNotification('Form saved!', 'success');
-                }
-            }
-            
-            // Ctrl/Cmd + / for help
-            if ((e.ctrlKey || e.metaKey) && e.key === '/') {
-                e.preventDefault();
-                showContextualHelp();
-            }
-            
-            // Escape to close modals/notifications
-            if (e.key === 'Escape') {
-                const notifications = document.querySelectorAll('.notification-toast');
-                notifications.forEach(n => n.classList.remove('show'));
-            }
-        });
-    }
-
-    // Enhanced Voice Recording UX
-    function enhanceVoiceRecording() {
-        const voiceButtons = document.querySelectorAll('.voice-btn');
-        
-        voiceButtons.forEach(button => {
-            if (button.dataset.voiceEnhanced) return;
-            button.dataset.voiceEnhanced = 'true';
-            
-            const indicator = document.createElement('div');
-            indicator.className = 'voice-indicator';
-            button.parentElement.style.position = 'relative';
-            button.parentElement.appendChild(indicator);
-            
-            button.addEventListener('click', () => {
-                if (button.classList.contains('recording')) {
-                    indicator.classList.add('active');
-                    showNotification('Recording... Speak clearly into your microphone', 'info');
-                } else {
-                    indicator.classList.remove('active');
-                    showNotification('Recording stopped', 'success');
-                }
-            });
-        });
-    }
-
-    // Enhanced API Interaction with Better UX
-    const originalFetch = window.fetch;
-    window.fetch = function(...args) {
-        const [url, options] = args;
-        
-        // Show loading for API calls (but only for buttons, not automatic notifications)
-        if (url && typeof url === 'string' && url.includes('/api/')) {
-            const button = document.activeElement;
-            if (button && button.tagName === 'BUTTON') {
-                showLoadingState(button);
-            }
-        }
-        
-        return originalFetch.apply(this, args)
-            .then(response => {
-                // Hide loading without automatic success notifications
-                const button = document.activeElement;
-                if (button && button.tagName === 'BUTTON') {
-                    hideLoadingState(button);
-                }
-                
-                // Only show error notifications, not success ones
-                if (!response.ok) {
-                    showNotification('Something went wrong. Please try again.', 'error');
-                }
-                
-                return response;
-            })
-            .catch(error => {
-                // Hide loading and show error
-                const button = document.activeElement;
-                if (button && button.tagName === 'BUTTON') {
-                    hideLoadingState(button);
-                }
-                
-                showNotification('Connection error. Please check your internet.', 'error');
-                throw error;
-            });
-    };
-
-    // Initialize all UX enhancements
-    function initializeUXEnhancements() {
-        setupSmartValidation();
-        setupSmartSearch();
-        setupContextualHelp();
-        setupAutoSave();
-        setupKeyboardShortcuts();
-        enhanceVoiceRecording();
-        
-        // Welcome message with delay
-        setTimeout(() => {
-            if (currentUser) {
-                showNotification('Welcome back! Press Ctrl+/ for help', 'info', 4000);
-            }
-        }, 2000);
-        
-        // Re-initialize when new content is added
-        const observer = new MutationObserver((mutations) => {
-            let shouldReinitialize = false;
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    shouldReinitialize = true;
-                }
-            });
-            
-            if (shouldReinitialize) {
-                setTimeout(() => {
-                    setupSmartValidation();
-                    setupSmartSearch();
-                    enhanceVoiceRecording();
-                }, 100);
-            }
-        });
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    }
-
-    // Initialize UX enhancements
-    document.addEventListener('DOMContentLoaded', initializeUXEnhancements);
-
-    // ===================== End Enhanced UX Functions =====================
-
     // Authentication
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
       if (!user) {
         window.location.href = "/index.html";
       } else {
         currentUser = user;
-        loadPets().then(() => {
-          // After pets are loaded, handle navigation
-          handleHashNavigation();
-          // Assistant data will be loaded on-demand when user interacts
-        });
+        await loadPets(); // Wait for pets to load first
         setupAnalyticsFormHandlers();
+        setupPdfFormHandler(); // Set up PDF form handler
+        
+        // Handle initial navigation based on URL hash after pets are loaded
+        handleHashNavigation();
       }
     });
   </script>

@@ -44,47 +44,12 @@ def get_pets_by_user_id(user_id):
         for pid in pet_ids
     ]
 
-# Get individual pet by ID
-def get_pet_by_id(pet_id):
-    """Get individual pet data by pet ID"""
-    try:
-        pet_doc = db.collection("pets").document(pet_id).get()
-        if pet_doc.exists:
-            return {"id": pet_id, **pet_doc.to_dict()}
-        return None
-    except Exception as e:
-        print(f"Error getting pet by ID: {e}")
-        return None
-        
-
 # Add a pet and sync it across user and page, with authorizedUsers and markdown
-def add_pet_to_page_and_user(user_id, pet_data, page_id):
-    pet_name = pet_data.get("name", "")
-    pet_id = pet_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
-    
-    # Create timestamp for breed_last_updated
-    from datetime import datetime
-    current_time = datetime.utcnow().isoformat()
-    
-    # Create enhanced pet document
-    pet_document = {
-        "name": pet_name,
-        "animal_type": pet_data.get("animal_type", ""),
-        "breed": pet_data.get("breed", ""),
-        "breed_last_updated": current_time,
-        "created_at": current_time
-    }
-    
-    # Add optional fields if provided
-    if pet_data.get("age") is not None:
-        pet_document["age"] = pet_data["age"]
-    if pet_data.get("weight") is not None:
-        pet_document["weight"] = pet_data["weight"]
-    if pet_data.get("gender"):
-        pet_document["gender"] = pet_data["gender"]
+def add_pet_to_page_and_user(user_id, pet_name, page_id):
+    pet_id = pet_name.lower().replace(" ", "_")
 
     # Create or update pet
-    db.collection("pets").document(pet_id).set(pet_document)
+    db.collection("pets").document(pet_id).set({ "name": pet_name })
 
     # Link pet to user and page
     db.collection("users").document(user_id).set({
@@ -98,7 +63,7 @@ def add_pet_to_page_and_user(user_id, pet_data, page_id):
         "markdown": ""  # initialized only if not set yet
     }, merge=True)
 
-    return { "id": pet_id, "name": pet_name, **pet_document }
+    return { "id": pet_id, "name": pet_name }
 
 # Invite user by email and link to page
 def handle_user_invite(data):
