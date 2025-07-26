@@ -6,13 +6,17 @@ from fastapi.responses import FileResponse
 from firebase_admin import storage
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import os
+import uuid
 
 # Load environment variables first
 load_dotenv()
 
 # Set Google Cloud environment variables
-import os
-os.environ["GOOGLE_CLOUD_PROJECT"] = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+if not project_id:
+    raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
+os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
 
 from main import main as run_main
@@ -20,8 +24,39 @@ from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handl
 from pdf_parser import extract_text_and_summarize
 from transcribe import start_recording, stop_recording, get_recording_status
 
-import uuid
-from datetime import datetime, timedelta
+# ✅ Lazy-loaded service instances to improve startup performance
+_intelligent_chatbot_service = None
+_simple_rag_service = None
+_visualization_service = None
+_pet_ai = None
+
+def get_intelligent_chatbot_service():
+    global _intelligent_chatbot_service
+    if _intelligent_chatbot_service is None:
+        from intelligent_chatbot_service import IntelligentChatbotService
+        _intelligent_chatbot_service = IntelligentChatbotService()
+    return _intelligent_chatbot_service
+
+def get_simple_rag_service():
+    global _simple_rag_service
+    if _simple_rag_service is None:
+        from simple_rag_service import SimplePetHealthRAGService
+        _simple_rag_service = SimplePetHealthRAGService()
+    return _simple_rag_service
+
+def get_visualization_service():
+    global _visualization_service
+    if _visualization_service is None:
+        from visualization_service import PetVisualizationService
+        _visualization_service = PetVisualizationService()
+    return _visualization_service
+
+def get_pet_ai():
+    global _pet_ai
+    if _pet_ai is None:
+        from ai_analytics import PetAnalyticsAI
+        _pet_ai = PetAnalyticsAI()
+    return _pet_ai
 
 app = FastAPI()
 
@@ -33,24 +68,71 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Startup event to pre-warm critical services
+@app.on_event("startup")
+async def startup_event():
+    """Pre-warm critical services to improve first request performance"""
+    print("🚀 Starting PetPages API server...")
+    print("🔥 Pre-warming critical services...")
+    
+    # Pre-warm only the most commonly used service (visualization)
+    # to balance startup time vs first-request performance
+    try:
+        _ = get_visualization_service()
+        print("✅ Visualization service pre-warmed")
+    except Exception as e:
+        print(f"⚠️ Failed to pre-warm visualization service: {e}")
+    
+    print("🎉 PetPages API server ready!")
+
 @app.post("/api/start")
 async def start(request: Request):
     data = await request.json()
     return run_main(data["uid"], data["pet"])
 
 @app.post("/api/upload_pdf")
-async def upload_pdf(uid: str, pet: str, file: UploadFile = File(...)):
-    contents = await file.read()
-    temp_path = f"/tmp/{file.filename}"
-    with open(temp_path, "wb") as f:
-        f.write(contents)
+async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    # Get form data
+    form = await request.form()
+    uid = form.get("uid")
+    pet = form.get("pet")
+    
+    if not uid or not pet:
+        return {"error": "Missing uid or pet parameter"}
+    
+    if not file.filename:
+        return {"error": "No file provided"}
+    
+    try:
+        contents = await file.read()
+        temp_path = f"/tmp/{file.filename}"
+        with open(temp_path, "wb") as f:
+            f.write(contents)
 
-    blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
-    blob.upload_from_filename(temp_path)
-    blob.make_public()
+        blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
+        blob.upload_from_filename(temp_path)
+        blob.make_public()
 
-    result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
-    return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+        result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
+        
+        # Clean up temporary file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+            
+        if "error" in result:
+            return {"error": result["error"]}
+            
+        return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+        
+    except Exception as e:
+        # Clean up temporary file on error
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        return {"error": f"Failed to process PDF: {str(e)}"}
 
 @app.get("/api/user-pets/{user_id}")
 async def get_user_pets(user_id: str):
@@ -59,7 +141,18 @@ async def get_user_pets(user_id: str):
 @app.post("/api/pets/{user_id}")
 async def create_pet(user_id: str, request: Request):
     data = await request.json()
-    return add_pet_to_page_and_user(user_id, data["name"], data.get("pageId", "default-page"))
+    
+    # Validate required fields
+    if not data.get("name"):
+        return {"error": "Pet name is required"}
+    if not data.get("animal_type"):
+        return {"error": "Animal type is required"}
+    
+    try:
+        result = add_pet_to_page_and_user(user_id, data, data.get("pageId", "default-page"))
+        return {"status": "success", "pet": result}
+    except Exception as e:
+        return {"error": f"Failed to create pet: {str(e)}"}
 
 @app.post("/api/pages/invite")
 async def invite_user(request: Request):
@@ -80,7 +173,10 @@ async def update_page(page_id: str, request: Request):
     return {"status": "updated"}
 
 @app.get("/api/markdown")
-async def get_markdown(page: str, pet: str):
+async def get_markdown(page: str = None, pet: str = None):
+    if not page or not pet:
+        return {"markdown": ""}
+    
     page_doc = db.collection("pages").document(page).get()
     pet_doc = db.collection("pets").document(pet).get()
 
@@ -169,42 +265,83 @@ async def stop_recording_endpoint(request: Request):
     if not user_id or not pet_id:
         return {"status": "error", "message": "Missing uid or pet"}
     
-    result = stop_recording()
-    
-    # If successful, process the transcript with enhanced AI
-    if result["status"] == "stopped" and result.get("transcript"):
-        from summarize_openai import summarize_text, classify_pet_content
+    try:
+        result = stop_recording()
         
-        transcript = result["transcript"]
+        # Handle the transcription result
+        if result["status"] == "stopped" and result.get("transcript"):
+            # We have a transcript, try to process with AI
+            try:
+                from summarize_openai import summarize_text, classify_pet_content
+                
+                transcript = result["transcript"]
+                
+                # Classify the content type
+                classification = classify_pet_content(transcript)
+                
+                # Generate enhanced summary
+                summary = summarize_text(transcript)
+                
+                # Store with enhanced metadata
+                entry_data = {
+                    "transcript": transcript,
+                    "summary": summary,
+                    "content_type": classification.get("classification", "MIXED"),
+                    "confidence": classification.get("confidence", 0.5),
+                    "keywords": classification.get("keywords", []),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+                
+                return {
+                    "status": "success",
+                    "transcript": transcript,
+                    "summary": summary,
+                    "content_type": classification.get("classification", "MIXED"),
+                    "confidence": classification.get("confidence", 0.5),
+                    "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note"
+                }
+                
+            except Exception as ai_error:
+                print(f"AI processing failed: {ai_error}")
+                # AI processing failed, but we still have transcript
+                # Store basic transcript without AI enhancement
+                entry_data = {
+                    "transcript": result["transcript"],
+                    "summary": "Transcription completed. AI processing unavailable.",
+                    "content_type": "TRANSCRIPTION_ONLY",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+                
+                return {
+                    "status": "stopped",
+                    "transcript": result["transcript"],
+                    "message": "Transcription successful, AI processing unavailable"
+                }
         
-        # Classify the content type
-        classification = classify_pet_content(transcript)
+        elif result["status"] == "stopped":
+            # Recording stopped but no transcript (no speech detected)
+            return {
+                "status": "stopped",
+                "message": "Recording stopped but no speech was detected"
+            }
         
-        # Generate enhanced summary
-        summary = summarize_text(transcript)
-        
-        # Store with enhanced metadata
-        entry_data = {
-            "transcript": transcript,
-            "summary": summary,
-            "content_type": classification.get("classification", "MIXED"),
-            "confidence": classification.get("confidence", 0.5),
-            "keywords": classification.get("keywords", []),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
-        
+        else:
+            # Recording failed or other error
+            return {
+                "status": "error",
+                "message": result.get("message", "Recording failed")
+            }
+            
+    except Exception as e:
+        print(f"Error in stop_recording_endpoint: {e}")
         return {
-            "status": "success",
-            "transcript": transcript,
-            "summary": summary,
-            "content_type": classification.get("classification", "MIXED"),
-            "confidence": classification.get("confidence", 0.5),
-            "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note"
+            "status": "error", 
+            "message": f"Server error: {str(e)}"
         }
-    
-    return result
 
 # ✅ NEW: Get recording status endpoint
 @app.get("/api/recording_status")
@@ -413,7 +550,7 @@ async def get_analytics_summary(pet_id: str):
 async def generate_daily_routine_headlines(pet_id: str, request: Request):
     """Generate AI-powered daily routine headlines based on analytics data"""
     try:
-        from ai_analytics import pet_ai
+        pet_ai = get_pet_ai()
         
         data = await request.json()
         date = data.get("date", datetime.utcnow().strftime("%Y-%m-%d"))
@@ -460,7 +597,7 @@ async def generate_daily_routine_headlines(pet_id: str, request: Request):
         
     except Exception as e:
         # Fallback to simple headlines
-        return generate_daily_routine_headlines_fallback(pet_id, request)
+        return await generate_daily_routine_headlines_fallback(pet_id, request)
 
 async def generate_daily_routine_headlines_fallback(pet_id: str, request: Request):
     """Fallback method for generating headlines without AI"""
@@ -492,7 +629,7 @@ async def generate_daily_routine_headlines_fallback(pet_id: str, request: Reques
 async def get_health_insights(pet_id: str, days: int = 30):
     """Get AI-powered health insights and recommendations"""
     try:
-        from ai_analytics import pet_ai
+        pet_ai = get_pet_ai()
         
         # Get analytics data for the specified timeframe
         cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
@@ -539,7 +676,7 @@ async def get_health_insights(pet_id: str, days: int = 30):
 async def get_visualization_data(pet_id: str, chart_type: str = "all", days: int = 30):
     """Get data for various chart visualizations including voice recordings"""
     try:
-        from visualization_service import visualization_service
+        visualization_service = get_visualization_service()
         
         # Get analytics data
         cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
@@ -702,6 +839,180 @@ def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
         headlines.insert(0, f"🌟 Busy day: {total_activities} activities tracked for {pet_name}!")
     
     return headlines
+
+# ✅ NEW: RAG-powered AI Assistant endpoints
+@app.post("/api/pets/{pet_id}/preload")
+async def preload_pet_data(pet_id: str, request: Request):
+    """Preload and cache pet data for faster subsequent queries"""
+    try:
+        intelligent_chatbot_service = get_intelligent_chatbot_service()
+        
+        data = await request.json()
+        days = data.get("days", 30)  # Default to 30 days
+        
+        # Preload the pet data
+        result = await intelligent_chatbot_service.preload_pet_data(pet_id, days)
+        
+        return result
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to preload pet data: {str(e)}"
+        }
+
+@app.post("/api/pets/{pet_id}/cache/clear")
+async def clear_pet_cache(pet_id: str):
+    """Clear cached data for a specific pet"""
+    try:
+        intelligent_chatbot_service = get_intelligent_chatbot_service()
+        intelligent_chatbot_service.clear_pet_cache(pet_id)
+        
+        return {
+            "status": "success",
+            "message": f"Cache cleared for pet {pet_id}"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to clear cache: {str(e)}"
+        }
+
+@app.get("/api/pets/{pet_id}/cache/status")
+async def get_cache_status(pet_id: str):
+    """Get cache status for a specific pet"""
+    try:
+        intelligent_chatbot_service = get_intelligent_chatbot_service()
+        cached_data = intelligent_chatbot_service.get_cached_pet_data(pet_id)
+        
+        if cached_data:
+            return {
+                "status": "success",
+                "cached": True,
+                "cache_info": {
+                    "loaded_at": cached_data.get("loaded_at"),
+                    "days_covered": cached_data.get("days", 30),
+                    "analytics_entries": len(cached_data.get("analytics_data", [])),
+                    "voice_notes": len(cached_data.get("voice_notes", [])),
+                    "text_inputs": len(cached_data.get("text_inputs", [])),
+                    "medical_records": len(cached_data.get("medical_records", [])),
+                    "pet_name": cached_data.get("pet_info", {}).get("name", "Unknown")
+                }
+            }
+        else:
+            return {
+                "status": "success", 
+                "cached": False,
+                "message": "No cached data available for this pet"
+            }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Failed to check cache status: {str(e)}"
+        }
+
+@app.post("/api/pets/{pet_id}/chat")
+async def chat_with_assistant(pet_id: str, request: Request):
+    """Chat with AI Assistant using Intelligent RAG with Smart Visualization"""
+    try:
+        intelligent_chatbot_service = get_intelligent_chatbot_service()
+        
+        data = await request.json()
+        query = data.get("query", "")
+        
+        if not query:
+            return {"error": "Query is required"}
+        
+        # Generate intelligent response with optional visualization
+        response = await intelligent_chatbot_service.generate_intelligent_response(pet_id, query)
+        
+        return response
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to process chat request: {str(e)}"
+        }
+
+@app.post("/api/pets/{pet_id}/knowledge_search")
+async def search_knowledge_base(pet_id: str, request: Request):
+    """Search veterinary knowledge base"""
+    try:
+        simple_rag_service = get_simple_rag_service()
+        
+        data = await request.json()
+        query = data.get("query", "")
+        
+        if not query:
+            return {"error": "Query is required"}
+        
+        # Search knowledge base
+        knowledge_results = simple_rag_service.search_knowledge_base(query, top_k=5)
+        
+        results = []
+        for result in knowledge_results:
+            knowledge = result["knowledge"]
+            results.append({
+                "title": knowledge.get("title", ""),
+                "content": knowledge.get("content", ""),
+                "category": knowledge.get("category", ""),
+                "symptoms": knowledge.get("keywords", []),
+                "severity": knowledge.get("severity", ""),
+                "score": result["score"]
+            })
+        
+        return {
+            "status": "success",
+            "results": results,
+            "query": query,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to search knowledge base: {str(e)}"
+        }
+
+@app.get("/api/pets/{pet_id}/assistant_summary")
+async def get_assistant_summary(pet_id: str):
+    """Get AI-powered health summary for assistant dashboard using cached data"""
+    try:
+        intelligent_chatbot_service = get_intelligent_chatbot_service()
+        
+        # Check if we have cached data first
+        cached_data = intelligent_chatbot_service.get_cached_pet_data(pet_id)
+        
+        if cached_data:
+            print("✅ Using cached data for assistant summary")
+            simple_rag_service = get_simple_rag_service()
+            
+            # Use cached data for faster summary generation
+            summary_query = "Provide a comprehensive health summary with insights, patterns, and recommendations based on all available health data."
+            response = await simple_rag_service.generate_rag_response_with_cache(pet_id, summary_query, cached_data)
+        else:
+            print("🔍 No cached data available, using standard RAG processing")
+            simple_rag_service = get_simple_rag_service()
+            
+            # Fallback to standard method if no cache
+            summary_query = "Provide a comprehensive health summary with insights, patterns, and recommendations based on all available health data."
+            response = await simple_rag_service.generate_rag_response(pet_id, summary_query)
+        
+        return {
+            "status": "success",
+            "summary": response.get("response", ""),
+            "data_sources": response.get("sources", []),
+            "timestamp": datetime.utcnow().isoformat(),
+            "used_cache": cached_data is not None
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": f"Failed to generate assistant summary: {str(e)}"
+        }
 
 # ✅ NEW: Simple test endpoint for diagnostics
 @app.get("/api/test")

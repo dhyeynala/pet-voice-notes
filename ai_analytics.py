@@ -377,5 +377,5 @@ class PetAnalyticsAI:
         
         return insights
 
-# Global instance
-pet_ai = PetAnalyticsAI()
+# Service class exported for lazy initialization
+__all__ = ['PetAnalyticsAI']

@@ -10,7 +10,9 @@ def setup_google_cloud_auth():
     """Set up Google Cloud authentication with explicit project"""
     try:
         # Set environment variables
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "puppypages-29427")
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+        if not project_id:
+            raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
         credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
         
         os.environ["GOOGLE_CLOUD_PROJECT"] = project_id

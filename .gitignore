@@ -34,14 +34,9 @@ MANIFEST
 
 # Virtual environments
 .venv/
-.venv/**/*
 venv/
-venv/**/*
 ENV/
 env/
-*.pyc
-__pycache__/
-**/__pycache__/
 
 # IDE and editors
 .vscode/
@@ -75,6 +70,5 @@ structure.txt
 Screenshot*.png
 screenshot*.png
 
-# Uvicorn configuration (exclude from reloading)
-uvicorn_config.py
-start_server.sh
+# Firebase configuration (users should create their own)
+public/firebase-config.js

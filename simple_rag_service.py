@@ -361,9 +361,6 @@ try:
                 if include_context and pet_data:
                     # Get pet data only if pet exists
                     pet_documents = await self.get_pet_data_for_rag(pet_id)
-                if include_context and pet_data:
-                    # Get pet data only if pet exists
-                    pet_documents = await self.get_pet_data_for_rag(pet_id)
                     
                     # Search pet data
                     pet_results = self.similarity_search(query, pet_documents, top_k=5)
@@ -413,6 +410,158 @@ try:
                     "context_used": False,
                     "breed_info_used": False
                 }
+        
+        async def generate_rag_response_with_cache(self, pet_id: str, query: str, cached_data: Dict, include_context: bool = True) -> Dict[str, Any]:
+            """Generate RAG-enhanced response using cached pet data (faster)"""
+            try:
+                context_documents = []
+                knowledge_results = []
+                breed_info = {}
+                
+                print("🚀 Using cached data for RAG processing")
+                
+                # Get pet information from cache
+                pet_data = cached_data.get('pet_info')
+                if pet_data and pet_data.get("breed") and pet_data.get("animal_type"):
+                    breed_info = await self.get_breed_information(
+                        pet_data.get("breed"), 
+                        pet_data.get("animal_type")
+                    )
+                
+                # Always search the knowledge base for general veterinary information
+                knowledge_results = self.search_knowledge_base(query, top_k=3)
+                for kr in knowledge_results:
+                    context_documents.append({
+                        "document": {
+                            "content": kr["knowledge"]["content"],
+                            "type": "knowledge_base",
+                            "title": kr["knowledge"]["title"],
+                            "category": kr["knowledge"]["category"]
+                        },
+                        "score": kr["score"],
+                        "source_type": "knowledge_base"
+                    })
+                
+                if include_context and pet_data:
+                    # Use cached pet data instead of querying database
+                    pet_documents = self._prepare_cached_pet_documents(cached_data)
+                    
+                    # Search through cached documents
+                    if pet_documents:
+                        relevant_docs = self.similarity_search(query, pet_documents, top_k=5)
+                        context_documents.extend(relevant_docs)
+                        print(f"📚 Found {len(relevant_docs)} relevant documents from cache")
+                
+                # Prepare context and generate response
+                context = self._prepare_context(context_documents)
+                response = await self._generate_gpt_response(query, context, pet_id, pet_data)
+                
+                # Extract sources
+                sources = [
+                    {
+                        "type": doc["source_type"],
+                        "content": doc["document"]["content"][:200] + "...",
+                        "score": doc.get("score", 0),
+                        "metadata": {
+                            "type": doc["document"]["type"],
+                            "title": doc["document"].get("title", ""),
+                            "category": doc["document"].get("category", "")
+                        }
+                    }
+                    for doc in context_documents[:3]  # Top 3 sources
+                ]
+                
+                return {
+                    "response": response,
+                    "sources": sources,
+                    "context_used": len(context_documents) > 0,
+                    "cached_data_used": True,
+                    "breed_info_used": bool(breed_info)
+                }
+                
+            except Exception as e:
+                print(f"Error in cached RAG response: {e}")
+                # Fallback to standard RAG if cache fails
+                return await self.generate_rag_response(pet_id, query, include_context)
+        
+        def _prepare_cached_pet_documents(self, cached_data: Dict) -> List[Dict]:
+            """Convert cached data into searchable documents"""
+            documents = []
+            
+            # Process voice notes
+            for note in cached_data.get('voice_notes', []):
+                content = f"Voice note: {note.get('transcript', '')} Summary: {note.get('summary', '')}"
+                documents.append({
+                    "content": content,
+                    "type": "voice_note",
+                    "timestamp": note.get("timestamp"),
+                    "summary": note.get("summary"),
+                    "source_id": note.get("id")
+                })
+            
+            # Process text inputs
+            for text in cached_data.get('text_inputs', []):
+                content = f"Text input: {text.get('input', '')} Summary: {text.get('summary', '')}"
+                documents.append({
+                    "content": content,
+                    "type": "text_input", 
+                    "timestamp": text.get("timestamp"),
+                    "summary": text.get("summary"),
+                    "content_type": text.get("content_type"),
+                    "source_id": text.get("id")
+                })
+            
+            # Process medical records
+            for record in cached_data.get('medical_records', []):
+                content = f"Medical record: {record.get('summary', '')}"
+                documents.append({
+                    "content": content,
+                    "type": "medical_record",
+                    "timestamp": record.get("timestamp"),
+                    "summary": record.get("summary"),
+                    "file_name": record.get("file_name"),
+                    "source_id": record.get("id")
+                })
+            
+            # Process analytics data (sample only to avoid too much data)
+            for entry in cached_data.get('analytics_data', [])[:50]:  # Limit to 50 entries
+                content_parts = []
+                
+                category = entry.get('category', 'unknown')
+                content_parts.append(f"Category: {category}")
+                
+                if category == 'diet':
+                    content_parts.append(f"Diet entry: {entry.get('type', 'meal')}")
+                elif category == 'exercise':
+                    content_parts.append(f"Exercise: {entry.get('type', 'activity')}")
+                    if entry.get('duration'):
+                        content_parts.append(f"Duration: {entry.get('duration')} min")
+                elif category == 'energy_levels':
+                    content_parts.append(f"Energy level: {entry.get('level', 3)}/5")
+                elif category == 'mood':
+                    content_parts.append(f"Mood: {entry.get('mood', 'normal')}")
+                
+                notes = entry.get('notes', '')
+                if notes and notes.strip():
+                    content_parts.append(f"Notes: {notes}")
+                
+                timestamp = entry.get('timestamp', '')
+                if timestamp:
+                    content_parts.append(f"Date: {timestamp[:10]}")
+                
+                content = ". ".join(filter(None, content_parts))
+                
+                documents.append({
+                    "content": content,
+                    "type": "analytics",
+                    "category": entry.get("category"),
+                    "timestamp": entry.get("timestamp"),
+                    "notes": entry.get("notes"),
+                    "source_id": entry.get("id", "unknown")
+                })
+            
+            print(f"📄 Prepared {len(documents)} documents from cached data")
+            return documents
         
         def _prepare_context(self, results: List[Dict]) -> str:
             """Prepare context from search results for GPT"""
@@ -681,15 +830,10 @@ Remember: You are not replacing veterinary care but providing informed insights 
             
             return {}
 
-    print("🎯 Class definition complete, creating global instance...")
+    print("🎯 Class definition complete!")
 
-    # Global service instance
-    simple_rag_service = SimplePetHealthRAGService()
-
-    print("✅ simple_rag_service instance created successfully!")
-
-    # Export the class and instance for imports
-    __all__ = ['SimplePetHealthRAGService', 'simple_rag_service']
+    # Export only the class for imports - instances will be created lazily
+    __all__ = ['SimplePetHealthRAGService']
 
     print("📤 Exports defined:", __all__)
 except Exception as e:

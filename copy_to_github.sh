@@ -28,3 +28,12 @@ rsync -av \
     "$SOURCE_DIR/" "$TARGET_DIR/"
 
 echo "✅ Copy completed!"
+echo ""
+echo "Next steps:"
+echo "1. cd $TARGET_DIR"
+echo "2. Create your .env file: cp .env.example .env"
+echo "3. Add your API keys to .env"
+echo "4. Add your gcloud-key.json file"
+echo "5. git add ."
+echo "6. git commit -m 'Add PetPages application'"
+echo "7. git push"
