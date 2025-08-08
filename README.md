@@ -8,7 +8,7 @@
 
 ## Why This Project Exists
 
-During my internship, I noticed how many of my friends and colleagues struggled with tracking their pets' health between vet visits. They'd worry about subtle changes in behavior, forget important details during vet appointments, and struggle to identify patterns over time. Watching them scribble notes on random pieces of paper or try to remember weeks of observations sparked my interest in this problem space.
+During my internship, I noticed how many of my friends and relatives struggled with tracking their pets' health between vet visits. They'd worry about subtle changes in behavior, forget important details during vet appointments, and struggle to identify patterns over time. Watching them scribble notes on random pieces of paper or try to remember weeks of observations sparked my interest in this problem space.
 
 When I researched existing digital solutions, I found either oversimplified logging apps that offered no meaningful insights, or expensive enterprise veterinary software designed for clinics, not individual pet owners. There was clearly a gap in the market for intelligent, proactive pet health monitoring that could bridge home care with professional veterinary services.
 
