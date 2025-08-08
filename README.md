@@ -1,4 +1,4 @@
-# PetPages - AI-Powered Pet Health Management System
+# PetPulse - AI-Powered Pet Health Management System
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
@@ -92,7 +92,7 @@ python api_server.py
 
 ## Overview
 
-PetPages transforms how pet owners track and manage their pets' health through advanced AI technologies, **OpenAI Function Calling**, intelligent caching, and dynamic visualizations. The system converts simple observations into actionable health insights using real-time audio processing, **GPT-4 with Function Calling**, RAG-powered AI assistance, breed-specific API integration, and modern web technologies with optimized performance.
+PetPulse transforms how pet owners track and manage their pets' health through advanced AI technologies, **OpenAI Function Calling**, intelligent caching, and dynamic visualizations. The system converts simple observations into actionable health insights using real-time audio processing, **GPT-4 with Function Calling**, RAG-powered AI assistance, breed-specific API integration, and modern web technologies with optimized performance.
 
 ## Key Features
 
@@ -427,7 +427,7 @@ Create any visualization with the Dynamic Visualization Engine:
 ### **Installation**
 ```bash
 git clone <repository-url>
-cd petpages-ai-system
+cd petpulse-ai-system
 pip install -r requirements.txt
 ```
 
@@ -459,7 +459,7 @@ const firebaseConfig = {
 python -m uvicorn api_server:app --reload --host localhost --port 8000
 ```
 
-Visit `http://localhost:8000` to access your PetPages AI system!
+Visit `http://localhost:8000` to access your PetPulse AI system!
 
 ## Testing the System
 
@@ -582,7 +582,7 @@ Ready to help improve pet healthcare with AI? We'd love your contributions!
 ### **Quick Start for Contributors**
 ```bash
 git clone <repository-url>
-cd petpages-ai-system
+cd petpulse-ai-system
 pip install -r requirements.txt
 cp .env.template .env
 # Add your API keys to .env

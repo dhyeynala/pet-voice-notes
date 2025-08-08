@@ -72,7 +72,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Pre-warm critical services to improve first request performance"""
-    print("🚀 Starting PetPages API server...")
+    print("🚀 Starting PetPulse API server...")
     print("🔥 Pre-warming critical services...")
     
     # Pre-warm only the most commonly used service (visualization)
@@ -83,7 +83,7 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️ Failed to pre-warm visualization service: {e}")
     
-    print("🎉 PetPages API server ready!")
+    print("🎉 PetPulse API server ready!")
 
 @app.post("/api/start")
 async def start(request: Request):
@@ -1019,7 +1019,7 @@ async def get_assistant_summary(pet_id: str):
 async def test_endpoint():
     return {
         "status": "OK",
-        "message": "PetPages API server is running",
+        "message": "PetPulse API server is running",
         "timestamp": datetime.utcnow().isoformat(),
         "version": "1.0.0"
     }

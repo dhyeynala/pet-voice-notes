@@ -1,4 +1,4 @@
-# Security Guidelines for PetPages
+# Security Guidelines for PetPulse
 
 ## Important Security Notice
 

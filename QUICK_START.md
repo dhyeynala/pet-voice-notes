@@ -1,6 +1,6 @@
-# 🚀 PetPages Quick Start Guide
+# 🚀 PetPulse Quick Start Guide
 
-Get PetPages running in minutes! Choose your preferred setup method:
+Get PetPulse running in minutes! Choose your preferred setup method:
 
 ## 📋 Prerequisites
 
@@ -61,8 +61,8 @@ cp public/firebase-config.template.js public/firebase-config.js
 docker-compose up --build
 
 # Or run without compose
-docker build -t petpages .
-docker run -p 8000:8000 --env-file .env petpages
+docker build -t petpulse .
+docker run -p 8000:8000 --env-file .env petpulse
 ```
 
 ## 🔧 Method 3: Manual Setup

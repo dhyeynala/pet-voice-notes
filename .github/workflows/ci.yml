@@ -77,8 +77,8 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -t petpages:test .
+        docker build -t petpulse:test .
     
     - name: Test Docker image
       run: |
-        docker run --rm petpages:test python -c "print('Docker image test passed')" 
+        docker run --rm petpulse:test python -c "print('Docker image test passed')" 

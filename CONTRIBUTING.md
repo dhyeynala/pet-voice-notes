@@ -1,6 +1,6 @@
-# 🤝 Contributing to PetPages
+# 🤝 Contributing to PetPulse
 
-Thank you for your interest in contributing to PetPages! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to PetPulse! This document provides guidelines and information for contributors.
 
 ## 🚀 Quick Start
 
@@ -282,7 +282,7 @@ We use [Semantic Versioning](https://semver.org/):
 
 ## 📄 License
 
-By contributing to PetPages, you agree that your contributions will be licensed under the same license as the project.
+By contributing to PetPulse, you agree that your contributions will be licensed under the same license as the project.
 
 ## 🙏 Recognition
 
@@ -300,4 +300,4 @@ Contributors will be recognized in:
 
 ---
 
-**Thank you for contributing to PetPages! 🐾** 
+**Thank you for contributing to PetPulse! 🐾** 
