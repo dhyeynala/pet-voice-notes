@@ -8,11 +8,11 @@
 
 ## Why This Project Exists
 
-As a pet owner during my internship, I found myself constantly worried about my pet's health between vet visits. Was that slight change in appetite normal? Should I be concerned about the decreased energy levels? I'd scribble notes on random pieces of paper, forget to mention important details to the vet, and struggle to track patterns over time.
+During my internship, I noticed how many of my friends and colleagues struggled with tracking their pets' health between vet visits. They'd worry about subtle changes in behavior, forget important details during vet appointments, and struggle to identify patterns over time. Watching them scribble notes on random pieces of paper or try to remember weeks of observations sparked my interest in this problem space.
 
-When I looked for digital solutions, I found either oversimplified logging apps that offered no insights, or expensive enterprise veterinary software designed for clinics, not individual pet owners. There was clearly a gap in the market for intelligent, proactive pet health monitoring that could bridge home care with professional veterinary services.
+When I researched existing digital solutions, I found either oversimplified logging apps that offered no meaningful insights, or expensive enterprise veterinary software designed for clinics, not individual pet owners. There was clearly a gap in the market for intelligent, proactive pet health monitoring that could bridge home care with professional veterinary services.
 
-This presented the perfect opportunity to deepen my skills in **AI integration, real-time data processing, and cloud architecture** while solving a real problem I was experiencing. I wanted to learn how to implement **OpenAI Function Calling, design intelligent caching systems, and build production-grade APIs** - technologies I had identified as crucial for modern full-stack development.
+This presented the perfect opportunity to deepen my skills in **AI integration, real-time data processing, and cloud architecture** while solving a real problem I had observed affecting so many people around me. I wanted to learn how to implement **OpenAI Function Calling, design intelligent caching systems, and build production-grade APIs** - technologies I had identified as crucial for modern full-stack development.
 
 I set three core technical goals: make it **fast** (sub-200ms API responses), **intelligent** (AI-driven insights without requiring manual configuration), and **scalable** (cloud-native architecture that could support thousands of pets). Every technology choice was made to optimize for these three pillars while demonstrating enterprise-level development practices.
 
