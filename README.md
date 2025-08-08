@@ -6,7 +6,7 @@
 [![Firebase](https://img.shields.io/badge/Firebase-9.0+-yellow.svg)](https://firebase.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-<img src="assets/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" width="600">
+<img src="assets/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" height="400">
 
 ## Why This Project Exists
 
@@ -46,7 +46,7 @@ Current solutions are either basic logging apps or expensive enterprise systems.
 | **Voice & Document Processing**        | No                      | No                      | Real-time transcription + PDF medical record parsing        |
 | **Ease of Setup**                      | Easy                    | Complex onboarding      | Instant setup via Docker or manual install                  |
 
-<img src="assets/assistant-dashboard.png" alt="PetPulse – AI Health Assistant with access to notes, PDFs, and tracking data" width="600">
+<img src="assets/assistant-dashboard.png" alt="PetPulse – AI Health Assistant with access to notes, PDFs, and tracking data" height="400">
 
 ## Multi-Species & Breed Intelligence in Action
 
