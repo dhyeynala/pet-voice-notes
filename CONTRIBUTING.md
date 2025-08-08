@@ -1,11 +1,11 @@
-# 🤝 Contributing to PetPulse
+# Contributing to PetPulse
 
-Thank you for your interest in contributing to PetPulse! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to PetPulse! This document provides guidelines and information for contributors to this AI-powered pet health management platform.
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **Fork** the repository
-2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/final_github.git`
+2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/petpulse.git`
 3. **Create** a feature branch: `git checkout -b feature/amazing-feature`
 4. **Make** your changes
 5. **Test** your changes: `python -m pytest`
@@ -13,18 +13,19 @@ Thank you for your interest in contributing to PetPulse! This document provides 
 7. **Push** to your branch: `git push origin feature/amazing-feature`
 8. **Open** a Pull Request
 
-## 📋 Development Setup
+## Development Setup
 
 ### Prerequisites
 - Python 3.8+
 - Git
+- Docker (optional but recommended)
 - API Keys (see [QUICK_START.md](QUICK_START.md))
 
 ### Local Development
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/final_github.git
-cd final_github
+git clone https://github.com/YOUR_USERNAME/petpulse.git
+cd petpulse
 
 # Install dependencies
 pip install -r requirements.txt
@@ -42,7 +43,16 @@ cp public/firebase-config.template.js public/firebase-config.js
 python api_server.py
 ```
 
-## 🧪 Testing
+### Docker Development
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Run specific services
+docker-compose up petpulse
+```
+
+## Testing
 
 ### Running Tests
 ```bash
@@ -61,27 +71,38 @@ pytest -v
 
 ### Writing Tests
 - Tests should be in the `tests/` directory
-- Use descriptive test names
+- Use descriptive test names following the pattern `test_<function>_<condition>_<expected_result>`
 - Test both success and failure cases
-- Mock external API calls
+- Mock external API calls (OpenAI, Firebase, Google Cloud)
+- Include integration tests for critical workflows
 
 Example test:
 ```python
 import pytest
+from unittest.mock import patch, MagicMock
 from api_server import app
 
-def test_health_endpoint():
+def test_health_endpoint_returns_healthy_status():
+    """Test that the health endpoint returns correct status."""
     with app.test_client() as client:
         response = client.get('/api/health')
         assert response.status_code == 200
         assert response.json['status'] == 'healthy'
+
+@patch('openai.ChatCompletion.create')
+def test_ai_chat_handles_openai_error(mock_openai):
+    """Test that AI chat gracefully handles OpenAI API errors."""
+    mock_openai.side_effect = Exception("API Error")
+    with app.test_client() as client:
+        response = client.post('/api/pets/123/chat', json={"message": "test"})
+        assert response.status_code == 500
 ```
 
-## 🔍 Code Quality
+## Code Quality
 
-### Linting
+### Linting and Formatting
 ```bash
-# Run flake8
+# Run flake8 (linting)
 flake8 .
 
 # Run black (code formatting)
@@ -89,6 +110,9 @@ black .
 
 # Run isort (import sorting)
 isort .
+
+# Run mypy (type checking)
+mypy .
 ```
 
 ### Pre-commit Hooks
@@ -103,201 +127,290 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-## 📝 Code Style
+## Code Style Guidelines
 
 ### Python
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/)
-- Use type hints where appropriate
-- Write docstrings for functions and classes
-- Keep functions small and focused
+- Use type hints for all function parameters and return values
+- Write comprehensive docstrings for functions and classes
+- Keep functions small and focused (max 50 lines)
+- Use async/await for I/O operations
+- Handle exceptions gracefully with proper error messages
+
+Example:
+```python
+async def process_voice_note(audio_data: bytes, pet_id: str) -> dict:
+    """
+    Process voice recording and generate AI summary.
+    
+    Args:
+        audio_data: Raw audio bytes from recording
+        pet_id: Unique identifier for the pet
+        
+    Returns:
+        Dict containing transcript, summary, and classification
+        
+    Raises:
+        TranscriptionError: If audio processing fails
+        AIServiceError: If OpenAI API call fails
+    """
+    try:
+        transcript = await transcribe_audio(audio_data)
+        summary = await generate_ai_summary(transcript, pet_id)
+        return {"transcript": transcript, "summary": summary}
+    except Exception as e:
+        logger.error(f"Voice note processing failed: {e}")
+        raise
+```
 
 ### JavaScript
-- Use ES6+ features
-- Follow consistent naming conventions
+- Use ES6+ features (arrow functions, const/let, destructuring)
+- Follow consistent naming conventions (camelCase for variables, PascalCase for classes)
 - Add JSDoc comments for functions
+- Use modern async/await instead of promises where possible
 
 ### HTML/CSS
-- Use semantic HTML
-- Follow BEM methodology for CSS
-- Ensure accessibility standards
+- Use semantic HTML5 elements
+- Follow BEM methodology for CSS class naming
+- Ensure WCAG 2.1 accessibility standards
+- Use CSS Grid and Flexbox for layouts
+- Implement responsive design patterns
 
-## 🐛 Bug Reports
+## Technical Contributions
+
+### AI/ML Components
+- **OpenAI Function Calling**: Extend function definitions for new chart types
+- **RAG Systems**: Improve context retrieval and response generation
+- **Caching**: Optimize data preloading and cache invalidation strategies
+- **Visualization**: Add new chart types and customization options
+
+### Backend Development
+- **FastAPI**: Add new endpoints following RESTful conventions
+- **Database**: Optimize Firestore queries and data structures
+- **Performance**: Implement caching layers and async optimizations
+- **Security**: Enhance input validation and authentication flows
+
+### Frontend Development
+- **Chart.js**: Create new visualization components
+- **Firebase SDK**: Improve real-time data synchronization
+- **UI/UX**: Enhance responsive design and accessibility
+- **JavaScript**: Optimize performance and add modern features
+
+## Bug Reports
 
 ### Before Submitting
-1. Check existing issues
-2. Try to reproduce the bug
-3. Check if it's a configuration issue
+1. Check existing issues for duplicates
+2. Try to reproduce the bug consistently
+3. Check if it's a configuration or setup issue
+4. Test with the latest version
 
 ### Bug Report Template
 ```markdown
 **Bug Description**
-Brief description of the bug
+Clear and concise description of the bug
 
 **Steps to Reproduce**
-1. Step 1
-2. Step 2
-3. Step 3
+1. Go to '...'
+2. Click on '...'
+3. Scroll down to '...'
+4. See error
 
 **Expected Behavior**
-What should happen
+What you expected to happen
 
 **Actual Behavior**
-What actually happens
+What actually happened
 
 **Environment**
-- OS: [e.g., macOS, Windows, Linux]
-- Python Version: [e.g., 3.11]
-- Browser: [e.g., Chrome, Firefox]
+- OS: [e.g., macOS 13.0, Windows 11, Ubuntu 20.04]
+- Python Version: [e.g., 3.11.0]
+- Browser: [e.g., Chrome 108, Firefox 107]
+- Docker Version: [if applicable]
 
-**Additional Context**
-Any other relevant information
+**Error Logs**
+```
+Paste relevant error logs here
 ```
 
-## 💡 Feature Requests
+**Additional Context**
+Add any other context about the problem here
+```
+
+## Feature Requests
 
 ### Before Submitting
-1. Check if the feature already exists
+1. Check if the feature already exists or is planned
 2. Consider if it aligns with project goals
-3. Think about implementation complexity
+3. Think about implementation complexity and maintenance burden
+4. Consider backwards compatibility
 
 ### Feature Request Template
 ```markdown
 **Feature Description**
-Brief description of the feature
+Clear and concise description of the feature
+
+**Problem Statement**
+What problem does this feature solve?
 
 **Use Case**
-Why this feature would be useful
+Describe the specific use case and user story
 
 **Proposed Implementation**
-How you think it could be implemented
+How you think it could be implemented (optional)
+
+**Technical Considerations**
+- API changes required
+- Database schema changes
+- Frontend modifications
+- Performance implications
 
 **Alternatives Considered**
 Other approaches you considered
 
 **Additional Context**
-Any other relevant information
+Any other relevant information, mockups, or examples
 ```
 
-## 🔧 Pull Request Guidelines
+## Pull Request Guidelines
 
 ### Before Submitting
-- [ ] Code follows style guidelines
-- [ ] Tests pass locally
+- [ ] Code follows style guidelines (run pre-commit hooks)
+- [ ] Tests pass locally (`pytest`)
 - [ ] New tests added for new features
-- [ ] Documentation updated
-- [ ] No sensitive data committed
+- [ ] Documentation updated (README, docstrings, comments)
+- [ ] No sensitive data committed (API keys, credentials)
+- [ ] Performance impact considered
+- [ ] Backwards compatibility maintained
 
 ### PR Template
 ```markdown
 **Description**
-Brief description of changes
+Brief description of changes and motivation
 
 **Type of Change**
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
+- [ ] Performance improvement
+- [ ] Code refactoring
+
+**Technical Details**
+- Affected components: [e.g., API server, AI services, frontend]
+- Database changes: [if any]
+- API changes: [if any]
+- Dependencies added/updated: [if any]
 
 **Testing**
-- [ ] Tests added/updated
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
 - [ ] All tests pass
 - [ ] Manual testing completed
+- [ ] Performance testing completed (if applicable)
 
-**Screenshots** (if applicable)
-Add screenshots for UI changes
+**Screenshots/Videos** (if applicable)
+Add screenshots or videos for UI changes
 
 **Checklist**
-- [ ] Code follows style guidelines
+- [ ] Code follows project style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
 - [ ] No sensitive data committed
+- [ ] Performance impact assessed
+- [ ] Backwards compatibility verified
 ```
 
-## 🏗️ Architecture
+## Project Architecture
 
-### Project Structure
+### Core Services
 ```
-final_github/
-├── api_server.py              # Main FastAPI server
-├── main.py                    # Core application logic
-├── intelligent_chatbot_service.py  # AI chatbot service
-├── simple_rag_service.py      # RAG-based AI service
-├── visualization_service.py    # Chart generation service
-├── ai_analytics.py           # Analytics AI service
-├── transcribe.py             # Voice transcription
-├── firestore_store.py        # Database operations
+petpulse/
+├── api_server.py              # FastAPI server with 20+ endpoints
+├── intelligent_chatbot_service.py  # OpenAI Function Calling service
+├── simple_rag_service.py      # RAG-based AI with breed APIs
+├── visualization_service.py   # Dynamic chart generation engine
+├── ai_analytics.py           # AI-powered analytics and insights
+├── transcribe.py             # Real-time voice processing
+├── firestore_store.py        # Database operations and caching
+├── summarize_openai.py       # OpenAI text processing and classification
+├── pdf_parser.py             # Document analysis and extraction
+├── main.py                   # Application initialization
 ├── gcloud_auth.py           # Google Cloud authentication
-├── pdf_parser.py            # PDF processing
-├── summarize_openai.py      # OpenAI summarization
-├── public/                  # Frontend files
-│   ├── index.html
-│   ├── main.html
-│   ├── styles.css
-│   └── firebase-config.js
-├── tests/                   # Test files
-├── requirements.txt         # Python dependencies
-└── docs/                   # Documentation
+└── public/                  # Frontend assets and components
 ```
 
-### Key Components
-- **API Server**: FastAPI-based REST API
-- **AI Services**: OpenAI-powered intelligent services
-- **Database**: Firebase Firestore for data storage
-- **Frontend**: HTML/CSS/JavaScript interface
-- **Voice Processing**: Google Cloud Speech-to-Text
+### Technology Stack
+- **Backend**: Python 3.8+, FastAPI, async/await patterns
+- **AI/ML**: OpenAI GPT-4, Function Calling, RAG systems
+- **Database**: Firebase Firestore with intelligent caching
+- **Cloud**: Google Cloud Speech-to-Text, Firebase Storage
+- **Frontend**: Vanilla JavaScript ES6+, Chart.js, responsive CSS
+- **Infrastructure**: Docker, GitHub Actions CI/CD
 
-## 🛡️ Security
+## Security Guidelines
 
-### Guidelines
-- Never commit API keys or secrets
-- Use environment variables for configuration
-- Validate all user inputs
+### Development Security
+- Never commit API keys, secrets, or credentials
+- Use environment variables for all configuration
+- Validate and sanitize all user inputs
 - Follow OWASP security guidelines
-- Report security issues privately
+- Implement proper error handling without exposing internal details
+- Use HTTPS for all external API communications
 
-### Security Issues
-For security issues, please email [your-email] instead of creating a public issue.
+### Reporting Security Issues
+For security vulnerabilities, please email the maintainers directly instead of creating a public issue. Include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact assessment
+- Suggested fix (if available)
 
-## 📚 Documentation
+## Documentation Standards
 
-### Writing Documentation
-- Use clear, concise language
-- Include code examples
-- Keep documentation up to date
-- Use markdown formatting
+### Code Documentation
+- Write clear, comprehensive docstrings for all functions and classes
+- Include type hints for better code clarity
+- Add inline comments for complex logic
+- Keep documentation up to date with code changes
 
-### Documentation Structure
-- `README.md`: Project overview and setup
-- `QUICK_START.md`: Quick setup guide
-- `SECURITY.md`: Security guidelines
-- `CONTRIBUTING.md`: This file
-- `docs/`: Detailed documentation
+### Project Documentation
+- Update README.md for major feature additions
+- Maintain QUICK_START.md for setup instructions
+- Document API changes in commit messages
+- Create examples for new features
 
-## 🏷️ Versioning
+## Release Process
 
-We use [Semantic Versioning](https://semver.org/):
-- **MAJOR**: Breaking changes
-- **MINOR**: New features (backward compatible)
-- **PATCH**: Bug fixes (backward compatible)
+### Versioning
+We follow [Semantic Versioning](https://semver.org/):
+- **MAJOR** (X.0.0): Breaking changes, major architecture updates
+- **MINOR** (0.X.0): New features, backwards compatible
+- **PATCH** (0.0.X): Bug fixes, security patches
 
-## 📄 License
+### Release Checklist
+- [ ] All tests pass
+- [ ] Documentation updated
+- [ ] Version number bumped
+- [ ] Release notes prepared
+- [ ] Security review completed
 
-By contributing to PetPulse, you agree that your contributions will be licensed under the same license as the project.
+## License
 
-## 🙏 Recognition
+By contributing to PetPulse, you agree that your contributions will be licensed under the MIT License that covers the project.
 
-Contributors will be recognized in:
-- Project README
-- Release notes
-- Contributor hall of fame
+## Recognition
 
-## 🆘 Getting Help
+Contributors are recognized through:
+- GitHub contributor statistics
+- Release notes acknowledgments
+- Project documentation credits
 
-- 📖 Check the [README.md](README.md)
-- 🔍 Search existing issues
-- 💬 Ask questions in discussions
-- 📧 Contact maintainers
+## Getting Help
+
+- **Documentation**: Check [README.md](README.md) and [QUICK_START.md](QUICK_START.md)
+- **Issues**: Search existing GitHub issues
+- **Discussions**: Use GitHub Discussions for questions
+- **Direct Contact**: Email maintainers for urgent matters
 
 ---
 
-**Thank you for contributing to PetPulse! 🐾** 
+**Thank you for contributing to PetPulse and helping improve AI-powered pet healthcare technology!**
