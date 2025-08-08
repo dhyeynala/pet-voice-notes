@@ -226,22 +226,97 @@ The FastAPI server provides automatic interactive documentation:
 - **Swagger UI**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 
-### Key Endpoints
-```python
-# AI-powered chat with function calling
-POST /api/pets/{pet_id}/chat
+### Complete API Reference
 
-# Real-time voice processing
-POST /api/start_recording
-POST /api/stop_recording
+| Category | Method | Endpoint | Description | Key Features |
+|----------|--------|----------|-------------|--------------|
+| **System** | GET | `/` | Serve main application | Static file serving |
+| | GET | `/api/health` | Health check endpoint | Service status monitoring |
+| | GET | `/api/test` | API diagnostics | System verification |
+| **Authentication & Users** | GET | `/api/user-pets/{user_id}` | Get user's pets list | Multi-pet management |
+| | POST | `/api/pets/{user_id}` | Create new pet profile | Breed validation |
+| **Pet Data Management** | POST | `/api/start` | Initialize pet session | Legacy endpoint |
+| | POST | `/api/pets/{pet_id}/textinput` | Add text-based notes | AI classification |
+| | GET | `/api/pets/{pet_id}/analytics` | Retrieve health analytics | Multi-source aggregation |
+| | POST | `/api/pets/{pet_id}/analytics/{category}` | Add analytics entry | 13 health categories |
+| | GET | `/api/pets/{pet_id}/analytics/summary` | Analytics overview | Statistical summaries |
+| **AI-Powered Features** | POST | `/api/pets/{pet_id}/chat` | AI chat with function calling | OpenAI GPT-4 integration |
+| | POST | `/api/pets/{pet_id}/knowledge_search` | Search veterinary knowledge | RAG-based responses |
+| | GET | `/api/pets/{pet_id}/assistant_summary` | AI health summary | Cached data processing |
+| | POST | `/api/pets/{pet_id}/daily_routine` | Generate AI headlines | Daily activity insights |
+| | GET | `/api/pets/{pet_id}/health_insights` | AI health recommendations | Pattern recognition |
+| **Voice Processing** | POST | `/api/start_recording` | Start voice recording | Real-time audio capture |
+| | POST | `/api/stop_recording` | Stop recording & transcribe | Google Cloud Speech-to-Text |
+| | GET | `/api/recording_status` | Check recording status | Session monitoring |
+| **Document Management** | POST | `/api/upload_pdf` | Upload & analyze PDFs | Medical document processing |
+| **Data Visualization** | GET | `/api/pets/{pet_id}/visualizations` | Generate charts | 12+ chart types |
+| **Performance & Caching** | POST | `/api/pets/{pet_id}/preload` | Preload & cache data | 90% performance improvement |
+| | GET | `/api/pets/{pet_id}/cache/status` | Check cache status | Cache health monitoring |
+| | POST | `/api/pets/{pet_id}/cache/clear` | Clear cached data | Force refresh |
+| **Collaboration** | POST | `/api/pages/invite` | Invite users to pages | Multi-user sharing |
+| | GET | `/api/pages/{page_id}` | Get shared page data | Collaborative notes |
+| | POST | `/api/pages/{page_id}` | Update shared page | Real-time collaboration |
+| | GET | `/api/markdown` | Get markdown content | Legacy text management |
+| | POST | `/api/markdown` | Update markdown content | Legacy text management |
 
-# Data visualization
-GET /api/pets/{pet_id}/visualizations
+### API Architecture Flow
 
-# Performance optimization
-POST /api/pets/{pet_id}/preload  # Cache data
-GET /api/pets/{pet_id}/cache/status
+```mermaid
+graph TD
+    A[Client Request] --> B{Authentication}
+    B --> C[FastAPI Router]
+    C --> D[Service Layer]
+    D --> E{Service Type}
+    
+    E --> F[AI Services]
+    E --> G[Data Services]
+    E --> H[Media Services]
+    
+    F --> I[OpenAI GPT-4]
+    F --> J[Google Cloud Speech]
+    F --> K[RAG Knowledge Base]
+    
+    G --> L[Firebase Firestore]
+    G --> M[Caching Layer]
+    
+    H --> N[Firebase Storage]
+    H --> O[PDF Processing]
+    
+    I --> P[Function Calling]
+    J --> Q[Voice Transcription]
+    K --> R[Breed APIs]
+    
+    L --> S[Real-time Sync]
+    M --> T[Performance Boost]
+    
+    P --> U[Dynamic Visualizations]
+    Q --> V[AI Summarization]
+    R --> W[Personalized Advice]
+    
+    U --> X[Chart.js Rendering]
+    V --> Y[Health Classification]
+    W --> Z[Breed-Specific Insights]
 ```
+
+### Key Technical Features
+
+| Feature | Implementation | Performance Impact |
+|---------|----------------|-------------------|
+| **Async Processing** | FastAPI + async/await | Non-blocking I/O operations |
+| **Intelligent Caching** | 30-minute TTL + preloading | 90% faster subsequent queries |
+| **Function Calling** | OpenAI GPT-4 integration | Dynamic visualization selection |
+| **Real-time Data** | Firebase Firestore | Live data synchronization |
+| **Voice Processing** | Google Cloud Speech-to-Text | Real-time transcription |
+| **Document Analysis** | PDF parsing + AI summarization | Medical record processing |
+| **Multi-source Analytics** | Voice + Text + Manual entry | Comprehensive health tracking |
+
+### Authentication & Security
+
+- **Firebase Authentication** - Secure user management
+- **Environment Variables** - API key protection
+- **Input Validation** - Request sanitization
+- **CORS Configuration** - Cross-origin security
+- **Error Handling** - Graceful failure management
 
 ## Development Features
 
