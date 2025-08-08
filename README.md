@@ -146,6 +146,50 @@ petpulse/
 └── setup.py                # Automated environment setup
 ```
 
+## Database Schema (Firebase Firestore)
+
+```plaintext
+users/
+  └── {userId}/
+      ├── email: "user@example.com"
+      ├── pages: [pageId, ...]
+      └── pets: [petId, ...]
+
+pets/
+  └── {petId}/
+      ├── name: "Buddy"
+      ├── breed: "Golden Retriever"
+      ├── animal_type: "dog"
+      ├── age: "3 years"
+      └── subcollections:
+          ├── voice-notes/
+          │   └── {noteId}
+          │       ├── transcript: "Dog was limping today..."
+          │       ├── summary: "Possible leg injury, monitor closely"
+          │       ├── content_type: "MEDICAL"
+          │       ├── keywords: ["limping", "injury"]
+          │       └── timestamp: "2025-01-09T..."
+          ├── records/
+          │   └── {recordId}
+          │       ├── summary: "Blood work shows normal values"
+          │       ├── file_url: "https://storage.googleapis.com/..."
+          │       ├── file_name: "blood_work_results.pdf"
+          │       └── timestamp: "2025-01-09T..."
+          ├── textinput/
+          │   └── {inputId}
+          │       ├── input: "Great walk today, full of energy!"
+          │       ├── summary: "Positive daily activity report"
+          │       ├── content_type: "DAILY_ACTIVITY"
+          │       └── timestamp: "2025-01-09T..."
+          └── analytics/
+              └── {entryId}
+                  ├── category: "exercise"
+                  ├── duration: 45
+                  ├── intensity: "high"
+                  ├── notes: "Enjoyed fetch at the park"
+                  └── timestamp: "2025-01-09T..."
+```
+
 ## Quick Start
 
 ### Docker Deployment (Recommended)
