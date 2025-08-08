@@ -6,6 +6,8 @@
 [![Firebase](https://img.shields.io/badge/Firebase-9.0+-yellow.svg)](https://firebase.google.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+![PetPulse login – Google sign-in with feature highlights](assets/login-hero.png)
+
 ## Why This Project Exists
 
 Over the past year, I noticed how many of my friends and relatives struggled with tracking their pets' health between vet visits. They'd worry about subtle changes in behavior, forget important details during vet appointments, and struggle to identify patterns over time. Watching them scribble notes on random pieces of paper or try to remember weeks of observations sparked my interest in this problem space.
