@@ -1,10 +1,10 @@
-# 🔐 Security Guidelines for PetPages
+# Security Guidelines for PetPages
 
-## ⚠️ Important Security Notice
+## Important Security Notice
 
 This project uses sensitive API keys and credentials that must be protected.
 
-### 🔑 API Keys Used
+### API Keys Used
 
 #### OpenAI API Key
 - **Purpose**: Text summarization, AI analytics, voice note processing
@@ -16,14 +16,14 @@ This project uses sensitive API keys and credentials that must be protected.
 - **Used in**: `transcribe.py`, `firestore_store.py`, `gcloud_auth.py`
 - **Files**: `gcloud-key.json`, environment variables
 
-### 🛡️ Security Measures Implemented
+### Security Measures Implemented
 
 1. **Environment Variables**: All sensitive keys are stored in `.env` file
 2. **Git Ignore**: `.env` and `gcloud-key.json` are excluded from version control
 3. **Template File**: `.env.template` provides setup instructions without exposing keys
 4. **Documentation**: This file documents security practices
 
-### 🔄 Key Rotation Recommendations
+### Key Rotation Recommendations
 
 #### For OpenAI API Key:
 1. Visit [OpenAI API Keys Dashboard](https://platform.openai.com/api-keys)
@@ -38,7 +38,7 @@ This project uses sensitive API keys and credentials that must be protected.
 4. Replace `gcloud-key.json` with new file
 5. Delete old key from console
 
-### 🚀 Production Deployment
+### Production Deployment
 
 For production environments:
 - Use environment variables instead of `.env` files
@@ -46,7 +46,7 @@ For production environments:
 - Enable API key restrictions and rate limiting
 - Monitor API usage for unusual activity
 
-### 📋 Setup Checklist
+### Setup Checklist
 
 - [ ] `.env` file is not committed to git
 - [ ] `gcloud-key.json` is not committed to git
@@ -54,7 +54,7 @@ For production environments:
 - [ ] Team members have their own API keys (don't share)
 - [ ] API keys have appropriate permissions only
 
-### 🆘 If Keys Are Compromised
+### If Keys Are Compromised
 
 1. **Immediately rotate all exposed keys**
 2. **Check API usage logs for unauthorized activity**

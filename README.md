@@ -64,27 +64,27 @@ python api_server.py
 
 | Document | Purpose |
 |----------|---------|
-| [📖 README.md](README.md) | Project overview and features |
-| [🚀 QUICK_START.md](QUICK_START.md) | Detailed setup instructions |
-| [🤝 CONTRIBUTING.md](CONTRIBUTING.md) | Contributor guidelines |
-| [🔒 SECURITY.md](SECURITY.md) | Security best practices |
-| [🐳 Dockerfile](Dockerfile) | Container deployment |
-| [⚙️ setup.py](setup.py) | Automated setup script |
+| [README.md](README.md) | Project overview and features |
+| [QUICK_START.md](QUICK_START.md) | Detailed setup instructions |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor guidelines |
+| [SECURITY.md](SECURITY.md) | Security best practices |
+| [Dockerfile](Dockerfile) | Container deployment |
+| [setup.py](setup.py) | Automated setup script |
 
-## 🚀 Latest Updates (v2.0)
+## Latest Updates (v2.0)
 
-### **🎯 OpenAI Function Calling Integration**
+### **OpenAI Function Calling Integration**
 - **Intelligent Visualization Decisions**: AI automatically chooses the best chart type for your questions
 - **Smart Function Selection**: 12+ visualization functions with intelligent parameter extraction
 - **Context-Aware Responses**: Different visualizations for different question types
 
-### **📊 Dynamic Visualization Engine** 
+### **Dynamic Visualization Engine** 
 - **Unlimited Chart Types**: Generate any chart with flexible parameters (line, bar, area, doughnut, scatter)
 - **Custom Axis Combinations**: Mix any data dimensions (date, category, hour, day_of_week, etc.)
 - **Advanced Filtering**: Apply complex filters and grouping to your data
 - **Real-time Aggregation**: Count, sum, average, max, min with any time period
 
-### **⚡ Performance Optimization System**
+### **Performance Optimization System**
 - **Intelligent Caching**: 90% faster subsequent queries with 30-minute cache expiry
 - **67% Fewer Database Reads**: Smart data preloading reduces Firestore costs
 - **Lightning-Fast Chat**: 2.5s → 0.5s response times after initial cache load
@@ -98,19 +98,19 @@ PetPages transforms how pet owners track and manage their pets' health through a
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **🎯 OpenAI Function Calling** | ✅ Production Ready | Intelligent visualization decisions with 12+ chart functions |
-| **📊 Dynamic Visualization Engine** | ✅ Production Ready | Generate any chart type with flexible parameters and filters |
-| **⚡ Smart Caching System** | ✅ Production Ready | 90% faster queries with intelligent data preloading |
-| **🤖 AI Health Assistant** | ✅ Production Ready | GPT-4 powered assistant with breed-specific knowledge (170+ dog, 40+ cat breeds) |
-| **🎙️ Voice Recording** | ✅ Production Ready | Real-time transcription and AI summarization with manual controls |
-| **📄 PDF Analysis** | ✅ Production Ready | Veterinary document upload and AI analysis with medical context |
-| **📈 Advanced Analytics** | ✅ Production Ready | 12+ interactive chart types with AI-powered insights |
-| **🐕 Breed Intelligence** | ✅ Production Ready | Integrated Dog API and Cat API for personalized recommendations |
-| **👥 Multi-User Support** | ✅ Production Ready | Secure authentication and pet sharing capabilities |
-| **☁️ Cloud Storage** | ✅ Production Ready | Firebase backend with real-time synchronization |
-| **🎨 Modern UI** | ✅ Production Ready | Responsive design with unified navigation and cache indicators |
+| **OpenAI Function Calling** | Production Ready | Intelligent visualization decisions with 12+ chart functions |
+| **Dynamic Visualization Engine** | Production Ready | Generate any chart type with flexible parameters and filters |
+| **Smart Caching System** | Production Ready | 90% faster queries with intelligent data preloading |
+| **AI Health Assistant** | Production Ready | GPT-4 powered assistant with breed-specific knowledge (170+ dog, 40+ cat breeds) |
+| **Voice Recording** | Production Ready | Real-time transcription and AI summarization with manual controls |
+| **PDF Analysis** | Production Ready | Veterinary document upload and AI analysis with medical context |
+| **Advanced Analytics** | Production Ready | 12+ interactive chart types with AI-powered insights |
+| **Breed Intelligence** | Production Ready | Integrated Dog API and Cat API for personalized recommendations |
+| **Multi-User Support** | Production Ready | Secure authentication and pet sharing capabilities |
+| **Cloud Storage** | Production Ready | Firebase backend with real-time synchronization |
+| **Modern UI** | Production Ready | Responsive design with unified navigation and cache indicators |
 
-## 🎯 OpenAI Function Calling System
+## OpenAI Function Calling System
 
 ### **Intelligent Visualization Selection**
 The AI automatically determines the best visualization based on your natural language questions:
@@ -146,7 +146,7 @@ The AI automatically determines the best visualization based on your natural lan
 "Bar chart of diet by day" → generate_dynamic_chart(type='bar', x='day', y='count', filter='diet')
 ```
 
-## 📊 Dynamic Visualization Engine
+## Dynamic Visualization Engine
 
 ### **Unlimited Flexibility**
 Create any visualization with custom parameters:
@@ -169,7 +169,7 @@ generate_dynamic_chart(
 - **"Doughnut chart of activity types"** → Doughnut chart, x=category, y=count
 - **"Area chart of sleep duration by month"** → Area chart, x=month, y=duration, filter=sleep
 
-## ⚡ Performance Optimization System
+## Performance Optimization System
 
 ### **Intelligent Caching Architecture**
 ```typescript
@@ -179,7 +179,7 @@ POST /api/pets/{pet_id}/preload
 
 // 2. Subsequent Queries (Lightning fast from cache)
 POST /api/pets/{pet_id}/chat 
-→ "✅ Using cached data" → 0.5s response time
+→ "Using cached data" → 0.5s response time
 ```
 
 ### **Performance Metrics**
@@ -192,7 +192,7 @@ POST /api/pets/{pet_id}/chat
 
 ### **Cache Management**
 - **30-minute expiry**: Automatic refresh for data freshness
-- **Visual indicators**: ⚡ = cached, ○ = not cached
+- **Visual indicators**: Cached status indicators, not cached status
 - **Smart preloading**: Automatic cache on pet selection
 - **Manual controls**: Clear cache, check status, reload data
 
@@ -209,14 +209,14 @@ POST /api/pets/{pet_id}/chat
 | `/api/upload_pdf` | POST | Upload and analyze PDF documents |
 | `/api/user-pets/{user_id}` | GET | Retrieve user's pet list |
 | `/api/pets/{user_id}` | POST | Create new pet profile with breed information |
-| **🎯 AI & Visualization** | | |
+| **AI & Visualization** | | |
 | `/api/pets/{pet_id}/chat` | POST | **OpenAI Function Calling** with smart visualization |
 | `/api/pets/{pet_id}/assistant_summary` | GET | AI-powered health summary (cached) |
 | `/api/pets/{pet_id}/analytics` | GET | Retrieve health analytics and tracking data |
 | `/api/pets/{pet_id}/health_insights` | GET | AI-powered health insights and recommendations |
 | `/api/pets/{pet_id}/daily_routine` | POST | Generate AI headlines for daily activities |
 | `/api/pets/{pet_id}/visualizations` | GET | Health data visualizations and charts |
-| **⚡ Caching System** | | |
+| **Caching System** | | |
 | `/api/pets/{pet_id}/preload` | POST | **Preload and cache** pet data for 30 minutes |
 | `/api/pets/{pet_id}/cache/status` | GET | **Check cache status** and data summary |
 | `/api/pets/{pet_id}/cache/clear` | POST | **Clear cached data** and force refresh |
@@ -274,7 +274,7 @@ pets/
                   └── timestamp: "2025-01-09T..."
 ```
 
-## 🤖 AI Assistant & RAG Features
+## AI Assistant & RAG Features
 
 ### **Enhanced Intelligent Chat Assistant**
 - **OpenAI Function Calling**: Automatically determines when to show visualizations vs text
@@ -294,7 +294,7 @@ pets/
 ### **Smart Visualization Integration**
 The chatbot intelligently determines when visualizations would enhance understanding:
 
-#### **🟢 Visualization Triggers (Shows Charts)**
+#### **Visualization Triggers (Shows Charts)**
 - **Visual Keywords**: "show", "display", "chart", "visualize", "graph"
 - **Trend Questions**: "How has... changed over time?" → Line charts
 - **Comparison Questions**: "Compare... vs..." → Bar charts  
@@ -302,7 +302,7 @@ The chatbot intelligently determines when visualizations would enhance understan
 - **Comprehensive Views**: "Daily routines overview" → Radar charts
 - **Specific Chart Requests**: "Bar chart of exercise by day"
 
-#### **🔵 Text-Only Triggers (No Charts)**
+#### **Text-Only Triggers (No Charts)**
 - **Summary Keywords**: "summarize", "status", "overview", "how is"
 - **Analysis Questions**: "What patterns...", "Should I be concerned..."
 - **Advice Requests**: "What recommendations...", "What should I..."
@@ -323,7 +323,7 @@ The chatbot intelligently determines when visualizations would enhance understan
 "What does limping mean?" → Educational response (no chart)
 ```
 
-## 🎙️ Voice Recording Features
+## Voice Recording Features
 
 ### **Manual Start/Stop Control**
 - **User-Controlled Recording**: Click to start, click to stop
@@ -373,25 +373,25 @@ def stop_recording():
     return {"status": "stopped", "message": "No audio recorded"}
 ```
 
-## 📊 Advanced Analytics & Visualizations
+## Advanced Analytics & Visualizations
 
 ### **Interactive Charts with OpenAI Function Calling**
 All charts are generated intelligently based on your questions using OpenAI Function Calling:
 
-#### **🎯 Standard Charts (Optimized)**
-- **📈 Weekly Activity Chart**: Exercise and activity trends over 7 days
-- **⚡ Activity-Energy Correlation**: Dual-axis comparison of daily activities vs energy levels
-- **🍯 Energy Distribution**: Doughnut chart of energy level patterns
-- **🍽️ Diet Frequency**: Bar chart of feeding patterns and meal timing
-- **🎯 Health Overview**: Comprehensive radar chart of multiple health metrics
-- **🏃 Exercise Duration**: Histogram of workout intensity and duration patterns
-- **😊 Behavior & Mood**: Line chart of mood trends and behavioral changes
-- **👥 Social Interactions**: Bar chart of social behavior and interaction frequency
-- **😴 Sleep Patterns**: Analysis of sleep quality and rest cycles
-- **🏥 Medical Timeline**: Timeline visualization of medical events and vet visits
-- **📊 Summary Metrics**: Key statistics and health indicators
+#### **Standard Charts (Optimized)**
+- **Weekly Activity Chart**: Exercise and activity trends over 7 days
+- **Activity-Energy Correlation**: Dual-axis comparison of daily activities vs energy levels
+- **Energy Distribution**: Doughnut chart of energy level patterns
+- **Diet Frequency**: Bar chart of feeding patterns and meal timing
+- **Health Overview**: Comprehensive radar chart of multiple health metrics
+- **Exercise Duration**: Histogram of workout intensity and duration patterns
+- **Behavior & Mood**: Line chart of mood trends and behavioral changes
+- **Social Interactions**: Bar chart of social behavior and interaction frequency
+- **Sleep Patterns**: Analysis of sleep quality and rest cycles
+- **Medical Timeline**: Timeline visualization of medical events and vet visits
+- **Summary Metrics**: Key statistics and health indicators
 
-#### **🎨 Dynamic Charts (Unlimited Flexibility)**
+#### **Dynamic Charts (Unlimited Flexibility)**
 Create any visualization with the Dynamic Visualization Engine:
 
 ```python
@@ -416,7 +416,7 @@ Create any visualization with the Dynamic Visualization Engine:
 - **Multi-Series Support**: Compare multiple data dimensions simultaneously
 - **Real-time Updates**: Charts update automatically with new data
 
-## 🚀 Quick Start
+## Quick Start
 
 ### **Prerequisites**
 - Python 3.8+
@@ -461,9 +461,9 @@ python -m uvicorn api_server:app --reload --host localhost --port 8000
 
 Visit `http://localhost:8000` to access your PetPages AI system!
 
-## 🧪 Testing the System
+## Testing the System
 
-### **🎯 Test OpenAI Function Calling**
+### **Test OpenAI Function Calling**
 Try these questions to see intelligent visualization selection:
 
 **Simple Visualizations:**
@@ -480,17 +480,17 @@ Try these questions to see intelligent visualization selection:
 - "Line chart showing average energy levels over time"
 - "Create a doughnut chart of activity types"
 
-### **⚡ Test Caching System**
-1. Select a pet → Watch preloading: `🔄 Preloading data...`
-2. Ask questions → See cache usage: `✅ Using cached data`
+### **Test Caching System**
+1. Select a pet → Watch preloading: `Preloading data...`
+2. Ask questions → See cache usage: `Using cached data`
 3. Monitor performance → Notice lightning-fast responses after initial load
 
-### **📊 Test Dynamic Engine**
+### **Test Dynamic Engine**
 - "Create a bar chart of diet by day"
 - "Show me a scatter plot of energy vs duration"
 - "Line chart of sleep quality over the last month"
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### **Common Issues**
 
@@ -526,56 +526,56 @@ GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
 - **Restart server** to reload Python changes
 - **Check cache status** using cache management endpoints
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 ### **Advanced AI Features**
-- **🎯 Enhanced Function Calling**: More specialized visualization functions
-- **🧠 Predictive Health Analytics**: AI-powered early warning systems for health issues
-- **🔍 Advanced Pattern Recognition**: Machine learning for recurring health patterns
-- **📱 Mobile App**: Native iOS/Android applications with offline capabilities
-- **🎨 Custom Visualization Builder**: Drag-and-drop chart creation interface
+- **Enhanced Function Calling**: More specialized visualization functions
+- **Predictive Health Analytics**: AI-powered early warning systems for health issues
+- **Advanced Pattern Recognition**: Machine learning for recurring health patterns
+- **Mobile App**: Native iOS/Android applications with offline capabilities
+- **Custom Visualization Builder**: Drag-and-drop chart creation interface
 
 ### **Performance & Scale**
-- **⚡ Advanced Caching**: Redis integration for multi-user caching
-- **🔄 Real-time Updates**: WebSocket integration for live data updates
-- **📊 Batch Processing**: Background analytics processing for large datasets
-- **🌐 CDN Integration**: Global content delivery for faster load times
+- **Advanced Caching**: Redis integration for multi-user caching
+- **Real-time Updates**: WebSocket integration for live data updates
+- **Batch Processing**: Background analytics processing for large datasets
+- **CDN Integration**: Global content delivery for faster load times
 
 ### **Enhanced User Experience** 
-- **🎙️ Voice Commands**: Navigate the app using voice controls
-- **📋 Smart Templates**: Pre-filled forms for common health situations
-- **🔔 Smart Notifications**: AI-driven health reminders and alerts
-- **🎨 Customizable Dashboard**: Personalized interface for different user types
-- **📊 Interactive Health Timeline**: Visual pet health journey with clickable events
+- **Voice Commands**: Navigate the app using voice controls
+- **Smart Templates**: Pre-filled forms for common health situations
+- **Smart Notifications**: AI-driven health reminders and alerts
+- **Customizable Dashboard**: Personalized interface for different user types
+- **Interactive Health Timeline**: Visual pet health journey with clickable events
 
 ### **Collaboration & Integration**
-- **👩‍⚕️ Veterinarian Portal**: Professional dashboard with advanced analytics
-- **📧 Smart Notifications**: Email/SMS alerts for health concerns with severity detection
-- **📅 Appointment Integration**: Calendar sync with vet appointments and medication schedules
-- **🏥 Clinic Integration**: Direct sharing with veterinary practices and HIPAA compliance
+- **Veterinarian Portal**: Professional dashboard with advanced analytics
+- **Smart Notifications**: Email/SMS alerts for health concerns with severity detection
+- **Appointment Integration**: Calendar sync with vet appointments and medication schedules
+- **Clinic Integration**: Direct sharing with veterinary practices and HIPAA compliance
 
-## 📈 Project Status
+## Project Status
 
-### **✅ Currently Available (v2.0)**
-- **🎯 OpenAI Function Calling**: Intelligent visualization decisions with 12+ functions
-- **📊 Dynamic Visualization Engine**: Generate any chart with flexible parameters
-- **⚡ Smart Caching System**: 90% faster queries with intelligent data management
-- **🤖 AI Health Assistant**: Working GPT-4 powered chat with breed-specific knowledge
-- **🎙️ Voice Recording**: Real-time transcription and AI summarization
-- **📄 PDF Analysis**: Veterinary document upload and AI analysis
-- **📈 Advanced Analytics**: 12+ interactive chart types with AI-powered insights
-- **👥 Multi-User Support**: Secure authentication and pet sharing
-- **🐕 Breed Integration**: Live API connections for 170+ dog and 40+ cat breeds
-- **☁️ Cloud Storage**: Production-ready Firebase backend with optimized performance
+### **Currently Available (v2.0)**
+- **OpenAI Function Calling**: Intelligent visualization decisions with 12+ functions
+- **Dynamic Visualization Engine**: Generate any chart with flexible parameters
+- **Smart Caching System**: 90% faster queries with intelligent data management
+- **AI Health Assistant**: Working GPT-4 powered chat with breed-specific knowledge
+- **Voice Recording**: Real-time transcription and AI summarization
+- **PDF Analysis**: Veterinary document upload and AI analysis
+- **Advanced Analytics**: 12+ interactive chart types with AI-powered insights
+- **Multi-User Support**: Secure authentication and pet sharing
+- **Breed Integration**: Live API connections for 170+ dog and 40+ cat breeds
+- **Cloud Storage**: Production-ready Firebase backend with optimized performance
 
-### **🚧 Coming Soon (v3.0)**
-- **📱 Mobile App**: Native iOS/Android with offline capabilities and voice commands
-- **👩‍⚕️ Veterinarian Portal**: Professional dashboard for vet practices with advanced analytics
-- **🧠 Predictive Analytics**: ML-powered health predictions and early warning systems
-- **🔔 Smart Alerts**: Proactive health monitoring and automated notifications
-- **🎨 Custom Visualization Builder**: Drag-and-drop interface for creating custom charts
+### **Coming Soon (v3.0)**
+- **Mobile App**: Native iOS/Android with offline capabilities and voice commands
+- **Veterinarian Portal**: Professional dashboard for vet practices with advanced analytics
+- **Predictive Analytics**: ML-powered health predictions and early warning systems
+- **Smart Alerts**: Proactive health monitoring and automated notifications
+- **Custom Visualization Builder**: Drag-and-drop interface for creating custom charts
 
-## 🤝 Contributing
+## Contributing
 
 Ready to help improve pet healthcare with AI? We'd love your contributions!
 
@@ -590,13 +590,13 @@ python -m uvicorn api_server:app --reload
 ```
 
 ### **Areas for Contribution**
-- **🎯 AI & Function Calling**: Enhance OpenAI Function Calling capabilities
-- **📊 Visualization Engine**: Add new chart types and dynamic features
-- **⚡ Performance**: Optimize caching and database efficiency
-- **🐛 Bug Fixes & Stability**: Help make it rock-solid
-- **🎨 UI/UX Design**: Make it even more beautiful and intuitive
-- **📚 Documentation**: Help others get started and understand the system
-- **🧪 Testing & QA**: Ensure quality across all features
+- **AI & Function Calling**: Enhance OpenAI Function Calling capabilities
+- **Visualization Engine**: Add new chart types and dynamic features
+- **Performance**: Optimize caching and database efficiency
+- **Bug Fixes & Stability**: Help make it rock-solid
+- **UI/UX Design**: Make it even more beautiful and intuitive
+- **Documentation**: Help others get started and understand the system
+- **Testing & QA**: Ensure quality across all features
 
 ### **Development Guidelines**
 - **Code Style**: Follow Python PEP 8 and TypeScript best practices
@@ -604,7 +604,7 @@ python -m uvicorn api_server:app --reload
 - **Documentation**: Update README and code comments for new features
 - **Performance**: Consider caching and optimization for new features
 
-## 🌟 Connect & Collaborate
+## Connect & Collaborate
 
 **Built by pet lovers, for pet lovers.** If you're passionate about AI + Pet Healthcare:
 
@@ -615,12 +615,12 @@ python -m uvicorn api_server:app --reload
 
 ---
 
-**Made with ❤️ for pets and their humans**  
+**Made with love for pets and their humans**  
 *"Because every pet deserves the best healthcare technology and AI can provide."*
 
-### **🏆 Key Achievements**
-- **🎯 OpenAI Function Calling**: Revolutionary AI-powered visualization decisions
-- **📊 Dynamic Visualization Engine**: Unlimited chart flexibility with 12+ functions  
-- **⚡ 90% Performance Improvement**: Lightning-fast responses with intelligent caching
-- **🤖 Advanced AI Integration**: GPT-4 powered health assistance with breed-specific knowledge
-- **📱 Production Ready**: Scalable, secure, and optimized for real-world usage
+### **Key Achievements**
+- **OpenAI Function Calling**: Revolutionary AI-powered visualization decisions
+- **Dynamic Visualization Engine**: Unlimited chart flexibility with 12+ functions  
+- **90% Performance Improvement**: Lightning-fast responses with intelligent caching
+- **Advanced AI Integration**: GPT-4 powered health assistance with breed-specific knowledge
+- **Production Ready**: Scalable, secure, and optimized for real-world usage
