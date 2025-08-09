@@ -4,11 +4,14 @@ target-version = ["py311"]
 skip-string-normalization = true
 
 # Temporarily exclude large modules until full reformat is done in a follow-up PR
-exclude = "(?x)(
-  ^api_server\.py$|
-  ^intelligent_chatbot_service\.py$|
-  ^ai_analytics\.py$|
-  ^setup\.py$
-)"
+exclude = '''
+(?x)
+(
+  ^api_server\.py$
+| ^intelligent_chatbot_service\.py$
+| ^ai_analytics\.py$
+| ^setup\.py$
+)
+'''
 
 
