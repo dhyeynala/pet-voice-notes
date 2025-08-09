@@ -11,14 +11,16 @@ import json
 from pathlib import Path
 
 def print_banner():
-    print("""
+    print(
+        """
 ╔══════════════════════════════════════════════════════════════╗
 ║                    🐾 PetPulse Setup                        ║
 ║                                                              ║
 ║  AI-Powered Pet Health Management System                    ║
 ║  Open Source Setup Script                                   ║
 ╚══════════════════════════════════════════════════════════════╝
-    """)
+    """
+    )
 
 def check_python_version():
     """Check if Python version is compatible"""
@@ -181,16 +183,16 @@ def main():
     # Create setup instructions
     create_google_cloud_instructions()
     
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🎉 Setup Complete!")
-    print("="*60)
+    print("=" * 60)
     print("\n📋 Next Steps:")
     print("1. Follow the instructions in GOOGLE_CLOUD_SETUP.md")
     print("2. Download your Google Cloud service account key as 'gcloud-key.json'")
     print("3. Run: python api_server.py")
     print("4. Open http://localhost:8000 in your browser")
     print("\n📚 For more help, see README.md and SECURITY.md")
-    print("="*60)
+    print("=" * 60)
 
 if __name__ == "__main__":
     main() 

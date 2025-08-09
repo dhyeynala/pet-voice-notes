@@ -1,4 +1,4 @@
-#pdf_parser.py
+# pdf_parser.py
 
 import fitz
 import os
@@ -27,11 +27,11 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
                         "You are a veterinary assistant AI. Summarize this medical document. "
                         "Extract key points like symptoms, diagnosis, treatments, medications, and vet advice. "
                         "Keep it concise and useful for a pet health timeline."
-                    )
+                    ),
                 },
-                {"role": "user", "content": text[:12000]}
+                {"role": "user", "content": text[:12000]},
             ],
-            temperature=0.5
+            temperature=0.5,
         )
         summary = response.choices[0].message.content.strip()
     except Exception as e:

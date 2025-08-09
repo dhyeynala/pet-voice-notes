@@ -1,4 +1,4 @@
-#main.py
+# main.py
 
 import os
 import argparse
@@ -38,11 +38,7 @@ def main(user_id, pet_id):
             print(" Daily activity data also stored to analytics.")
 
         # Return for FastAPI
-        return {
-            "transcript": transcript,
-            "summary": summary,
-            "classification": classification
-        }
+        return {"transcript": transcript, "summary": summary, "classification": classification}
 
     except Exception as e:
         print(f" Error: {e}")

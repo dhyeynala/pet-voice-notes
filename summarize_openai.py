@@ -67,17 +67,14 @@ def summarize_text(text, max_retries=3):
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
+                    {"role": "system", "content": system_prompt},
                     {
-                        "role": "system",
-                        "content": system_prompt
+                        "role": "user",
+                        "content": f"Please analyze and summarize this pet note. Determine if it's medical, daily activity, or mixed content:\n\n{text[:4000]}",
                     },
-                    {
-                        "role": "user", 
-                        "content": f"Please analyze and summarize this pet note. Determine if it's medical, daily activity, or mixed content:\n\n{text[:4000]}"  # Limit to prevent token overflow
-                    }
                 ],
                 temperature=0.3,
-                max_tokens=200
+                max_tokens=200,
             )
             
             summary = response.choices[0].message.content.strip()
@@ -89,7 +86,7 @@ def summarize_text(text, max_retries=3):
             
             if attempt < max_retries - 1:
                 # Exponential backoff
-                wait_time = 2 ** attempt
+                wait_time = 2**attempt
                 print(f"⏳ Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
@@ -136,17 +133,11 @@ def summarize_pdf_text(pdf_text, max_retries=3):
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Please analyze and summarize this veterinary medical document:\n\n{truncated_text}"
-                    }
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Please analyze and summarize this veterinary medical document:\n\n{truncated_text}"},
                 ],
                 temperature=0.2,
-                max_tokens=500
+                max_tokens=500,
             )
             
             summary = response.choices[0].message.content.strip()
@@ -157,7 +148,7 @@ def summarize_pdf_text(pdf_text, max_retries=3):
             print(f"❌ OpenAI API error for PDF (attempt {attempt + 1}/{max_retries}): {e}")
             
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt
+                wait_time = 2**attempt
                 print(f"⏳ Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
@@ -205,18 +196,12 @@ def classify_pet_content(text, max_retries=3):
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {
-                        "role": "system",
-                        "content": classification_prompt
-                    },
-                    {
-                        "role": "user", 
-                        "content": f"Classify this pet content:\n\n{text[:2000]}"
-                    }
+                    {"role": "system", "content": classification_prompt},
+                    {"role": "user", "content": f"Classify this pet content:\n\n{text[:2000]}"},
                 ],
                 temperature=0.1,  # Lower temperature for more consistent JSON output
-                max_tokens=200,   # Increased token limit
-                response_format={"type": "json_object"}  # Force JSON response format
+                max_tokens=200,  # Increased token limit
+                response_format={"type": "json_object"},  # Force JSON response format
             )
             
             import json
