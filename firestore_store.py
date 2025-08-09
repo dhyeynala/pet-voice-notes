@@ -20,11 +20,13 @@ def store_to_firestore(user_id, pet_id, transcript, summary):
         {"transcript": transcript, "summary": summary, "timestamp": datetime.utcnow().isoformat()}
     )
 
+
 # Store PDF summary
 def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url):
     db.collection("pets").document(pet_id).collection("records").add(
         {"summary": summary, "file_name": file_name, "file_url": file_url, "timestamp": timestamp}
     )
+
 
 # Get pets linked to a user
 def get_pets_by_user_id(user_id):
@@ -33,6 +35,7 @@ def get_pets_by_user_id(user_id):
         return []
     pet_ids = user_doc.to_dict().get("pets", [])
     return [{"id": pid, **db.collection("pets").document(pid).get().to_dict()} for pid in pet_ids]
+
 
 # Get individual pet by ID
 def get_pet_by_id(pet_id):
@@ -45,17 +48,18 @@ def get_pet_by_id(pet_id):
     except Exception as e:
         print(f"Error getting pet by ID: {e}")
         return None
-        
+
+
 
 # Add a pet and sync it across user and page, with authorizedUsers and markdown
 def add_pet_to_page_and_user(user_id, pet_data, page_id):
     pet_name = pet_data.get("name", "")
     pet_id = pet_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
-    
+
     # Create timestamp for breed_last_updated
     from datetime import datetime
     current_time = datetime.utcnow().isoformat()
-    
+
     # Create enhanced pet document
     pet_document = {
         "name": pet_name,
@@ -92,6 +96,7 @@ def add_pet_to_page_and_user(user_id, pet_data, page_id):
 
     return {"id": pet_id, "name": pet_name, **pet_document}
 
+
 # Invite user by email and link to page
 def handle_user_invite(data):
     email = data["email"]
@@ -114,9 +119,11 @@ def handle_user_invite(data):
 
     return {"status": "success", "userId": uid}
 
+
 # (Optional) Create blank user entry when invited
 def create_user_entry(uid, email):
     db.collection("users").document(uid).set({"email": email, "pets": [], "pages": []})
+
 
 # Analytics helper functions
 def get_analytics_summary(pet_id, days=30):
@@ -126,16 +133,16 @@ def get_analytics_summary(pet_id, days=30):
     
     cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
     results = db.collection("pets").document(pet_id).collection("analytics").where("timestamp", ">=", cutoff_date).stream()
-    
+
     summary = defaultdict(lambda: {"total": 0, "this_week": 0, "recent_entries": []})
-    
+
     one_week_ago = datetime.utcnow() - timedelta(days=7)
-    
+
     for doc in results:
         data = doc.to_dict()
         category = data.get("category", "unknown")
         timestamp = datetime.fromisoformat(data.get("timestamp", ""))
-        
+
         summary[category]["total"] += 1
         summary[category]["recent_entries"].append(data)
         
@@ -143,6 +150,7 @@ def get_analytics_summary(pet_id, days=30):
             summary[category]["this_week"] += 1
     
     return dict(summary)
+
 
 # Store voice/text daily activities in analytics collection for dashboard visibility
 def store_analytics_from_voice(pet_id, transcript, summary, classification):
@@ -152,7 +160,7 @@ def store_analytics_from_voice(pet_id, transcript, summary, classification):
         keywords = classification.get('keywords', [])
         content_type = classification.get('classification', 'DAILY_ACTIVITY')
         confidence = classification.get('confidence', 0.8)
-        
+
         # Determine the most appropriate category based on keywords
         category_mapping = {
             'diet': ['food', 'eat', 'meal', 'breakfast', 'lunch', 'dinner', 'treat', 'feeding'],
