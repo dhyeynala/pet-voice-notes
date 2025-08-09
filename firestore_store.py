@@ -14,6 +14,7 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
+
 # Store voice transcript + summary
 def store_to_firestore(user_id, pet_id, transcript, summary):
     db.collection("pets").document(pet_id).collection("voice-notes").add(
@@ -50,7 +51,6 @@ def get_pet_by_id(pet_id):
         return None
 
 
-
 # Add a pet and sync it across user and page, with authorizedUsers and markdown
 def add_pet_to_page_and_user(user_id, pet_data, page_id):
     pet_name = pet_data.get("name", "")
@@ -58,6 +58,7 @@ def add_pet_to_page_and_user(user_id, pet_data, page_id):
 
     # Create timestamp for breed_last_updated
     from datetime import datetime
+
     current_time = datetime.utcnow().isoformat()
 
     # Create enhanced pet document
@@ -68,7 +69,7 @@ def add_pet_to_page_and_user(user_id, pet_data, page_id):
         "breed_last_updated": current_time,
         "created_at": current_time,
     }
-    
+
     # Add optional fields if provided
     if pet_data.get("age") is not None:
         pet_document["age"] = pet_data["age"]
@@ -130,7 +131,7 @@ def get_analytics_summary(pet_id, days=30):
     """Get analytics summary for a pet"""
     from collections import defaultdict
     from datetime import timedelta
-    
+
     cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
     results = db.collection("pets").document(pet_id).collection("analytics").where("timestamp", ">=", cutoff_date).stream()
 
@@ -145,10 +146,10 @@ def get_analytics_summary(pet_id, days=30):
 
         summary[category]["total"] += 1
         summary[category]["recent_entries"].append(data)
-        
+
         if timestamp >= one_week_ago:
             summary[category]["this_week"] += 1
-    
+
     return dict(summary)
 
 
@@ -172,17 +173,17 @@ def store_analytics_from_voice(pet_id, transcript, summary, classification):
             'bowel_movements': ['poop', 'bathroom', 'potty', 'bowel', 'outdoor'],
             'social': ['social', 'friend', 'dog', 'cat', 'people', 'visitor'],
         }
-        
+
         # Find best matching category
         best_category = 'daily_activity'  # default
         max_matches = 0
-        
+
         for category, category_keywords in category_mapping.items():
             matches = sum(1 for keyword in keywords if any(ck in keyword.lower() for ck in category_keywords))
             if matches > max_matches:
                 max_matches = matches
                 best_category = category
-        
+
         # Create analytics entry
         analytics_entry = {
             "category": best_category,
@@ -195,10 +196,10 @@ def store_analytics_from_voice(pet_id, transcript, summary, classification):
             "timestamp": datetime.utcnow().isoformat(),
             "notes": f"Daily activity recorded via voice/text: {summary[:100]}...",
         }
-        
+
         # Store in analytics collection
         db.collection("pets").document(pet_id).collection("analytics").add(analytics_entry)
         print(f"✅ Stored daily activity as '{best_category}' in analytics collection")
-        
+
     except Exception as e:
         print(f"❌ Error storing voice analytics: {e}")

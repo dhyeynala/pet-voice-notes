@@ -3,12 +3,6 @@ line-length = 127
 target-version = ["py311"]
 skip-string-normalization = true
 
-# Temporarily exclude only the two largest modules; will remove after reformat
-exclude = '''
-(?x)
-(
-  (^|/)(simple_rag_service\.py|visualization_service\.py)$
-)
-'''
+
 
 

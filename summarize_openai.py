@@ -15,7 +15,7 @@ def summarize_text(text, max_retries=3):
     """
     if not text or len(text.strip()) == 0:
         return "No content to summarize"
-    
+
     # Enhanced system prompt for comprehensive pet care tracking
     system_prompt = """You are an intelligent pet care assistant AI that analyzes ALL aspects of pet life - both medical concerns and daily activities.
 
@@ -62,7 +62,7 @@ def summarize_text(text, max_retries=3):
     - **Routine**: "Perfect morning routine: ate breakfast enthusiastically, enjoyed 20-minute walk, now relaxing in favorite sunny spot. Energy level appears normal and mood is content."
     
     Always provide helpful, accurate summaries that celebrate positive moments while taking health concerns seriously."""
-    
+
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
@@ -77,14 +77,14 @@ def summarize_text(text, max_retries=3):
                 temperature=0.3,
                 max_tokens=200,
             )
-            
+
             summary = response.choices[0].message.content.strip()
             print(f"✅ Summary generated: {summary[:100]}...")
             return summary
-            
+
         except Exception as e:
             print(f"❌ OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
-            
+
             if attempt < max_retries - 1:
                 # Exponential backoff
                 wait_time = 2**attempt
@@ -93,7 +93,7 @@ def summarize_text(text, max_retries=3):
             else:
                 # Final fallback
                 return f"Unable to generate AI summary due to API error. Original text: {text[:200]}..."
-    
+
     return "Summary generation failed after multiple attempts."
 
 
@@ -103,7 +103,7 @@ def summarize_pdf_text(pdf_text, max_retries=3):
     """
     if not pdf_text or len(pdf_text.strip()) == 0:
         return "No PDF content to summarize"
-    
+
     system_prompt = """You are a veterinary assistant AI specializing in medical document analysis.
 
     Your task is to summarize veterinary medical documents (lab results, exam notes, treatment plans, etc.).
@@ -126,36 +126,39 @@ def summarize_pdf_text(pdf_text, max_retries=3):
     - Note any recommended actions
     
     Keep it comprehensive but readable for pet owners."""
-    
+
     for attempt in range(max_retries):
         try:
             # Truncate very long PDF text to prevent token limits
             truncated_text = pdf_text[:12000] if len(pdf_text) > 12000 else pdf_text
-            
+
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Please analyze and summarize this veterinary medical document:\n\n{truncated_text}"},
+                    {
+                        "role": "user",
+                        "content": f"Please analyze and summarize this veterinary medical document:\n\n{truncated_text}",
+                    },
                 ],
                 temperature=0.2,
                 max_tokens=500,
             )
-            
+
             summary = response.choices[0].message.content.strip()
             print(f"✅ PDF Summary generated: {summary[:100]}...")
             return summary
-            
+
         except Exception as e:
             print(f"❌ OpenAI API error for PDF (attempt {attempt + 1}/{max_retries}): {e}")
-            
+
             if attempt < max_retries - 1:
                 wait_time = 2**attempt
                 print(f"⏳ Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
                 return f"Unable to generate AI summary for PDF due to API error. Document contains medical information that should be reviewed manually."
-    
+
     return "PDF summary generation failed after multiple attempts."
 
 
@@ -165,8 +168,14 @@ def classify_pet_content(text, max_retries=3):
     Returns classification and confidence score
     """
     if not text or len(text.strip()) == 0:
-        return {"classification": "UNKNOWN", "confidence": 0.0, "keywords": [], "reasoning": "Empty input", "primary_activities": []}
-    
+        return {
+            "classification": "UNKNOWN",
+            "confidence": 0.0,
+            "keywords": [],
+            "reasoning": "Empty input",
+            "primary_activities": [],
+        }
+
     classification_prompt = """You are a comprehensive pet content classifier. Analyze the following text and classify it accurately:
 
     **MEDICAL**: Health concerns, symptoms, injuries, veterinary visits, medications, illness, pain, behavioral changes indicating health issues, appetite loss, lethargy due to illness, emergency situations
@@ -193,7 +202,7 @@ def classify_pet_content(text, max_retries=3):
         "reasoning": "brief explanation of classification decision",
         "primary_activities": ["main activities or concerns mentioned"]
     }"""
-    
+
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
@@ -206,11 +215,12 @@ def classify_pet_content(text, max_retries=3):
                 max_tokens=200,  # Increased token limit
                 response_format={"type": "json_object"},  # Force JSON response format
             )
-            
+
             import json
+
             response_content = response.choices[0].message.content.strip()
             print(f"🔍 Raw classification response: {response_content[:100]}...")
-            
+
             # Try to parse JSON
             try:
                 result = json.loads(response_content)
@@ -218,7 +228,7 @@ def classify_pet_content(text, max_retries=3):
                 # Fallback: try to extract classification from text
                 print("⚠️ JSON parsing failed, attempting text extraction...")
                 result = extract_classification_from_text(response_content, text)
-            
+
             # Validate required fields
             if not result.get("classification"):
                 result["classification"] = "MIXED"
@@ -230,21 +240,24 @@ def classify_pet_content(text, max_retries=3):
                 result["reasoning"] = "Classification completed"
             if not result.get("primary_activities"):
                 result["primary_activities"] = []
-            
-            print(f"📊 Content classified as: {result.get('classification', 'UNKNOWN')} (confidence: {result.get('confidence', 0.0)})")
+
+            print(
+                f"📊 Content classified as: {result.get('classification', 'UNKNOWN')} (confidence: {result.get('confidence', 0.0)})"
+            )
             return result
-            
+
         except Exception as e:
             print(f"❌ Classification error (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
-                wait_time = 2 ** attempt
+                wait_time = 2**attempt
                 print(f"⏳ Retrying classification in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
                 print("🔄 Using fallback classification...")
                 return fallback_classification(text)
-    
+
     return fallback_classification(text)
+
 
 def extract_classification_from_text(response_text, original_text):
     """
@@ -252,24 +265,59 @@ def extract_classification_from_text(response_text, original_text):
     """
     response_lower = response_text.lower()
     original_lower = original_text.lower()
-    
+
     # Determine classification based on content analysis
-    medical_keywords = ['symptom', 'vet', 'medication', 'pain', 'injury', 'sick', 'illness', 
-                       'emergency', 'limp', 'vomit', 'diarrhea', 'appetite', 'concerning', 
-                       'treatment', 'diagnosis', 'health', 'doctor']
-    
-    daily_keywords = ['walk', 'play', 'eat', 'meal', 'sleep', 'train', 'groom', 'bath', 
-                     'park', 'exercise', 'happy', 'energetic', 'social', 'learn', 'achieve', 
-                     'routine', 'fun', 'good', 'great', 'enjoy']
-    
+    medical_keywords = [
+        'symptom',
+        'vet',
+        'medication',
+        'pain',
+        'injury',
+        'sick',
+        'illness',
+        'emergency',
+        'limp',
+        'vomit',
+        'diarrhea',
+        'appetite',
+        'concerning',
+        'treatment',
+        'diagnosis',
+        'health',
+        'doctor',
+    ]
+
+    daily_keywords = [
+        'walk',
+        'play',
+        'eat',
+        'meal',
+        'sleep',
+        'train',
+        'groom',
+        'bath',
+        'park',
+        'exercise',
+        'happy',
+        'energetic',
+        'social',
+        'learn',
+        'achieve',
+        'routine',
+        'fun',
+        'good',
+        'great',
+        'enjoy',
+    ]
+
     medical_score = sum(1 for keyword in medical_keywords if keyword in original_lower)
     daily_score = sum(1 for keyword in daily_keywords if keyword in original_lower)
-    
+
     if medical_score > daily_score and medical_score > 0:
         classification = "MEDICAL"
         confidence = min(0.9, 0.6 + (medical_score * 0.1))
     elif daily_score > medical_score and daily_score > 0:
-        classification = "DAILY_ACTIVITY"  
+        classification = "DAILY_ACTIVITY"
         confidence = min(0.9, 0.6 + (daily_score * 0.1))
     elif medical_score > 0 and daily_score > 0:
         classification = "MIXED"
@@ -277,14 +325,15 @@ def extract_classification_from_text(response_text, original_text):
     else:
         classification = "MIXED"
         confidence = 0.5
-    
+
     return {
         "classification": classification,
         "confidence": confidence,
         "keywords": [kw for kw in medical_keywords + daily_keywords if kw in original_lower][:5],
         "reasoning": f"Extracted from text analysis: {medical_score} medical, {daily_score} daily keywords",
-        "primary_activities": ["text_analysis_fallback"]
+        "primary_activities": ["text_analysis_fallback"],
     }
+
 
 def fallback_classification(text):
     """
@@ -295,5 +344,5 @@ def fallback_classification(text):
         "confidence": 0.5,
         "keywords": [],
         "reasoning": "Fallback classification due to API issues",
-        "primary_activities": ["general_pet_activity"]
+        "primary_activities": ["general_pet_activity"],
     }
