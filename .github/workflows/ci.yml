@@ -39,8 +39,8 @@ jobs:
       run: |
         pytest --cov=. --cov-report=xml
       env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test' }}
+        GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'ci-test' }}
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

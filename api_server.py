@@ -9,15 +9,27 @@ from datetime import datetime, timedelta
 import os
 import uuid
 
+"""
+Environment setup
+
+Historically this module raised at import time when GOOGLE_CLOUD_PROJECT was
+missing. That breaks CI and importing the app in environments (e.g. forked PRs)
+where secrets are intentionally unavailable. We now avoid raising at import
+time and only validate inside endpoints that actually require GCP.
+"""
+
 # Load environment variables first
 load_dotenv()
 
-# Set Google Cloud environment variables
-project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-if not project_id:
-    raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
-os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
+# Do not raise at import time. Read values if present so dependent libraries
+# can pick them up, but leave them empty otherwise.
+project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+if project_id:
+    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
+credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
+if credentials_path:
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
 from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
@@ -43,6 +55,19 @@ def get_simple_rag_service():
         from simple_rag_service import SimplePetHealthRAGService
         _simple_rag_service = SimplePetHealthRAGService()
     return _simple_rag_service
+def _require_gcp():
+    """Ensure GCP is configured for endpoints that depend on it.
+
+    Raises a 501 HTTP error if configuration is missing so tests and
+    environments without secrets do not fail at import time.
+    """
+    if not os.getenv("GOOGLE_CLOUD_PROJECT"):
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=501,
+            detail="GCP not configured. Set GOOGLE_CLOUD_PROJECT and credentials to use this endpoint.",
+        )
 
 def get_visualization_service():
     global _visualization_service
@@ -92,6 +117,8 @@ async def start(request: Request):
 
 @app.post("/api/upload_pdf")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
+    # Guard: this endpoint depends on Google Cloud Storage & credentials
+    _require_gcp()
     # Get form data
     form = await request.form()
     uid = form.get("uid")
