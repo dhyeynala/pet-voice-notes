@@ -101,7 +101,6 @@ def transcribe_audio(duration_seconds=10):
 
 def start_recording():
     """Start recording audio"""
-    global recording_state
     
     if recording_state["is_recording"]:
         return {"status": "error", "message": "Already recording"}
@@ -120,7 +119,6 @@ def start_recording():
 
 def stop_recording():
     """Stop recording and process audio"""
-    global recording_state
     
     print(f"🛑 Stop recording called. Current state: {recording_state['is_recording']}")
     
@@ -162,7 +160,6 @@ def get_recording_status():
 
 def _record_audio():
     """Internal function to record audio in background"""
-    global recording_state
     
     audio = pyaudio.PyAudio()
     
