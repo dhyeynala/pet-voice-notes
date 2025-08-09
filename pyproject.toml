@@ -3,11 +3,11 @@ line-length = 127
 target-version = ["py311"]
 skip-string-normalization = true
 
-# Temporarily exclude large modules until full reformat is done in a follow-up PR
+# Temporarily exclude only the two largest modules; will remove after reformat
 exclude = '''
 (?x)
 (
-  (^|/)(api_server\.py|intelligent_chatbot_service\.py|ai_analytics\.py|setup\.py)$
+  (^|/)(simple_rag_service\.py|visualization_service\.py)$
 )
 '''
 
