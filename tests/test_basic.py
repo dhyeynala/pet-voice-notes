@@ -15,11 +15,11 @@ def test_environment_variables():
     """Test that environment variables are properly handled."""
     # Test that the app doesn't crash when environment variables are missing
     import os
-    
+
     # These should not cause import errors even if not set
     api_key = os.getenv("OPENAI_API_KEY", "test")
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "ci-test")
-    
+
     assert isinstance(api_key, str)
     assert isinstance(project_id, str)
 
@@ -27,7 +27,7 @@ def test_environment_variables():
 def test_app_structure():
     """Test that the app has expected structure."""
     import os
-    
+
     # Check that key files exist
     assert os.path.exists("api_server.py")
     assert os.path.exists("main.py")
@@ -76,6 +76,7 @@ def test_assets_directory():
     assert os.path.exists("assets")
     # Should have at least some PNG files for documentation
     import glob
+
     png_files = glob.glob("assets/*.png")
     assert len(png_files) > 0
 
@@ -106,25 +107,25 @@ def test_ci_workflow():
 
 class TestBasicFunctionality:
     """Test class for basic application functionality that doesn't require external services."""
-    
+
     def test_python_syntax(self):
         """Test that all Python files have valid syntax."""
         import py_compile
         import glob
-        
+
         python_files = glob.glob("*.py")
         for py_file in python_files:
             try:
                 py_compile.compile(py_file, doraise=True)
             except py_compile.PyCompileError as e:
                 pytest.fail(f"Syntax error in {py_file}: {e}")
-    
+
     def test_documentation_completeness(self):
         """Test that key documentation files exist."""
         docs = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "QUICK_START.md", "LICENSE"]
         for doc in docs:
             assert os.path.exists(doc), f"Missing documentation file: {doc}"
-    
+
     def test_template_files(self):
         """Test that template files exist for user configuration."""
         assert os.path.exists(".env.template")
@@ -136,7 +137,7 @@ def test_module_files_exist():
     """Test that all expected Python modules exist."""
     modules = [
         "api_server.py",
-        "summarize_openai.py", 
+        "summarize_openai.py",
         "transcribe.py",
         "firestore_store.py",
         "gcloud_auth.py",
@@ -146,21 +147,17 @@ def test_module_files_exist():
         "ai_analytics.py",
         "intelligent_chatbot_service.py",
         "simple_rag_service.py",
-        "visualization_service.py"
+        "visualization_service.py",
     ]
-    
+
     for module in modules:
         assert os.path.exists(module), f"Missing module: {module}"
 
 
 def test_no_sensitive_files():
     """Test that no sensitive files are accidentally included."""
-    sensitive_files = [
-        ".env",
-        "gcloud-key.json",
-        "firebase-config.js"  # Should only have the template
-    ]
-    
+    sensitive_files = [".env", "gcloud-key.json", "firebase-config.js"]  # Should only have the template
+
     for sensitive_file in sensitive_files:
         if sensitive_file == "firebase-config.js":
             # Check it's not in public/
