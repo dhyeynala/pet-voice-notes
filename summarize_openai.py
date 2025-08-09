@@ -7,6 +7,7 @@ import time
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 def summarize_text(text, max_retries=3):
     """
     Summarize text using OpenAI GPT-4o with intelligent context detection
@@ -95,6 +96,7 @@ def summarize_text(text, max_retries=3):
     
     return "Summary generation failed after multiple attempts."
 
+
 def summarize_pdf_text(pdf_text, max_retries=3):
     """
     Summarize PDF medical document text using OpenAI GPT-4o
@@ -155,6 +157,7 @@ def summarize_pdf_text(pdf_text, max_retries=3):
                 return f"Unable to generate AI summary for PDF due to API error. Document contains medical information that should be reviewed manually."
     
     return "PDF summary generation failed after multiple attempts."
+
 
 def classify_pet_content(text, max_retries=3):
     """

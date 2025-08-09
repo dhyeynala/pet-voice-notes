@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
 def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
     # Step 1: Extract PDF text
     doc = fitz.open(file_path)

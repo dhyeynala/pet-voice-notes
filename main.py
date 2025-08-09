@@ -14,6 +14,7 @@ load_dotenv()
 # Set OpenAI key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 def main(user_id, pet_id):
     print(" Starting real-time voice notes system...")
 
@@ -43,6 +44,7 @@ def main(user_id, pet_id):
     except Exception as e:
         print(f" Error: {e}")
         return {"error": str(e)}
+
 
 # CLI usage (safe to keep)
 if __name__ == "__main__":

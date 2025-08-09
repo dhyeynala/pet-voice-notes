@@ -20,12 +20,7 @@ CHANNELS = 1
 FORMAT = pyaudio.paInt16
 
 # Global state for recording
-recording_state = {
-    "is_recording": False,
-    "audio_data": [],
-    "transcript": "",
-    "audio_queue": queue.Queue()
-}
+recording_state = {"is_recording": False, "audio_data": [], "transcript": "", "audio_queue": queue.Queue()}
 
 def get_speech_client():
     """Create Speech client with proper project configuration"""
@@ -57,13 +52,7 @@ def transcribe_audio(duration_seconds=10):
     )
     
     # Start recording
-    stream = audio.open(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
+    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
     print(f"🎙️  Recording for {duration_seconds} seconds...")
     frames = []
@@ -153,23 +142,14 @@ def stop_recording():
 
 def get_recording_status():
     """Get current recording status"""
-    return {
-        "is_recording": recording_state["is_recording"],
-        "transcript": recording_state["transcript"]
-    }
+    return {"is_recording": recording_state["is_recording"], "transcript": recording_state["transcript"]}
 
 def _record_audio():
     """Internal function to record audio in background"""
     
     audio = pyaudio.PyAudio()
     
-    stream = audio.open(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        input=True,
-        frames_per_buffer=CHUNK
-    )
+    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
     
     print("🎙️  Recording started...")
     
