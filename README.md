@@ -197,8 +197,6 @@ Firebase handles user authentication and multi-user data sharing automatically. 
 
 ## Future Development
 
-## Future Development
-
 **Computer Vision Integration**: Analyze pet photos for visual health indicators like coat condition, eye clarity, or posture changes over time - something that could help track gradual changes like weight loss that are hard to notice day-to-day.
 
 **Mobile Application**: Build native iOS/Android apps for better camera integration and offline note-taking, addressing feedback about mobile web limitations.
