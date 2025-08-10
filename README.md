@@ -1,5 +1,11 @@
 # Pet Health Voice Notes
 
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-9.0+-yellow.svg)](https://firebase.google.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 <p align="center">
   <img src="assets/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" width="600" height="auto">
 </p>
