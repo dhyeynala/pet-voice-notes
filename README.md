@@ -6,7 +6,7 @@
 
 ## The Problem
 
-I noticed this pattern repeatedly among friends and family with pets: subtle health changes that develop gradually often go untracked until they become obvious problems. My aunt's golden retriever started eating slightly less over several weeks, but she could not pinpoint when it began or describe the progression clearly to the vet. My roommate's cat became less active, but he dismissed it as "getting older" until a vet visit revealed an underlying condition that could have been caught earlier.
+I noticed this pattern repeatedly among pet owners I know: subtle health changes that develop gradually often go untracked until they become obvious problems. Dogs start eating slightly less over weeks, but owners cannot pinpoint when it began or describe the progression clearly to vets. Cats become less active, dismissed as "getting older" until vet visits reveal underlying conditions that could have been caught earlier.
 
 When I researched existing solutions, I found a clear gap: basic pet apps offer simple logging with no intelligence, while sophisticated health monitoring tools are designed for veterinary clinics, not individual pet owners. There was no solution that could intelligently analyze home observations and provide meaningful health insights for regular pet owners.
 
@@ -16,7 +16,7 @@ After talking to several pet-owning friends about their tracking challenges, I d
 
 **Voice-First Design**: Based on feedback from friends who found typing cumbersome when their pets were acting concerning, I prioritized voice input. Tap to record "Buddy seems tired today, did not finish his breakfast" and the system transcribes, extracts health information, and categorizes it automatically.
 
-**Pattern Recognition**: This addresses the exact problem my aunt faced with her dog - the AI analyzes all your notes and identifies trends like "You have mentioned lethargy 3 times this week" or "Eating patterns changed after the vet visit." It connects observations that owners typically do not link together.
+**Pattern Recognition**: This addresses the exact problem many pet owners face - the AI analyzes all your notes and identifies trends like "You have mentioned lethargy 3 times this week" or "Eating patterns changed after the vet visit." It connects observations that owners typically do not link together.
 
 **Natural Language Charts**: Instead of figuring out what data to plot, just ask "show me Buddy's energy levels this month" and it generates the right visualization automatically. The AI parses your question, selects appropriate data, and chooses the best chart type.
 
@@ -32,7 +32,7 @@ Early user testing with friends revealed that chart generation felt too slow. I 
 *Solution*: Implemented a caching system that stores recent data for 30 minutes. Repeated requests now return instantly and API costs were reduced by approximately 67%.
 
 **Problem 2: Unstructured speech-to-text output**
-When testing with my neighbor's dog observations, I realized Google's speech API returns raw transcripts as continuous text blocks. If someone said "Max was limping today but ate his dinner fine," I got exactly that - no structure or useful health data extraction.
+During initial testing, I realized Google's speech API returns raw transcripts as continuous text blocks. If someone said "Max was limping today but ate his dinner fine," I got exactly that - no structure or useful health data extraction.
 
 *Solution*: I process the transcript through OpenAI to extract relevant information and categorize it by type (medical observations, daily activity, feeding patterns, etc.).
 
@@ -193,7 +193,7 @@ Firebase handles user authentication and multi-user data sharing automatically. 
 
 Based on conversations with both pet owners and a veterinary friend who reviewed the system:
 
-**Computer Vision Integration**: Analyze pet photos for visual health indicators like coat condition, eye clarity, or posture changes over time - something my cousin mentioned would have helped track her cat's weight loss.
+**Computer Vision Integration**: Analyze pet photos for visual health indicators like coat condition, eye clarity, or posture changes over time - something that could help track gradual changes like weight loss that are hard to notice day-to-day.
 
 **Mobile Application**: Build native iOS/Android apps for better camera integration and offline note-taking, addressing feedback about mobile web limitations.
 
