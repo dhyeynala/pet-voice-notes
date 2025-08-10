@@ -6,7 +6,7 @@
 
 ## Why I Built This
 
-During my internship, I wanted to tackle a real problem while learning specific technologies that I knew I needed to understand better. My friend's dog had been acting weird for weeks - eating less, sleeping more, just subtle changes. When they finally went to the vet, they couldn't remember exactly when the changes started or describe them clearly. The vet said if they'd noticed the pattern earlier, treatment would have been simpler.
+During my internship, I wanted to tackle a real problem while learning specific technologies that I knew I needed to understand better. I'd been reading about how hard it is for pet owners to track subtle health changes over time - the kind of gradual shifts that are easy to miss day-to-day but important for vets to know about.
 
 That got me thinking: people take notes about everything else, why not their pets? But more importantly, I realized this was a perfect chance to dive deep into AI integration and learn how to build something actually useful.
 
