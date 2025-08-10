@@ -6,20 +6,20 @@
 
 ## Why I Built This
 
-During my internship, I wanted to tackle a real problem while learning specific technologies that I knew I needed to understand better. I'd been reading about how hard it is for pet owners to track subtle health changes over time - the kind of gradual shifts that are easy to miss day-to-day but important for vets to know about.
+During my internship, I wanted to tackle a real problem while learning specific technologies that I knew I needed to understand better. I had been reading about how difficult it is for pet owners to track subtle health changes over time - the kind of gradual shifts that are easy to miss day-to-day but important for vets to know about.
 
-That got me thinking: people take notes about everything else, why not their pets? But more importantly, I realized this was a perfect chance to dive deep into AI integration and learn how to build something actually useful.
+That got me thinking: people take notes about everything else, why not their pets? But more importantly, I realized this was a perfect chance to dive deep into AI integration and learn how to build something genuinely useful.
 
 ## What I Wanted to Learn
 
 Going into this project, I had three specific learning goals:
 1. **How to implement OpenAI function calling properly** - I had read about it but never built anything real with it
-2. **Building fast APIs that can handle real-time data** - I wanted to understand caching, async programming, and database optimization
-3. **Making AI actually useful instead of just a chatbot** - I wanted the AI to take actions and generate insights, not just answer questions
+2. **Building high-performance APIs that can handle real-time data** - I wanted to understand caching, async programming, and database optimization
+3. **Making AI genuinely useful instead of just a chatbot** - I wanted the AI to take actions and generate insights, not just answer questions
 
 I also knew I wanted experience with Firebase because so many companies use it, and I wanted to understand how speech-to-text APIs work since voice interfaces are becoming more common.
 
-## How It Actually Works
+## How It Functions
 
 The core concept is straightforward: simplify pet health tracking and use AI to identify patterns that might otherwise be missed.
 
@@ -72,7 +72,7 @@ Different queries require different chart types - "Show me feeding times" needs 
 
 **Firebase vs PostgreSQL**: I almost chose PostgreSQL because it was familiar, but Firebase was a specific learning objective. The real-time synchronization proved very useful for this use case. When tracking a pet, you might add notes from your phone but want to analyze trends on a larger screen.
 
-**Custom caching vs Redis**: I probably should have used Redis, but I wanted to understand caching fundamentals first. I built a simple in-memory cache with TTL. It works for this project size, though I would definitely use Redis for larger applications.
+**Custom caching vs Redis**: I likely should have used Redis, but I wanted to understand caching fundamentals first. I built a simple in-memory cache with TTL. It works for this project size, though I would certainly use Redis for larger applications.
 
 **OpenAI function calling**: This was the primary technology I wanted to learn. Instead of parsing queries like "show me Buddy's weight over time" with regex, I let GPT-4 determine the intent and extract parameters. This proved much more reliable than I expected.
 
@@ -137,7 +137,7 @@ pet-voice-notes/
 ├── public/                   # Frontend 
 │   ├── main.html            # Main dashboard
 │   └── index.html           # Login page
-├── docker-compose.yml        # Easy deployment
+├── docker-compose.yml        # Simplified deployment
 └── requirements.txt          # Python dependencies
 ```
 
@@ -145,7 +145,7 @@ The main logic is split across a few files because I wanted to keep related func
 
 ## How I Structured the Data
 
-Firebase uses collections and documents instead of tables. Here's the basic structure:
+Firebase uses collections and documents instead of tables. Here is the basic structure:
 
 ```
 users/{userId}
@@ -176,7 +176,7 @@ pip install -r requirements.txt
 python api_server.py
 ```
 
-**You'll need API keys for:**
+**You will need API keys for:**
 - OpenAI (for the AI features)
 - Firebase (for database/auth)  
 - Google Cloud (for speech-to-text)
