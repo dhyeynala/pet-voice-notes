@@ -18,9 +18,9 @@ When I researched existing solutions, I found a clear gap: basic pet apps offer 
 
 ## The Solution
 
-After talking to several pet-owning friends about their tracking challenges, I designed this system to make health monitoring effortless while providing the kind of pattern analysis that most owners struggle to do manually.
+This system makes pet health tracking effortless while providing the kind of pattern analysis that most owners struggle to do manually.
 
-**Voice-First Design**: Based on feedback from friends who found typing cumbersome when their pets were acting concerning, I prioritized voice input. Tap to record "Buddy seems tired today, did not finish his breakfast" and the system transcribes, extracts health information, and categorizes it automatically.
+**Voice-First Design**: Tap to record "Buddy seems tired today, did not finish his breakfast" and the system transcribes, extracts health information, and categorizes it automatically. Voice input is faster and more practical when you notice something concerning.
 
 **Pattern Recognition**: This addresses the exact problem many pet owners face - the AI analyzes all your notes and identifies trends like "You have mentioned lethargy 3 times this week" or "Eating patterns changed after the vet visit." It connects observations that owners typically do not link together.
 
@@ -33,7 +33,7 @@ After talking to several pet-owning friends about their tracking challenges, I d
 ## Problems I Solved While Building This
 
 **Problem 1: OpenAI API costs and latency**
-Early user testing with friends revealed that chart generation felt too slow. I was calling the OpenAI API every time someone requested a chart, which became expensive quickly and created noticeable delays that frustrated users.
+I was calling the OpenAI API every time someone requested a chart, which became expensive quickly and created noticeable delays in the application response time.
 
 *Solution*: Implemented a caching system that stores recent data for 30 minutes. Repeated requests now return instantly and API costs were reduced by approximately 67%.
 
@@ -43,7 +43,7 @@ During initial testing, I realized Google's speech API returns raw transcripts a
 *Solution*: I process the transcript through OpenAI to extract relevant information and categorize it by type (medical observations, daily activity, feeding patterns, etc.).
 
 **Problem 3: Dynamic visualization requirements**
-User feedback revealed that people wanted to ask natural questions without learning interface complexity. "Show me feeding times" clearly needs a different visualization approach than "show me energy levels over time," but users should not have to figure that out.
+Different queries require different chart types - "Show me feeding times" needs a different visualization approach than "show me energy levels over time," but users should not have to figure that out.
 
 *Solution*: Implemented OpenAI function calling to parse natural language queries and automatically select appropriate chart types and data parameters.
 
@@ -197,7 +197,7 @@ Firebase handles user authentication and multi-user data sharing automatically. 
 
 ## Future Development
 
-Based on conversations with both pet owners and a veterinary friend who reviewed the system:
+## Future Development
 
 **Computer Vision Integration**: Analyze pet photos for visual health indicators like coat condition, eye clarity, or posture changes over time - something that could help track gradual changes like weight loss that are hard to notice day-to-day.
 
@@ -205,7 +205,7 @@ Based on conversations with both pet owners and a veterinary friend who reviewed
 
 **Advanced Analytics**: Implement trend detection algorithms to automatically flag concerning patterns before they become obvious to owners.
 
-**Veterinary Integration**: API endpoints for vets to access patient history (with owner permission) and add professional observations to the timeline - a feature the vet I consulted said would be valuable for continuity of care.
+**Veterinary Integration**: API endpoints for vets to access patient history (with owner permission) and add professional observations to the timeline for better continuity of care.
 
 ---
 
