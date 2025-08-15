@@ -18,11 +18,11 @@ When I researched existing solutions, I found a clear gap: basic pet apps offer 
 
 ## What I Built
 
-I built this because I kept noticing something frustrating: my dog would have subtle changes in behavior that I'd mention to the vet weeks later, but I could never remember exactly when they started or how they progressed. "He's been less energetic lately" - but was it since last Tuesday, or three weeks ago?
+I built this after observing a frustrating pattern among friends and family with pets: they'd mention subtle behavioral changes to vets weeks later, but could never remember exactly when they started or how they progressed. "He's been less energetic lately" - but was it since last Tuesday, or three weeks ago?
 
-This system lets me quickly record observations by voice, then uses AI to track patterns I'd miss otherwise. When I say "Max didn't finish his breakfast and seems tired," it categorizes this as a potential health concern and connects it to previous observations about his energy levels.
+This system lets pet owners quickly record observations by voice, then uses AI to track patterns they'd miss otherwise. When someone says "Max didn't finish his breakfast and seems tired," it categorizes this as a potential health concern and connects it to previous observations about energy levels.
 
-The AI assistant can answer questions like "When did I first mention Max being tired?" or "Show me his eating patterns this month" - connecting dots that I'd never remember to connect manually.
+The AI assistant can answer questions like "When did I first mention Max being tired?" or "Show me his eating patterns this month" - connecting dots that owners would never remember to connect manually.
 
 **Core Features:**
 - **Voice Recording**: Tap to record observations, automatic transcription
