@@ -33,7 +33,7 @@ def get_speech_client():
         client = speech.SpeechClient()
         return client
     except Exception as e:
-        print(f"❌ Error creating Speech client: {e}")
+        print(f"Error creating Speech client: {e}")
         return None
 
 
@@ -56,14 +56,14 @@ def transcribe_audio(duration_seconds=10):
     # Start recording
     stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
-    print(f"🎙️  Recording for {duration_seconds} seconds...")
+    print(f"Recording for {duration_seconds} seconds...")
     frames = []
 
     for _ in range(0, int(RATE / CHUNK * duration_seconds)):
         data = stream.read(CHUNK)
         frames.append(data)
 
-    print("🔄 Recording finished. Processing...")
+    print("Recording finished. Processing...")
 
     # Stop recording
     stream.stop_stream()
@@ -81,13 +81,13 @@ def transcribe_audio(duration_seconds=10):
 
         if response.results:
             transcript = response.results[0].alternatives[0].transcript
-            print(f"📝 Transcript: {transcript}")
+            print(f"Transcript: {transcript}")
             return transcript
         else:
             return "No speech detected"
 
     except Exception as e:
-        print(f"❌ Transcription error: {e}")
+        print(f"Transcription error: {e}")
         return f"Error: {str(e)}"
 
 
@@ -113,13 +113,13 @@ def start_recording():
 def stop_recording():
     """Stop recording and process audio"""
 
-    print(f"🛑 Stop recording called. Current state: {recording_state['is_recording']}")
+    print(f"Stop recording called. Current state: {recording_state['is_recording']}")
 
     if not recording_state["is_recording"]:
-        print("❌ Not currently recording")
+        print("Not currently recording")
         return {"status": "error", "message": "Not recording"}
 
-    print("🔄 Stopping recording...")
+    print("Stopping recording...")
     recording_state["is_recording"] = False
 
     # Wait a moment for recording to finish
@@ -127,17 +127,17 @@ def stop_recording():
 
     # Process the recorded audio
     if recording_state["audio_data"]:
-        print(f"📊 Processing {len(recording_state['audio_data'])} audio chunks")
+        print(f"Processing {len(recording_state['audio_data'])} audio chunks")
         audio_data = b''.join(recording_state["audio_data"])
-        print(f"📊 Total audio data size: {len(audio_data)} bytes")
+        print(f"Total audio data size: {len(audio_data)} bytes")
 
         transcript = _transcribe_audio_data(audio_data)
         recording_state["transcript"] = transcript
 
-        print(f"✅ Recording stopped successfully. Transcript: '{transcript[:100]}...'")
+        print(f"Recording stopped successfully. Transcript: '{transcript[:100]}...'")
         return {"status": "stopped", "transcript": transcript, "message": "Recording stopped and transcribed"}
     else:
-        print("❌ No audio data recorded")
+        print("No audio data recorded")
         return {"status": "error", "message": "No audio data recorded"}
 
 
@@ -153,7 +153,7 @@ def _record_audio():
 
     stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
-    print("🎙️  Recording started...")
+    print("Recording started...")
 
     while recording_state["is_recording"]:
         try:
@@ -167,7 +167,7 @@ def _record_audio():
     stream.close()
     audio.terminate()
 
-    print("🔄 Recording stopped")
+    print("Recording stopped")
 
 
 def _transcribe_audio_data(audio_data):
@@ -184,16 +184,16 @@ def _transcribe_audio_data(audio_data):
         )
 
         audio = speech.RecognitionAudio(content=audio_data)
-        print("🔄 Transcribing audio with Google Cloud Speech-to-Text...")
+        print("Transcribing audio with Google Cloud Speech-to-Text...")
         response = client.recognize(config=config, audio=audio)
 
         if response.results:
             transcript = response.results[0].alternatives[0].transcript
-            print(f"📝 Transcript: {transcript}")
+            print(f"Transcript: {transcript}")
             return transcript
         else:
             return "No speech detected"
 
     except Exception as e:
-        print(f"❌ Transcription error: {e}")
+        print(f"Transcription error: {e}")
         return f"Error: {str(e)}"

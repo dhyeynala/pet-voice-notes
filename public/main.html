@@ -3553,7 +3553,7 @@ The AI will automatically detect the content type and provide the perfect summar
         const result = await response.json();
 
         if (response.ok) {
-          statusElement.textContent = `✅ ${petData.name} has been added successfully!`;
+          statusElement.textContent = `${petData.name} has been added successfully!`;
           statusElement.className = "status-message success";
           
           // Reset form
@@ -3574,7 +3574,7 @@ The AI will automatically detect the content type and provide the perfect summar
 
       } catch (error) {
         console.error('Error creating pet:', error);
-        statusElement.textContent = `❌ Error: ${error.message}`;
+        statusElement.textContent = `Error: ${error.message}`;
         statusElement.className = "status-message error";
       }
     };
@@ -3634,7 +3634,7 @@ The AI will automatically detect the content type and provide the perfect summar
             showNotification('Recording started! Speak clearly into your microphone.', 'info');
           } else {
             button.disabled = false; // Re-enable on error
-            statusElement.textContent = "❌ Failed to start recording: " + (data.message || data.error || "Unknown error");
+            statusElement.textContent = "Failed to start recording: " + (data.message || data.error || "Unknown error");
             statusElement.className = "status error";
             statusElement.style.display = "block";
             showNotification('Failed to start recording. Please try again.', 'error');
@@ -3642,7 +3642,7 @@ The AI will automatically detect the content type and provide the perfect summar
         } catch (error) {
           console.error('Error starting recording:', error);
           button.disabled = false; // Re-enable on error
-          statusElement.textContent = "❌ Failed to start recording";
+          statusElement.textContent = "Failed to start recording";
           statusElement.className = "status error";
           statusElement.style.display = "block";
           showNotification('Network error. Please check your connection and try again.', 'error');
@@ -3699,7 +3699,7 @@ The AI will automatically detect the content type and provide the perfect summar
             contentTypeBadge.style.display = "inline-block";
             
             outputElement.classList.add("has-content");
-            statusElement.textContent = `✅ ${badgeText} processed successfully!`;
+            statusElement.textContent = `${badgeText} processed successfully!`;
             statusElement.className = "status success";
             
             showNotification('Recording processed successfully!', 'success');
@@ -3717,7 +3717,7 @@ The AI will automatically detect the content type and provide the perfect summar
             contentTypeBadge.style.display = "none";
             
             outputElement.classList.add("has-content");
-            statusElement.textContent = "✅ Recording transcribed successfully!";
+            statusElement.textContent = "Recording transcribed successfully!";
             statusElement.className = "status success";
             
             showNotification('Recording transcribed successfully!', 'success');
@@ -3733,14 +3733,14 @@ The AI will automatically detect the content type and provide the perfect summar
           } else {
             // Error case
             const errorMsg = data.error || data.message || "Unknown error";
-            statusElement.textContent = "❌ Error processing recording: " + errorMsg;
+            statusElement.textContent = "Error processing recording: " + errorMsg;
             statusElement.className = "status error";
             console.error('Recording processing error:', data);
             showNotification('Error processing recording: ' + errorMsg, 'error');
           }
         } catch (error) {
           console.error('Error stopping recording:', error);
-          statusElement.textContent = "❌ Network error while processing recording";
+          statusElement.textContent = "Network error while processing recording";
           statusElement.className = "status error";
           showNotification('Network error. Please check your connection and try again.', 'error');
         } finally {
@@ -3847,7 +3847,7 @@ The AI will automatically detect the content type and provide the perfect summar
           textInput.value = "";
           
           // Show success message
-          statusElement.textContent = `✅ ${badgeText} processed successfully!`;
+          statusElement.textContent = `${badgeText} processed successfully!`;
           statusElement.className = "status-message success";
           statusElement.style.display = "block";
           
@@ -3869,7 +3869,7 @@ The AI will automatically detect the content type and provide the perfect summar
           }
 
         } else {
-          statusElement.textContent = `❌ Error: ${data.message || "Failed to process note"}`;
+          statusElement.textContent = `Error: ${data.message || "Failed to process note"}`;
           statusElement.className = "status-message error";
           statusElement.style.display = "block";
           setTimeout(() => statusElement.style.display = "none", 5000);
@@ -3878,7 +3878,7 @@ The AI will automatically detect the content type and provide the perfect summar
       } catch (error) {
         console.error('Error submitting text:', error);
         loadingOverlay.style.display = "none";
-        statusElement.textContent = "❌ Network error. Please try again.";
+        statusElement.textContent = "Network error. Please try again.";
         statusElement.className = "status-message error";
         statusElement.style.display = "block";
         setTimeout(() => statusElement.style.display = "none", 5000);
@@ -5599,7 +5599,7 @@ The AI will automatically detect the content type and provide the perfect summar
         const result = await response.json();
         
         if (result.status === 'success') {
-          console.log('✅ Pet data preloaded successfully:', result.data_summary);
+          console.log('Pet data preloaded successfully:', result.data_summary);
           
           // Show success notification with data summary
           const summary = result.data_summary;
@@ -5610,7 +5610,7 @@ The AI will automatically detect the content type and provide the perfect summar
           updateCacheStatusIndicator(petId, true, summary);
           
         } else {
-          console.error('❌ Failed to preload pet data:', result.message);
+          console.error('Failed to preload pet data:', result.message);
           showNotification('Failed to preload pet data', 'error', 3000);
         }
         
@@ -5629,7 +5629,7 @@ The AI will automatically detect the content type and provide the perfect summar
         const result = await response.json();
         
         if (result.status === 'success' && result.cached) {
-          console.log('✅ Pet data is cached:', result.cache_info);
+          console.log('Pet data is cached:', result.cache_info);
           updateCacheStatusIndicator(petId, true, result.cache_info);
           return true;
         } else {
@@ -5660,7 +5660,7 @@ The AI will automatically detect the content type and provide the perfect summar
           showNotification('Pet data cache cleared', 'info', 2000);
           updateCacheStatusIndicator(petId, false);
         } else {
-          console.error('❌ Failed to clear cache:', result.message);
+          console.error('Failed to clear cache:', result.message);
         }
         
       } catch (error) {

@@ -36,7 +36,7 @@ from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handl
 from pdf_parser import extract_text_and_summarize
 from transcribe import start_recording, stop_recording, get_recording_status
 
-# ✅ Lazy-loaded service instances to improve startup performance
+# Lazy-loaded service instances to improve startup performance
 _intelligent_chatbot_service = None
 _simple_rag_service = None
 _visualization_service = None
@@ -105,7 +105,7 @@ app.add_middleware(
 )
 
 
-# ✅ Startup event to pre-warm critical services
+# Startup event to pre-warm critical services
 @app.on_event("startup")
 async def startup_event():
     """Pre-warm critical services to improve first request performance"""
@@ -116,7 +116,7 @@ async def startup_event():
     # to balance startup time vs first-request performance
     try:
         _ = get_visualization_service()
-        print("✅ Visualization service pre-warmed")
+        print("Visualization service pre-warmed")
     except Exception as e:
         print(f"⚠️ Failed to pre-warm visualization service: {e}")
 
@@ -243,7 +243,7 @@ async def update_markdown(request: Request):
     return {"status": "updated"}
 
 
-# ✅ NEW: Add text input note under each pet
+# NEW: Add text input note under each pet
 @app.post("/api/pets/{pet_id}/textinput")
 async def add_pet_textinput(pet_id: str, request: Request):
     data = await request.json()
@@ -277,7 +277,7 @@ async def add_pet_textinput(pet_id: str, request: Request):
         from firestore_store import store_analytics_from_voice
 
         store_analytics_from_voice(pet_id, input_text, summary, classification)
-        print(f"✅ Daily activity from text input also stored in analytics collection")
+        print(f"Daily activity from text input also stored in analytics collection")
 
     return {
         "status": "success",
@@ -289,7 +289,7 @@ async def add_pet_textinput(pet_id: str, request: Request):
     }
 
 
-# ✅ NEW: Start recording endpoint
+# NEW: Start recording endpoint
 @app.post("/api/start_recording")
 async def start_recording_endpoint(request: Request):
     data = await request.json()
@@ -303,7 +303,7 @@ async def start_recording_endpoint(request: Request):
     return result
 
 
-# ✅ NEW: Stop recording endpoint
+# NEW: Stop recording endpoint
 @app.post("/api/stop_recording")
 async def stop_recording_endpoint(request: Request):
     data = await request.json()
@@ -383,13 +383,13 @@ async def stop_recording_endpoint(request: Request):
         return {"status": "error", "message": f"Server error: {str(e)}"}
 
 
-# ✅ NEW: Get recording status endpoint
+# NEW: Get recording status endpoint
 @app.get("/api/recording_status")
 async def recording_status_endpoint():
     return get_recording_status()
 
 
-# ✅ Enhanced Analytics endpoints for comprehensive pet tracking
+# Enhanced Analytics endpoints for comprehensive pet tracking
 @app.post("/api/pets/{pet_id}/analytics/{category}")
 async def add_analytics_entry(pet_id: str, category: str, request: Request):
     data = await request.json()
@@ -871,7 +871,7 @@ def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
     return headlines
 
 
-# ✅ NEW: RAG-powered AI Assistant endpoints
+# NEW: RAG-powered AI Assistant endpoints
 @app.post("/api/pets/{pet_id}/preload")
 async def preload_pet_data(pet_id: str, request: Request):
     """Preload and cache pet data for faster subsequent queries"""
@@ -997,7 +997,7 @@ async def get_assistant_summary(pet_id: str):
         cached_data = intelligent_chatbot_service.get_cached_pet_data(pet_id)
 
         if cached_data:
-            print("✅ Using cached data for assistant summary")
+            print("Using cached data for assistant summary")
             simple_rag_service = get_simple_rag_service()
 
             # Use cached data for faster summary generation
@@ -1023,7 +1023,7 @@ async def get_assistant_summary(pet_id: str):
         return {"status": "error", "error": f"Failed to generate assistant summary: {str(e)}"}
 
 
-# ✅ NEW: Simple test endpoint for diagnostics
+# NEW: Simple test endpoint for diagnostics
 @app.get("/api/test")
 async def test_endpoint():
     return {
@@ -1039,7 +1039,7 @@ async def health_check():
     return {"status": "healthy", "services": {"firebase": "connected", "storage": "available", "api": "operational"}}
 
 
-# ✅ Serve index last to avoid route shadowing
+# Serve index last to avoid route shadowing
 @app.get("/")
 async def serve_index():
     return FileResponse(os.path.join("public", "index.html"))

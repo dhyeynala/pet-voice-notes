@@ -13,16 +13,16 @@ import re
 import math
 from collections import Counter
 
-print("🔍 Starting import of simple_rag_service dependencies...")
+print("Starting import of simple_rag_service dependencies...")
 
 try:
     from firestore_store import db, get_pet_by_id
 
-    print("✅ firestore_store imported successfully")
+    print("firestore_store imported successfully")
 except Exception as e:
-    print(f"❌ firestore_store import failed: {e}")
+    print(f"firestore_store import failed: {e}")
 
-print("🏗️ Defining SimplePetHealthRAGService class...")
+print("Defining SimplePetHealthRAGService class...")
 
 try:
 
@@ -30,7 +30,7 @@ try:
         """Simplified RAG Service using basic text similarity without heavy ML dependencies"""
 
         def __init__(self):
-            print("🔧 Initializing SimplePetHealthRAGService...")
+            print("Initializing SimplePetHealthRAGService...")
             # OpenAI client
             openai.api_key = os.getenv("OPENAI_API_KEY")
             self.client = openai.OpenAI()
@@ -44,7 +44,7 @@ try:
 
             # Breed data cache to avoid repeated API calls
             self.breed_cache = {}
-            print("✅ SimplePetHealthRAGService initialized successfully")
+            print("SimplePetHealthRAGService initialized successfully")
 
         def _load_veterinary_knowledge(self) -> List[Dict]:
             """Load veterinary knowledge base"""
@@ -438,7 +438,7 @@ try:
                 knowledge_results = []
                 breed_info = {}
 
-                print("🚀 Using cached data for RAG processing")
+                print("Using cached data for RAG processing")
 
                 # Get pet information from cache
                 pet_data = cached_data.get('pet_info')
@@ -469,7 +469,7 @@ try:
                     if pet_documents:
                         relevant_docs = self.similarity_search(query, pet_documents, top_k=5)
                         context_documents.extend(relevant_docs)
-                        print(f"📚 Found {len(relevant_docs)} relevant documents from cache")
+                        print(f"Found {len(relevant_docs)} relevant documents from cache")
 
                 # Prepare context and generate response
                 context = self._prepare_context(context_documents)
@@ -587,7 +587,7 @@ try:
                     }
                 )
 
-            print(f"📄 Prepared {len(documents)} documents from cached data")
+            print(f"Prepared {len(documents)} documents from cached data")
             return documents
 
         def _prepare_context(self, results: List[Dict]) -> str:
@@ -854,11 +854,11 @@ Remember: You are not replacing veterinary care but providing informed insights 
 
             return {}
 
-    print("🎯 Class definition complete!")
+    print("Class definition complete!")
 
     # Export only the class for imports - instances will be created lazily
     __all__ = ['SimplePetHealthRAGService']
 
-    print("📤 Exports defined:", __all__)
+    print("Exports defined:", __all__)
 except Exception as e:
     print(f"Error defining SimplePetHealthRAGService class: {e}")
