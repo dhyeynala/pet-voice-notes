@@ -79,11 +79,11 @@ def summarize_text(text, max_retries=3):
             )
 
             summary = response.choices[0].message.content.strip()
-            print(f"✅ Summary generated: {summary[:100]}...")
+            print(f"Summary generated: {summary[:100]}...")
             return summary
 
         except Exception as e:
-            print(f"❌ OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
+            print(f"OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
 
             if attempt < max_retries - 1:
                 # Exponential backoff
@@ -146,11 +146,11 @@ def summarize_pdf_text(pdf_text, max_retries=3):
             )
 
             summary = response.choices[0].message.content.strip()
-            print(f"✅ PDF Summary generated: {summary[:100]}...")
+            print(f"PDF Summary generated: {summary[:100]}...")
             return summary
 
         except Exception as e:
-            print(f"❌ OpenAI API error for PDF (attempt {attempt + 1}/{max_retries}): {e}")
+            print(f"OpenAI API error for PDF (attempt {attempt + 1}/{max_retries}): {e}")
 
             if attempt < max_retries - 1:
                 wait_time = 2**attempt
@@ -247,7 +247,7 @@ def classify_pet_content(text, max_retries=3):
             return result
 
         except Exception as e:
-            print(f"❌ Classification error (attempt {attempt + 1}/{max_retries}): {e}")
+            print(f"Classification error (attempt {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 wait_time = 2**attempt
                 print(f"⏳ Retrying classification in {wait_time} seconds...")

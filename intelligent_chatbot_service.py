@@ -105,7 +105,7 @@ class IntelligentChatbotService:
             self.pet_data_cache[pet_id] = cached_data
             self.cache_timestamps[pet_id] = datetime.utcnow()
 
-            print(f"✅ Cached data for pet {pet_id}:")
+            print(f"Cached data for pet {pet_id}:")
             print(f"   Analytics: {len(analytics_data)} entries")
             print(f"   Voice Notes: {len(voice_notes)} entries")
             print(f"   Text Inputs: {len(text_inputs)} entries")
@@ -125,13 +125,13 @@ class IntelligentChatbotService:
             }
 
         except Exception as e:
-            print(f"❌ Error preloading pet data: {e}")
+            print(f"Error preloading pet data: {e}")
             return {"status": "error", "message": f"Failed to preload data: {str(e)}"}
 
     def get_cached_pet_data(self, pet_id: str) -> Optional[Dict]:
         """Get cached pet data if available and valid"""
         if self._is_cache_valid(pet_id):
-            print(f"✅ Using cached data for pet {pet_id}")
+            print(f"Using cached data for pet {pet_id}")
             return self.pet_data_cache[pet_id]
         else:
             print(f"⚠️ No valid cache for pet {pet_id}")
@@ -483,7 +483,7 @@ class IntelligentChatbotService:
         # Get pet information for context (from cache if available)
         if cached_data and cached_data.get('pet_info'):
             pet_data = cached_data['pet_info']
-            print("✅ Using cached pet info")
+            print("Using cached pet info")
         else:
             pet_data = get_pet_by_id(pet_id)
             print("🔍 Queried pet info from database")
@@ -592,11 +592,11 @@ Context from Pet's Health Data:
                         chart_data = self._execute_visualization_function(function_name, analytics_data, function_args)
                         if chart_data:
                             visualizations[function_name] = chart_data
-                            print(f"   ✅ Generated {function_name}")
+                            print(f"   Generated {function_name}")
                         else:
-                            print(f"   ❌ Failed to generate {function_name}")
+                            print(f"   Failed to generate {function_name}")
                     else:
-                        print(f"   ❌ No analytics data available for {function_name}")
+                        print(f"   No analytics data available for {function_name}")
 
                     # Track function calls made
                     response_data["function_calls_made"].append(
@@ -611,7 +611,7 @@ Context from Pet's Health Data:
                 if visualizations:
                     response_data["visualizations"] = visualizations
                     response_data["data_points"] = len(analytics_data)
-                    print(f"✅ Added {len(visualizations)} visualizations to response")
+                    print(f"Added {len(visualizations)} visualizations to response")
 
                     # Enhance the text response to mention the visualizations
                     if response_data["response"]:
@@ -619,7 +619,7 @@ Context from Pet's Health Data:
                             "response"
                         ] += f"\n\n📊 I've also prepared {len(visualizations)} visualization(s) to help you better understand the data patterns."
                 else:
-                    print("❌ No visualizations were generated despite function calls")
+                    print("No visualizations were generated despite function calls")
             else:
                 print("🔍 No function calls were made - providing text-only response")
 

@@ -199,7 +199,7 @@ def store_analytics_from_voice(pet_id, transcript, summary, classification):
 
         # Store in analytics collection
         db.collection("pets").document(pet_id).collection("analytics").add(analytics_entry)
-        print(f"✅ Stored daily activity as '{best_category}' in analytics collection")
+        print(f"Stored daily activity as '{best_category}' in analytics collection")
 
     except Exception as e:
-        print(f"❌ Error storing voice analytics: {e}")
+        print(f"Error storing voice analytics: {e}")

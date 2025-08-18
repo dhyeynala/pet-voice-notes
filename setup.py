@@ -27,9 +27,9 @@ def print_banner():
 def check_python_version():
     """Check if Python version is compatible"""
     if sys.version_info < (3, 8):
-        print("❌ Python 3.8 or higher is required")
+        print("Python 3.8 or higher is required")
         sys.exit(1)
-    print("✅ Python version check passed")
+    print("Python version check passed")
 
 
 def create_env_file():
@@ -75,7 +75,7 @@ GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
     with open('.env', 'w') as f:
         f.write(env_content)
 
-    print("✅ .env file created successfully")
+    print(".env file created successfully")
 
 
 def create_firebase_config():
@@ -118,7 +118,7 @@ export const app = initializeApp(firebaseConfig);
     with open('public/firebase-config.js', 'w') as f:
         f.write(firebase_config)
 
-    print("✅ Firebase configuration created successfully")
+    print("Firebase configuration created successfully")
 
 
 def install_dependencies():
@@ -126,9 +126,9 @@ def install_dependencies():
     print("\n📦 Installing Python dependencies...")
     try:
         subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt'], check=True)
-        print("✅ Dependencies installed successfully")
+        print("Dependencies installed successfully")
     except subprocess.CalledProcessError:
-        print("❌ Failed to install dependencies")
+        print("Failed to install dependencies")
         print("💡 Try running: pip install -r requirements.txt manually")
 
 
