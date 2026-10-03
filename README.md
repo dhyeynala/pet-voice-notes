@@ -1,319 +1,205 @@
 # PetPulse
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
-[![Firebase](https://img.shields.io/badge/Firebase-9.0+-yellow.svg)](https://firebase.google.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+PetPulse is a pet health log. You record voice or text notes about your pet, and it turns them
+into structured, searchable records you can show your vet. It runs fully offline as a demo,
+with no keys and no accounts, and switches to real OpenAI models when you add a key.
 
-<p align="center">
-  <img src="docs/images/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" width="600" height="auto">
-</p>
+## What it does
 
-## The Problem
+- **Notes by voice or text.** Record in the browser, or pick a bundled sample clip if you have
+  no microphone. Each note is transcribed, then classified (medical, daily activity, mixed).
+  Observations and red flags (for example blood or repeated vomiting) are extracted with the
+  sentences they came from. A note with a red flag gets an urgent "contact your vet" banner.
+- **Vet records.** Upload a PDF. It is checked, stored privately and summarized: findings,
+  medications with doses, and follow-ups, each with the page it came from.
+- **Chat with citations.** Questions are answered only from the pet's own notes, records and
+  tracking entries, and every answer cites them. Date and count questions are answered by code. Questions that aren't in the records get "not in records".
+  Dosing, diagnosis or off-topic questions are refused with a pointer to a veterinarian.
+- **Insights.** Facts (for example average energy and exercise over 7 days) and alerts (an
+  urgent note, a low-energy streak) computed by code from notes and tracking data, with a headline.
+- **Tracking and charts.** Ten form categories (diet, exercise, medication, grooming, energy
+  levels, bowel movements, exit events, weight, sleep, mood) and charts over the last weeks.
+- **Several pets and users.** Each pet has owners, and every pet route checks ownership.
 
-I noticed this pattern repeatedly among pet owners I know: subtle health changes that develop gradually often go untracked until they become obvious problems. Dogs start eating slightly less over weeks, but owners cannot pinpoint when it began or describe the progression clearly to vets. Cats become less active, dismissed as "getting older" until vet visits reveal underlying conditions that could have been caught earlier.
+## Demo vs live
 
-When I researched existing solutions, I found a clear gap: basic pet apps offer simple logging with no intelligence, while sophisticated health monitoring tools are designed for veterinary clinics, not individual pet owners. There was no solution that could intelligently analyze home observations and provide meaningful health insights for regular pet owners.
+Every AI provider and backend defaults to `auto`:
 
-## What I Built
+| | No configuration (demo) | When configured (live) |
+|---|---|---|
+| LLM (notes, PDF summaries, chat) | deterministic fake | OpenAI when `OPENAI_API_KEY` is set; model pinned by `OPENAI_MODEL` (`gpt-5.4-mini-2026-03-17`) |
+| Speech-to-text | deterministic fake | OpenAI when `OPENAI_API_KEY` is set (`STT_OPENAI_MODEL`, `gpt-4o-mini-transcribe-2025-12-15`); Google only with an explicit `STT_PROVIDER=google` |
+| Storage | local JSON file (`DATA_DIR/db.json`) | Firestore when Firebase service-account credentials are set |
+| Sign-in | demo login (pick Alice or Bob, or create a user) | Firebase (Google / email) when credentials and `FIREBASE_WEB_API_KEY` are set |
 
-I built this after observing a frustrating pattern among friends and family with pets: they'd mention subtle behavioral changes to vets weeks later, but could never remember exactly when they started or how they progressed. "He's been less energetic lately" - but was it since last Tuesday, or three weeks ago?
+- An explicit value (`LLM_PROVIDER=fake|openai`, `STT_PROVIDER=...`, `STORE_BACKEND=...`,
+  `AUTH_PROVIDER=...`) always wins over `auto`.
+- An explicit live choice without its key or credentials fails at startup with a message that
+  lists what is missing.
+- `OPENAI_MODEL` must be a dated snapshot. Undated aliases are rejected at startup.
+- The UI shows a banner with the overall mode and a Demo / Live badge on each AI feature.
+  `GET /api/health` reports the same per feature.
+- Demo AI output is simulated and marked as such.
 
-This system lets pet owners quickly record observations by voice, then uses AI to track patterns they'd miss otherwise. When someone says "Max didn't finish his breakfast and seems tired," it categorizes this as a potential health concern and connects it to previous observations about energy levels.
+The demo seed gives Alice two pets (Max and Luna) and Bob his own Max. It includes about 30
+days of tracking data, notes (one of them urgent) and a sample vet PDF. "Reset demo data" in
+the user menu restores it.
 
-The AI assistant can answer questions like "When did I first mention Max being tired?" or "Show me his eating patterns this month" - connecting dots that owners would never remember to connect manually.
+## Quick start
 
-**Core Features:**
-- **Voice Recording**: Tap to record observations, automatic transcription
-- **AI Health Analysis**: Categorizes notes (medical vs. daily activity) and extracts health patterns  
-- **Smart Charts**: Ask "show me energy levels" and get the right visualization automatically
-- **PDF Processing**: Upload vet records, get AI summaries
-- **Pattern Recognition**: Identifies trends across multiple observations
-- **Multi-Pet Support**: Track multiple pets with shared family access
+**Local (Python 3.11):**
 
-<p align="center">
-  <img src="docs/images/assistant-dashboard.png" alt="PetPulse – AI Health Assistant with access to notes, PDFs, and tracking data" width="600" height="auto">
-</p>
-
-## Technical Challenges I Solved
-
-**OpenAI API costs got expensive fast**
-Every chart generation was hitting OpenAI's API, and with testing and multiple users, costs were adding up quickly. I implemented a 30-minute cache for recent queries - now repeated requests are instant and my API costs dropped by about 67%.
-
-**Raw speech transcripts weren't useful enough**
-Google's Speech-to-Text gives you exactly what was said, but "Max was limping today but ate his dinner fine" as raw text doesn't help much. I added a second AI step that extracts the important health info and categorizes it (medical concern vs. normal activity).
-
-**Users wanted different chart types for different questions**
-"Show me feeding times" needs a different visualization than "show me energy trends over time." Instead of building complex chart configuration UI, I used OpenAI function calling to parse the question and automatically pick the right chart type and data.
-
-**Multi-device syncing**
-You notice something on your phone but want to analyze trends on your computer. Firebase's real-time database handles this - notes appear instantly across devices without refresh.
-
-## Technical Architecture
-
-**Backend Stack:**
-- **FastAPI**: Async Python web framework with automatic OpenAPI docs
-- **Browser MediaRecorder**: voice notes are recorded in the browser and uploaded
-- **Google Speech-to-Text**: Enterprise speech recognition with 95%+ accuracy
-- **OpenAI GPT-4**: Content classification, summarization, and function calling
-- **Firebase**: Firestore (NoSQL database) + Auth + Storage
-
-**AI Processing Pipeline:**
-```python
-# 1. Speech capture → Google Speech API → raw transcript
-# 2. Raw transcript → OpenAI → structured health data + classification
-# 3. Health data → Analytics system → trend analysis + visualizations
-```
-
-**Caching Strategy:**
-- 30-minute TTL for expensive AI responses
-- 67% reduction in API costs for repeated queries
-- In-memory cache (Redis recommended for production)
-
-**Key Design Decisions:**
-- **Async/await throughout**: Handle concurrent AI API calls efficiently
-- **Function calling over parsing**: GPT-4 generates structured chart parameters
-- **NoSQL for pet data**: Naturally hierarchical, frequently updated
-- **Voice-first UX**: Faster than typing when observing concerning behavior
-
-## Core Implementation
-
-**OpenAI Function Calling:**
-```python
-chart_functions = [
-    {
-        "name": "generate_chart",
-        "description": "Create visualizations for pet health data",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "chart_type": {"type": "string", "enum": ["bar", "line", "doughnut"]},
-                "data_category": {"type": "string", "enum": ["diet", "exercise", "energy"]},
-                "time_range": {"type": "string", "enum": ["week", "month", "3months"]}
-            }
-        }
-    }
-]
-```
-
-**Caching System:**
-```python
-@app.post("/api/pets/{pet_id}/analytics")
-async def get_analytics(pet_id: str):
-    cache_key = f"analytics_{pet_id}"
-    
-    if cache_key in cache:
-        return cache[cache_key]  # Instant response
-    
-    result = await process_with_openai(pet_id)
-    cache[cache_key] = result  # Store for 30 minutes
-    return result
-```
-
-**AI Classification Pipeline:**
-```python
-# Step 1: Speech → Text
-transcript = await speech_client.recognize(audio_data)
-
-# Step 2: Text → Structured Health Data
-health_data = await openai.chat.completions.create(
-    model="gpt-4",
-    messages=[
-        {"role": "system", "content": "Extract health observations..."},
-        {"role": "user", "content": transcript}
-    ]
-)
-```
-
-## How It Performs
-
-The caching implementation significantly improved performance - repeated requests now return instantly instead of waiting 2-3 seconds for OpenAI responses.
-
-I built approximately 20 different API endpoints, which sounds extensive but FastAPI makes them straightforward to implement. The automatic documentation feature eliminates the need to maintain separate documentation.
-
-Firebase handles multiple users automatically, which simplified development. I did not need to implement custom user management or authentication flows.
-
-## Project Structure
-
-```
-pet-voice-notes/
-├── petpulse/                 # the backend (FastAPI): uvicorn petpulse.app:app
-│   ├── app.py                # app factory: middleware, startup seed, router registration
-│   ├── core/                 # config, auth, errors, logging, deps, firebase, timeutil
-│   ├── routers/              # HTTP routes (health, demo, pets, records, analytics, notes,
-│   │                         #   assistant, insights, voice)
-│   ├── services/             # notes, chat (assistant), insights, charts, voice, PDF, pets
-│   ├── llm/                  # LLM client, schemas, versioned prompts, fake rules
-│   ├── providers/            # LLM + speech-to-text providers (fake, OpenAI, Google)
-│   ├── store/                # Store interface: local JSON / in-memory / Firestore, blob stores
-│   ├── schemas/              # request/response models
-│   └── seed/                 # demo data and bundled audio/PDF samples
-├── public/                   # the UI (index.html login, main.html dashboard, js/, vendored libs)
-├── tests/
-│   ├── unit/                 # modules and services, no HTTP
-│   ├── integration/          # the app over HTTP, scripts, the entry points
-│   └── js/                   # node:test tests for public/js
-├── evals/                    # note-extraction eval cases, gold labels, scorer
-├── scripts/                  # smoke_live.py (live/fake smoke test), make_samples.py
-├── docs/                     # quick-start, api-contract, firebase, live-smoke, images/
-├── requirements/             # base.txt, dev.txt, live.txt (pinned locks; *.in are the sources)
-├── Dockerfile, docker-compose.yml, Makefile, pyproject.toml, .env.example
-└── firestore.rules, storage.rules, firebase.json   # Firebase rules (optional Firebase mode)
-```
-
-`petpulse/app.py` holds no route bodies: each feature has a router in `petpulse/routers/` that
-stays thin and calls a service in `petpulse/services/`. Storage and AI providers come from
-`petpulse/core/deps.py`, so every feature runs on deterministic fakes in demo mode.
-
-## Data Structure
-
-The same paths are used by the local JSON store and by Firestore:
-
-```
-users/{userId}
-  └── name, email, demo, created_at
-
-pets/{petId}
-  ├── name, animal_type, breed, age, weight, gender, owners: [userId, ...]
-  ├── notes/{noteId}         - typed, voice and PDF notes (source: "text" | "voice" | "pdf")
-  │   ├── text, summary, kind, urgent, needs_review
-  │   ├── red_flags: [{flag, status, sentences}], observations: [...]
-  │   └── created_at, tz, mode: "demo" | "live"
-  ├── records/{recordId}     - uploaded vet-record PDFs (summary, pages, status)
-  └── analytics/{entryId}    - structured tracking from the dashboard forms
-       ├── category: "diet" | "exercise" | "medication" | "energy_levels" | ...
-       └── category fields, timestamp
-```
-
-Each note is processed once (`petpulse.services.notes.process_note`) to extract observations
-and red flags. Chat answers and insights are computed from these notes and analytics entries,
-with citations back to the records they came from.
-
-## Getting Started
-
-**Demo (no keys, no accounts):** Docker Compose v2.24+.
 ```bash
 git clone https://github.com/dhyeynala/pet-voice-notes.git
 cd pet-voice-notes
-docker compose up --build        # http://localhost:8000 ; health: /api/health
-docker compose down -v           # reset demo data
+python3.11 -m venv .venv && source .venv/bin/activate   # or: conda create -n petpulse python=3.11 && conda activate petpulse
+make install        # pinned requirements/base.txt + requirements/dev.txt
+make run            # uvicorn petpulse.app:app --reload on http://localhost:8000
 ```
-With no `.env` the app runs in **demo mode**: deterministic fake AI providers, a local JSON
-store under `data/`, and no network calls to OpenAI, Google or Firebase. `/api/health` reports
-the mode of every AI feature.
 
-**Live AI (optional):** `cp .env.example .env` and set `OPENAI_API_KEY`. Providers default to
-`auto`, so they switch to OpenAI when the key is present (calls are billed). See
-[.env.example](.env.example) for every setting.
+Open http://localhost:8000 and sign in as Alice. API docs are at http://localhost:8000/docs.
 
-**Firebase (optional):** Firestore storage and Firebase sign-in work the same way:
-`STORE_BACKEND` / `AUTH_PROVIDER` default to `auto` and switch to Firebase only when its
-credentials are configured. See [docs/firebase.md](docs/firebase.md).
+**Docker (Compose v2.24+):**
 
-**Run without Docker:**
 ```bash
-pip install -r requirements/base.txt -r requirements/dev.txt   # or: make install
-uvicorn petpulse.app:app --reload                                 # or: make run
-pytest                                                            # or: make test
+docker compose up --build        # http://localhost:8000
+docker compose down -v           # stop and reset the demo data volume
 ```
 
-> Auth is a demo login: `POST /api/demo/login {"uid": "alice"}` returns a bearer token for every
-> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). With Firebase configured
-> the login page offers Google / email sign-in instead and the Firebase ID token is the bearer token. See
-> [docs/api-contract.md](docs/api-contract.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+**Adding an OpenAI key (live AI, billed):**
 
-## API Reference
-
-FastAPI generates interactive documentation at `http://localhost:8000/docs`; the full contract is
-in [docs/api-contract.md](docs/api-contract.md). Every `/api` route except health, auth config and
-the demo login needs a bearer token, and every pet route checks that the caller owns the pet.
-
-**Sign-in & pets:**
-- `POST /api/demo/login` - Demo login (`{"uid": "alice"}`) returns a bearer token
-- `GET /api/me/pets` - The caller's pets; `POST /api/pets` creates one
-
-**Voice & notes:**
-- `POST /api/pets/{pet_id}/voice-notes` - Upload a browser recording (`audio`, webm/ogg/mp4/wav) or a bundled `sample_id`; transcribe and store it as a note
-- `GET /api/voice/samples` - Bundled sample recordings (work without a microphone)
-- `POST /api/pets/{pet_id}/notes` - Add a typed note; `GET` lists notes
-
-**Assistant & analytics:**
-- `POST /api/pets/{pet_id}/chat` - Questions answered from the pet's records, with citations
-- `GET /api/pets/{pet_id}/insights` - Facts and alerts computed from notes and analytics
-- `POST /api/pets/{pet_id}/analytics/{category}`, `GET /api/pets/{pet_id}/analytics` - Structured tracking data
-
-**Vet records:**
-- `POST /api/pets/{pet_id}/records` - Upload a PDF; it is summarized and stored
-- `GET /api/pets/{pet_id}/records`, `GET /api/pets/{pet_id}/records/{record_id}/file`
-
-**System:**
-- `GET /api/health` - Health check and per-feature Demo/Live mode
-
-## Development & Testing
-
-**Local Development:**
 ```bash
-make install     # pip install -r requirements/base.txt -r requirements/dev.txt
-make run         # uvicorn petpulse.app:app --reload (http://localhost:8000)
-make test        # pytest (tests/unit, tests/integration) + node --test tests/js/*.test.mjs
-make lint        # black --check, flake8, mypy (strict, petpulse/), bandit, detect-secrets
-make smoke-fake  # python scripts/smoke_live.py --allow-fake (what CI runs)
+cp .env.example .env             # once
+# edit .env and set the key on its own line:  OPENAI_API_KEY=sk-...
 ```
 
-**Docker:**
+Restart `make run` (or `docker compose up`) and the banner switches to live.
+
+> **Warning:** running `cp .env.example .env` again overwrites `.env`, including your key.
+> Edit the existing file instead.
+
+Keep comments on their own lines in `.env`. Docker Compose reads `KEY=value # note` as part of
+the value. Every setting and its default is listed in [.env.example](.env.example). For
+Firebase, see [docs/firebase.md](docs/firebase.md). More setup notes and troubleshooting are in
+[docs/quick-start.md](docs/quick-start.md).
+
+## Live smoke test
+
+One command checks each live feature once (transcription, note classification, PDF summary,
+chat). It runs through the app's own services on a temporary in-memory store, so your data is
+never touched.
+
 ```bash
-docker compose up --build
+make smoke-live-dry     # show providers, models and the cap; no calls
+make smoke-live-local   # without Docker: local Python environment, reads .env directly
+make smoke-live         # in the app image (rebuilds it; reads .env through Compose)
 ```
 
-**Testing API Endpoints:**
+- Every call counts against `LIVE_CALL_CAP` (default 6). Once the cap is reached, the remaining
+  checks are skipped and never called.
+- A full run uses about 4 calls: 1 transcription and 3 LLM calls, plus at most one repair retry
+  if a reply fails validation.
+- Keys are never printed. A JSON report goes to `reports/`.
+- Details: [docs/live-smoke.md](docs/live-smoke.md).
+
+Optional live model eval (note extraction against frozen gold labels):
+
 ```bash
-# Health check
-curl http://localhost:8000/api/health
-
-# Demo token for Alice, then her pets
-TOKEN=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"uid":"alice"}' \
-  http://localhost:8000/api/demo/login | python -c 'import json,sys; print(json.load(sys.stdin)["token"])')
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/me/pets
-
-# Voice note from a bundled sample
-curl -X POST -H "Authorization: Bearer $TOKEN" -F sample_id=vomiting_blood -F tz=America/New_York \
-  http://localhost:8000/api/pets/$PET_ID/voice-notes
-
-# Ask the assistant
-curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"message":"Why was he limping?","tz":"America/New_York"}' http://localhost:8000/api/pets/$PET_ID/chat
+python -m evals.run_eval                                    # fake provider: pipeline test, free
+python -m evals.run_eval --provider openai --i-accept-cost   # live model, billed
 ```
 
-## Performance & Metrics
+The live eval makes one call per case (34 cases) plus at most one repair each, so up to 68
+billed calls. It refuses to run without `--i-accept-cost`.
 
-**Measured Improvements:**
-- Response time: 2.5s → 0.5s (with caching)
-- API cost reduction: 67% for repeated queries
-- Cache hit rate: ~85% during normal usage
-- Speech recognition accuracy: 95%+ with Google Cloud
+## Repository layout
 
-**Concurrent Processing:**
-- Async FastAPI handles multiple voice transcriptions simultaneously
-- Firebase real-time sync appears instantly across devices
-- Background AI processing doesn't block user interactions
+```
+petpulse/                 the backend (FastAPI), run as uvicorn petpulse.app:app
+  app.py                  app factory: middleware, startup seed, router registration
+  core/                   settings, auth (tokens, ownership), errors, logging, deps, firebase, time
+  routers/                HTTP routes: health, demo, pets, records, analytics, notes,
+                          assistant (chat), insights, voice
+  services/               notes, chat, retrieval, insights, charts, voice, PDF text + summaries
+  llm/                    LLM client, schemas, versioned prompts, fake rules
+  providers/              LLM and speech-to-text providers (fake, OpenAI, Google)
+  store/                  storage: JSON file, in-memory, Firestore; blob stores
+  schemas/                request/response models
+  seed/                   demo data and bundled audio/PDF samples
+public/                   the UI (static HTML/CSS/JS, vendored Chart.js, Font Awesome, Firebase SDK)
+tests/
+  unit/                   modules and services, no HTTP
+  integration/            the app over HTTP, scripts and entry points
+  js/                     node:test tests for public/js
+evals/                    note-extraction cases, gold labels, scorer
+scripts/                  smoke_live.py (live smoke test), make_samples.py (regenerate samples)
+docs/                     quick-start, api-contract, live-smoke, firebase, images/
+requirements/             base.txt, dev.txt, live.txt (pinned locks; *.in are the sources)
+Dockerfile, docker-compose.yml, Makefile, pyproject.toml, .env.example
+firestore.rules, storage.rules, firebase.json    Firebase rules (optional Firebase mode)
+```
 
-**Production Considerations:**
-- Replace in-memory cache with Redis for scale
-- Add comprehensive error monitoring and logging
-- Implement rate limiting for AI API calls
-- Consider WebSocket for real-time AI chat
+Docs:
+- [docs/quick-start.md](docs/quick-start.md): setup and troubleshooting.
+- [docs/api-contract.md](docs/api-contract.md): every route, its body and its errors.
+- [docs/live-smoke.md](docs/live-smoke.md): the live smoke checklist.
+- [docs/firebase.md](docs/firebase.md): optional Firebase mode.
+- [CONTRIBUTING.md](CONTRIBUTING.md): development workflow.
 
-## Next Steps
+## Testing and CI
 
-**Computer Vision Integration**: Add photo analysis to track visual changes like weight loss or coat condition over time. This could help catch gradual changes that are hard to notice day-to-day.
+```bash
+make test    # pytest (tests/unit, tests/integration) + node --test tests/js/*.test.mjs
+make lint    # black --check, flake8, mypy (strict, petpulse/), bandit, detect-secrets
+make smoke-fake   # the smoke script against the fakes (what CI runs)
+```
 
-**Mobile App**: Build native iOS/Android apps for better camera integration and offline note-taking. The mobile web version works but has limitations with camera access and offline functionality.
+The JS tests need Node 20 and no `npm install`. Tests never call a live API: providers are
+fakes, and the OpenAI adapters are tested against mocked or local stand-in servers.
 
-**Advanced Pattern Detection**: Implement algorithms that automatically flag concerning trends before they become obvious to owners - like detecting gradual appetite changes across multiple observations.
+CI runs on every push and PR, with no secrets anywhere:
+- **lint:** flake8, black, mypy, a JS syntax check, and the JS tests.
+- **test:** pytest with a 60% coverage floor, plus the smoke script (`--dry-run` and
+  `--allow-fake`). It fails if a provider key is present.
+- **security:** bandit on `petpulse scripts evals`, and detect-secrets against `.secrets.baseline`.
+- **docker:** builds the image, then checks:
+  - the image starts with no env in demo mode (`/api/health` reports demo/fake);
+  - the demo login sees the seeded pets and an anonymous request is a 401;
+  - the healthcheck turns healthy and the smoke script passes inside the image;
+  - `.env.example` copied to `.env` parses cleanly through `docker compose run`.
 
-**Veterinary Integration**: Build API endpoints for vets to access patient history (with owner permission) and add professional observations to the timeline.
+## Security notes
 
----
+- **No secrets in the repo.** `.env` and key files are git-ignored, detect-secrets gates every
+  PR, and keys are never logged or printed (the smoke script shows only the last 4 characters).
+- **Owner-only access.** Every `/api` route except health, auth config and the demo login needs
+  a bearer token. The caller always comes from the token. A pet comes only from the
+  `/api/pets/{pet_id}` path, and a pet the caller doesn't own is a 404, so ids can't be probed.
+  Demo tokens are HMAC-signed (`AUTH_SECRET`). Firebase ID tokens are verified with the Admin SDK.
+- **Uploads.** Size caps, a `%PDF-`/audio sniff, and server-generated storage keys. Files are
+  served only through owner-checked routes.
+- **Errors.** One JSON error shape with a request id. 500s never include exception text.
+- **CORS.** An explicit allow-list (`ALLOWED_ORIGINS`), never `*`, no credentials.
+- **Firebase rules.** `firestore.rules` and `storage.rules` allow a signed-in user only their
+  own user doc and the pets they own. Clients can never change a pet's owners and never write
+  to Storage.
+- See [SECURITY.md](SECURITY.md) for handling keys.
 
-I built this during an internship to learn how modern AI APIs work together in practice. The goal was understanding these technologies deeply, not just using them superficially.
+## Known limits
+
+- **Chat search is keyword-based.** If no note or record contains the question's words, the
+  answer is "not in records" without asking the model. For example, "What medication is he on?"
+  finds nothing when the notes only say "started Apoquel".
+- **Old data isn't migrated.** Notes the pre-contract app wrote to the `textinput` and
+  `voice-notes` collections are ignored. Only `pets/{id}/notes` is read.
+- **Firebase mode needs a service-account key** (`FIREBASE_CREDENTIALS_JSON`, or
+  `GOOGLE_APPLICATION_CREDENTIALS` plus `FIREBASE_PROJECT_ID`) and the live extras
+  (`requirements/live.txt`).
+- **The demo login is not real authentication.** Anyone who can reach the server can sign in as
+  any demo user. Use Firebase sign-in for anything beyond a local demo.
+- **Voice clips are capped** at 60 s and 5 MiB. Google STT cannot decode Safari's `audio/mp4`
+  (OpenAI can).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
