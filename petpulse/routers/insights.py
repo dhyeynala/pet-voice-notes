@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from petpulse.config import Settings
 from petpulse.deps import get_settings, get_store
-from petpulse.routers._auth import require_pet_access
+from petpulse.auth import require_pet_access
 from petpulse.services.assistant import pet_name_for
 from petpulse.services.events import load_events
 from petpulse.services.insights import Insights, Mode, compute_insights

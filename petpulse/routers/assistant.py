@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from petpulse.deps import get_llm, get_store
 from petpulse.providers.llm import LLMProvider
-from petpulse.routers._auth import current_user, require_pet_access
+from petpulse.auth import current_user, require_pet_access
 from petpulse.services.assistant import MAX_MESSAGE_CHARS, AssistantUnavailable, ChatResponse, answer_question
 from petpulse.store.base import Store
 

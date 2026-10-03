@@ -122,9 +122,9 @@ def _llm_is_fake() -> bool:
 
 
 def _seed_record(store: Store, blobs: BlobStore, now: datetime) -> int:
-    from petpulse.routers.records import create_record  # lazy: pulls in PyMuPDF and pdf_parser
+    from petpulse.routers.records import create_record_sync  # lazy: pulls in PyMuPDF and pdf_parser
 
-    record = create_record(store, blobs, ALICE_MAX_ID, sample_record_pdf(), SAMPLE_RECORD_FILENAME)
+    record = create_record_sync(store, blobs, ALICE_MAX_ID, sample_record_pdf(), SAMPLE_RECORD_FILENAME)
     when = (now - timedelta(days=SAMPLE_RECORD_DAYS_AGO)).astimezone(timezone.utc).replace(tzinfo=None, microsecond=0)
     stamp = when.replace(hour=18, minute=0).isoformat()
     store.set(f"pets/{ALICE_MAX_ID}/records/{record['id']}", {"created_at": stamp, "timestamp": stamp}, merge=True)

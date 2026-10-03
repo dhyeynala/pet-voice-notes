@@ -29,6 +29,7 @@ class PdfError(ValueError):
 class PdfText:
     text: str
     pages: int
+    page_texts: tuple[str, ...] = ()  # per page, in order (the PDF summary cites pages)
 
 
 def extract_pdf_text(data: bytes, max_pages: int) -> PdfText:
@@ -47,12 +48,12 @@ def extract_pdf_text(data: bytes, max_pages: int) -> PdfText:
         if pages > max_pages:
             raise PdfError(f"PDF has {pages} pages; the limit is {max_pages}")
         try:
-            text = "\n".join(str(page.get_text()) for page in doc)
+            page_texts = tuple(str(page.get_text()) for page in doc)
         except (RuntimeError, ValueError) as exc:
             raise PdfError("could not read the PDF's text") from exc
     finally:
         doc.close()
-    return PdfText(text=text, pages=pages)
+    return PdfText(text="\n".join(page_texts), pages=pages, page_texts=page_texts)
 
 
 def summarize_pdf_text(text: str) -> Optional[str]:

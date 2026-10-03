@@ -165,7 +165,7 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=404, detail="pet not found")
 
     data = await records_router.read_capped(file)
-    record = records_router.create_record(store, get_blobs(), pet, data, file.filename)
+    record = await records_router.create_record(store, get_blobs(), pet, data, file.filename)
     # No public URL: the original is served by the owner-checked records/{id}/file route.
     return {"message": "PDF processed", "summary": record["summary"], "url": None, "record": record}
 

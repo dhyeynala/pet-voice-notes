@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -171,7 +172,7 @@ def test_upload_at_the_cap_is_accepted(alice_pet, store, blobs, monkeypatch):
 
     data = make_pdf()
     monkeypatch.setattr(records, "MAX_PDF_BYTES", len(data))
-    record = records.create_record(store, blobs, alice_pet, data, "visit.pdf")
+    record = asyncio.run(records.create_record(store, blobs, alice_pet, data, "visit.pdf"))
     assert record["status"] == "summarized"
 
 

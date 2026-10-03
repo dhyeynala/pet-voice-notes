@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from petpulse.deps import get_llm, get_store
 from petpulse.providers.llm import LLMProvider
-from petpulse.routers._auth import current_user, require_pet_access
+from petpulse.auth import current_user, require_pet_access
 from petpulse.services.notes import MAX_NOTE_CHARS, Note, list_notes, process_note
 from petpulse.store.base import Store
 

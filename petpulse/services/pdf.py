@@ -1,7 +1,7 @@
 """PDF summary with page citations (review M12). Callable by the records router (Track B).
 
-- Text is passed per page. Less than ``MIN_TEXT_CHARS`` overall means a scanned or empty
-  document: ``needs_ocr``, and no provider call (no fluent summary of nothing).
+- Text is passed per page. Fewer than ``MIN_TEXT_CHARS`` non-space characters means a scanned
+  or empty document: ``no_text`` (the records status), and no provider call.
 - Pages are included whole, in order, until ``PAGE_BUDGET_CHARS``; the prompt says how many
   pages were left out. No silent ``text[:12000]`` cut mid-sentence.
 - ``pdf_summary.v1`` runs at temperature 0. Code rejects citations to pages that were not sent.
@@ -19,10 +19,10 @@ from petpulse.providers.llm import LLMProvider
 from petpulse.store.base import Store
 
 PDF_TASK: TaskSpec[PdfSummary] = TaskSpec("pdf_summary", 1, PdfSummary)
-MIN_TEXT_CHARS = 200
+MIN_TEXT_CHARS = 20  # stray page numbers / scanner headers are not a document
 # Conservative character budget for whole pages (the live smoke test documents real token use).
 PAGE_BUDGET_CHARS = 40_000
-PdfStatus = Literal["summarized", "needs_ocr", "summary_failed"]
+PdfStatus = Literal["summarized", "no_text", "summary_failed"]  # = the records router's statuses
 Mode = Literal["demo", "live"]
 
 
@@ -69,8 +69,8 @@ async def summarize_pdf(
 ) -> PdfResult:
     mode = provider_mode(llm)
     total = len(pages)
-    if sum(len(p.strip()) for p in pages) < MIN_TEXT_CHARS:
-        return PdfResult("needs_ocr", None, total, 0, mode)
+    if sum(len("".join(p.split())) for p in pages) < MIN_TEXT_CHARS:
+        return PdfResult("no_text", None, total, 0, mode)
     included = select_pages(pages)
     omitted = total - len(included)
     document = "\n\n".join(f"[P{n}]\n{text.strip()}" for n, text in enumerate(included, start=1))
@@ -87,4 +87,6 @@ async def summarize_pdf(
         )
     except LLMFailure as failure:
         return PdfResult("summary_failed", None, total, len(included), mode, failure.reason, failure.call_ids)
+    if not result.value.summary.strip():
+        return PdfResult("summary_failed", None, total, len(included), mode, "empty_summary", result.call_ids)
     return PdfResult("summarized", result.value, total, len(included), result.mode, None, result.call_ids)
