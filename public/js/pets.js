@@ -1,171 +1,119 @@
-// public/js/pets.js: Pet list, pet selector and the add-pet form.
-import { state } from "./state.js";
-import { loadDashboard, loadRecentEntries } from "./analytics.js";
-import { updateCharts } from "./charts.js";
-import { resetAssistantState } from "./chat.js";
-import { preloadPetData } from "./cache.js";
-import { showNotification } from "./dom.js";
+// public/js/pets.js: pet list (GET /api/me/pets), the pet selector and the add-pet form
+// (POST /api/pets). The backend takes the owner from the token.
+import { apiFetch, asList, describeError } from "./api.js";
+import { el, setStatus, showNotification, validateFormField, updateFormProgress, debounce } from "./dom.js";
+import { state, selectedPetName } from "./state.js";
+import { showSection, activeSection, refreshSection } from "./nav.js";
+import { resetAssistantState, showQuickQuestions, hideQuickQuestions } from "./chat.js";
 
-// Pet management functions
-async function loadPets() {
+const SELECTED_KEY = "petpulse.selectedPet";
+
+export async function loadPets(preferId) {
+  const select = document.getElementById("pet-select");
+  let pets = [];
   try {
-    const res = await fetch(`/api/user-pets/${state.currentUser.uid}`);
-    const pets = await res.json();
-    const select = document.getElementById("pet-select");
-    select.innerHTML = "";
+    pets = asList(await apiFetch("/api/me/pets"));
+  } catch (err) {
+    showNotification(`Could not load your pets: ${describeError(err)}`, "error");
+  }
+  state.pets = pets;
+  select.replaceChildren();
 
-    if (pets.length === 0) {
-      // No pets found - add a placeholder option and show add-pet section
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No pets added yet";
-      select.appendChild(option);
-      
-      console.log('No pets found - redirecting to add-pet section');
-      hideQuickQuestions();
-      
-      // Auto-navigate to add-pet section if no pets exist
-      setTimeout(() => showSection('add-pet'), 100);
-      return;
-    }
+  if (pets.length === 0) {
+    select.appendChild(el("option", { value: "", text: "No pets added yet" }));
+    state.selectedPet = "";
+    hideQuickQuestions();
+    setTimeout(() => showSection("add-pet"), 100);
+    return pets;
+  }
 
-    pets.forEach(pet => {
-      const option = document.createElement("option");
-      option.value = pet.id;
-      option.textContent = pet.name || pet.id;
-      select.appendChild(option);
-    });
+  for (const pet of pets) {
+    const label = pet.animal_type ? `${pet.name || pet.id} (${pet.animal_type})` : pet.name || pet.id;
+    select.appendChild(el("option", { value: pet.id, text: label }));
+  }
+  const remembered = preferId || sessionStorage.getItem(SELECTED_KEY);
+  state.selectedPet = pets.some((p) => p.id === remembered) ? remembered : pets[0].id;
+  select.value = state.selectedPet;
+  showQuickQuestions();
+  return pets;
+}
 
-    if (pets.length > 0) {
-      state.selectedPet = pets[0].id;
-      select.value = state.selectedPet;
-      console.log('First pet selected:', state.selectedPet);
-      
-      // Show quick questions now that we have a pet selected
-      showQuickQuestions();
-    } else {
-      console.log('No pets found');
-      hideQuickQuestions();
-    }
-  } catch (error) {
-    console.error('Error loading pets:', error);
+function onPetChange(e) {
+  state.selectedPet = e.target.value;
+  sessionStorage.setItem(SELECTED_KEY, state.selectedPet);
+  resetAssistantState();
+  if (!state.selectedPet) {
+    hideQuickQuestions();
+    return;
+  }
+  showQuickQuestions();
+  const section = activeSection();
+  if (section === "analytics" || section === "tracking") {
+    showNotification(`Loading data for ${selectedPetName()}…`, "info", 2000);
+  }
+  refreshSection(section);
+}
+
+/** Only send fields the user filled in; PetCreate forbids unknown keys and validates ranges. */
+function readPetForm() {
+  const val = (id) => document.getElementById(id).value.trim();
+  const pet = { name: val("pet-name"), animal_type: val("animal-type") };
+  if (val("pet-breed")) pet.breed = val("pet-breed");
+  if (val("pet-age") !== "") pet.age = Number(val("pet-age")); // PetCreate: integer 0-40
+  if (val("pet-weight") !== "") pet.weight = Number(val("pet-weight"));
+  if (val("pet-gender")) pet.gender = val("pet-gender");
+  return pet;
+}
+
+async function handleAddPetForm(event) {
+  event.preventDefault();
+  const form = document.getElementById("add-pet-form");
+  const status = document.getElementById("add-pet-status");
+  const button = document.getElementById("create-pet-btn");
+  const pet = readPetForm();
+
+  if (!pet.name) return setStatus(status, "Please enter a pet name", "status-message error");
+  if (!pet.animal_type) return setStatus(status, "Please select an animal type", "status-message error");
+  if (pet.age !== undefined && !(Number.isInteger(pet.age) && pet.age >= 0 && pet.age <= 40)) {
+    return setStatus(status, "Age must be a whole number of years (0-40)", "status-message error");
+  }
+  if (pet.weight !== undefined && !(Number.isFinite(pet.weight) && pet.weight >= 0 && pet.weight <= 500)) {
+    return setStatus(status, "Weight must be a number between 0 and 500", "status-message error");
+  }
+
+  button.disabled = true;
+  setStatus(status, "Creating pet profile…", "status-message");
+  try {
+    const created = await apiFetch("/api/pets", { json: pet });
+    setStatus(status, `${created.name || pet.name} has been added successfully!`, "status-message success");
+    form.reset();
+    updateFormProgress();
+    sessionStorage.setItem(SELECTED_KEY, created.id);
+    await loadPets(created.id);
+    resetAssistantState();
+    setTimeout(() => {
+      showSection("assistant");
+      showNotification(`Welcome ${created.name || pet.name}! You can now start using the health assistant.`, "success");
+    }, 1200);
+  } catch (err) {
+    setStatus(status, `Error: ${describeError(err)}`, "status-message error");
+  } finally {
+    button.disabled = false;
   }
 }
 
-document.getElementById("pet-select").addEventListener("change", async (e) => {
-  state.selectedPet = e.target.value;
-  console.log('Pet selection changed to:', state.selectedPet);
-  
-  // Reset all assistant/chat/insight UI and state when pet changes
-  resetAssistantState();
-  
-  if (state.selectedPet) {
-    showQuickQuestions();
-    
-    // Preload pet data for faster chat responses
-    await preloadPetData(state.selectedPet);
-  } else {
-    hideQuickQuestions();
-  }
-  
-  // Get pet name for notification
-  const petSelect = document.getElementById("pet-select");
-  const petName = petSelect.options[petSelect.selectedIndex].text;
-  console.log('Pet name:', petName);
-  
-  // Refresh analytics data immediately when pet changes
-  const currentSection = document.querySelector('.section.active');
-  if (currentSection && currentSection.id === 'analytics-section') {
-    // Show notification that data is being loaded
-    showNotification(`Loading analytics for ${petName}...`, 'info', 2000);
-    
-    // Update analytics section components
-    loadDashboard(); // Load dashboard metrics
-    updateCharts(); // Update visualization charts
-    generateDailyHeadlines(); // Generate today's headlines for new pet
-  }
-  
-  // Also refresh tracking section if it's active
-  if (currentSection && currentSection.id === 'tracking-section') {
-    showNotification(`Loading tracking data for ${petName}...`, 'info', 2000);
-    loadRecentEntries(); // Load recent entries for new pet
-  }
-});
-
-// Enhanced Pet Creation Function
-window.handleAddPetForm = async function(event) {
-  event.preventDefault();
-  
-  if (!state.currentUser) {
-    showNotification("Please log in first", 'error');
-    return;
-  }
-
-  const form = document.getElementById('add-pet-form');
-  const statusElement = document.getElementById('add-pet-status');
-  
-  // Get form data
-  const formData = new FormData(form);
-  const petData = {
-    name: document.getElementById('pet-name').value.trim(),
-    animal_type: document.getElementById('animal-type').value,
-    breed: document.getElementById('pet-breed').value.trim(),
-    age: document.getElementById('pet-age').value ? parseInt(document.getElementById('pet-age').value) : null,
-    weight: document.getElementById('pet-weight').value ? parseFloat(document.getElementById('pet-weight').value) : null,
-    gender: document.getElementById('pet-gender').value
-  };
-
-  // Validation
-  if (!petData.name) {
-    statusElement.textContent = "Please enter a pet name";
-    statusElement.className = "status-message error";
-    return;
-  }
-
-  if (!petData.animal_type) {
-    statusElement.textContent = "Please select an animal type";
-    statusElement.className = "status-message error";
-    return;
-  }
-
-  try {
-    statusElement.textContent = "Creating pet profile...";
-    statusElement.className = "status-message";
-    statusElement.style.display = "block";
-
-    const response = await fetch(`/api/pets/${state.currentUser.uid}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(petData)
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      statusElement.textContent = `${petData.name} has been added successfully!`;
-      statusElement.className = "status-message success";
-      
-      // Reset form
-      form.reset();
-      
-      // Reload pets list
-      await loadPets();
-      
-      // Navigate to assistant page with the new pet
-      setTimeout(() => {
-        showSection('assistant');
-        showNotification(`Welcome ${petData.name}! You can now start using the health assistant.`, 'success');
-      }, 1500);
-      
-    } else {
-      throw new Error(result.error || 'Failed to create pet');
-    }
-
-  } catch (error) {
-    console.error('Error creating pet:', error);
-    statusElement.textContent = `Error: ${error.message}`;
-    statusElement.className = "status-message error";
-  }
-};
-
-export { loadPets };
+export function initPets() {
+  document.getElementById("pet-select").addEventListener("change", onPetChange);
+  const form = document.getElementById("add-pet-form");
+  form.addEventListener("submit", handleAddPetForm);
+  form.querySelectorAll("input, select").forEach((field) => {
+    field.addEventListener("input", debounce(updateFormProgress, 300));
+    field.addEventListener("change", updateFormProgress);
+  });
+  document.getElementById("pet-name").addEventListener("blur", () =>
+    validateFormField("pet-name", (v) => v.trim().length >= 1, "Please enter a pet name")
+  );
+  document.getElementById("animal-type").addEventListener("change", () =>
+    validateFormField("animal-type", (v) => v !== "", "Please select an animal type")
+  );
+}

@@ -1,77 +1,47 @@
-// public/js/knowledge.js: Knowledge-base search.
+// public/js/knowledge.js: veterinary knowledge-base search (legacy POST
+// /api/pets/{id}/knowledge_search, kept while the backend still serves it). Results are rendered
+// as text, and the old "Confidence %" (a raw keyword score, review M8) is no longer shown.
+import { apiFetch, apiPath, describeError } from "./api.js";
+import { el, icon, replaceChildren, showNotification } from "./dom.js";
 import { state } from "./state.js";
-import { loadInsightsData } from "./insights.js";
-import { showNotification } from "./dom.js";
 
-window.searchKnowledge = async function() {
-  const query = document.getElementById('knowledge-search').value.trim();
-  const resultsDiv = document.getElementById('knowledge-results');
-  
-  if (!query) {
-    showNotification('Please enter a search query', 'error');
-    return;
-  }
+function renderResult(r) {
+  const meta = [r.category ? `Category: ${r.category}` : null, r.severity ? `Severity: ${r.severity}` : null].filter(Boolean).join(" | ");
+  return el(
+    "div",
+    { class: "knowledge-result" },
+    el("h4", { text: r.title || "Untitled" }),
+    el("p", { text: r.content || "" }),
+    meta ? el("div", { class: "knowledge-meta", text: meta }) : null,
+    Array.isArray(r.symptoms) && r.symptoms.length ? el("div", { class: "knowledge-symptoms", text: `Related symptoms: ${r.symptoms.join(", ")}` }) : null
+  );
+}
 
-  if (!state.selectedPet) {
-    showNotification('Please select a pet first', 'error');
-    return;
-  }
-
-  resultsDiv.innerHTML = `
-    <div style="text-align: center; color: #667eea;">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Searching veterinary knowledge base...</p>
-    </div>
-  `;
-
+export async function searchKnowledge() {
+  const query = document.getElementById("knowledge-search").value.trim();
+  const results = document.getElementById("knowledge-results");
+  if (!query) return showNotification("Please enter a search query", "error");
+  if (!state.selectedPet) return showNotification("Please select a pet first", "error");
+  replaceChildren(results, el("div", { style: "text-align:center; color:#667eea;" }, icon("fas fa-spinner fa-spin"), el("p", { text: "Searching the knowledge base…" })));
   try {
-    const response = await fetch(`/api/pets/${state.selectedPet}/knowledge_search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: query })
-    });
-
-    const data = await response.json();
-    
-    if (data.status === 'success' && data.results && data.results.length > 0) {
-      resultsDiv.innerHTML = data.results.map(result => `
-        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea;">
-          <h4 style="margin-bottom: 8px; color: #2c3e50;">${result.title}</h4>
-          <p style="color: #666; line-height: 1.6;">${result.content}</p>
-          <div style="margin-top: 8px; font-size: 0.85rem; color: #7f8c8d;">
-            <strong>Category:</strong> ${result.category || 'General'} | 
-            <strong>Severity:</strong> ${result.severity || 'N/A'} |
-            <strong>Confidence:</strong> ${Math.round(result.score * 100)}%
-          </div>
-          ${result.symptoms && result.symptoms.length > 0 ? `
-            <div style="margin-top: 8px; font-size: 0.85rem; color: #667eea;">
-              <strong>Related symptoms:</strong> ${result.symptoms.join(', ')}
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
-      
-      // Load health insights on first interaction
-      if (!state.assistantDataLoaded) {
-        console.log('Loading health insights on first knowledge search...');
-        state.assistantDataLoaded = true;
-        loadInsightsData();
-      }
-    } else {
-      resultsDiv.innerHTML = `
-        <div style="text-align: center; color: #7f8c8d;">
-          <i class="fas fa-search"></i>
-          <p>No results found for "${query}". Try different keywords or broader terms.</p>
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error searching knowledge:', error);
-    resultsDiv.innerHTML = `
-      <div style="text-align: center; color: #e53e3e;">
-        <i class="fas fa-exclamation-triangle"></i>
-        <p>Error searching knowledge base. Please try again.</p>
-      </div>
-    `;
+    const data = await apiFetch(apiPath("pets", state.selectedPet, "knowledge_search"), { json: { query } });
+    const list = (data && (data.results || (Array.isArray(data) ? data : null))) || [];
+    replaceChildren(
+      results,
+      list.length ? list.map(renderResult) : el("div", { style: "text-align:center; color:#7f8c8d;" }, icon("fas fa-search"), el("p", { text: `No results for "${query}".` }))
+    );
+  } catch (err) {
+    replaceChildren(results, el("div", { style: "text-align:center; color:#e53e3e;" }, icon("fas fa-exclamation-triangle"), el("p", { text: `Knowledge search is unavailable: ${describeError(err)}` })));
   }
+}
+
+export function initKnowledge() {
+  const input = document.getElementById("knowledge-search");
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      searchKnowledge();
+    }
+  });
+  document.getElementById("knowledge-search-btn").addEventListener("click", searchKnowledge);
 }

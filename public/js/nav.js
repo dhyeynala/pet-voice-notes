@@ -1,87 +1,65 @@
-// public/js/nav.js: Section navigation (sidebar tabs + URL hash).
-import { loadMarkdown } from "./notes.js";
+// public/js/nav.js: section navigation (header tabs + URL hash).
+import { state } from "./state.js";
+import { loadNotes } from "./notes.js";
+import { loadRecords } from "./records.js";
 import { loadDashboard, loadRecentEntries } from "./analytics.js";
 import { updateCharts } from "./charts.js";
+import { loadHighlights, loadInsights } from "./insights.js";
+import { loadSamples } from "./recorder.js";
 
-// Navigation functionality
-window.showSection = function(sectionName) {
-  // Update nav items
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.classList.remove('active');
-  });
-  
-  // Find and activate the correct nav item
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(item => {
-    if ((sectionName === 'add-pet' && item.textContent.includes('Add a Pet')) ||
-        (sectionName === 'assistant' && item.textContent.includes('Pet Health Assistant')) ||
-        (sectionName === 'recording' && item.textContent.includes('Voice Recording')) ||
-        (sectionName === 'notes' && item.textContent.includes('Notes & Files')) ||
-        (sectionName === 'analytics' && item.textContent.includes('Analytics')) ||
-        (sectionName === 'tracking' && item.textContent.includes('Tracking'))) {
-      item.classList.add('active');
-    }
-  });
+export const SECTIONS = ["add-pet", "assistant", "recording", "notes", "tracking", "analytics"];
 
-  // Show/hide pet selector card based on section
-  const petSelectorCard = document.getElementById('pet-selector-card');
-  if (sectionName === 'add-pet') {
-    petSelectorCard.style.display = 'none';
-  } else {
-    petSelectorCard.style.display = 'block';
-  }
+export function activeSection() {
+  const node = document.querySelector(".section.active");
+  return node ? node.id.replace(/-section$/, "") : null;
+}
 
-  // Update sections
-  document.querySelectorAll('.section').forEach(section => {
-    section.classList.remove('active');
-  });
-
-  if (sectionName === 'add-pet') {
-    document.getElementById('add-pet-section').classList.add('active');
-    window.location.hash = 'add-pet';
-  } else if (sectionName === 'recording') {
-    document.getElementById('recording-section').classList.add('active');
-    window.location.hash = 'recording';
-  } else if (sectionName === 'notes') {
-    document.getElementById('notes-section').classList.add('active');
-    loadMarkdown(); // Load notes when switching to notes section
-    window.location.hash = 'notes';
-  } else if (sectionName === 'analytics') {
-    document.getElementById('analytics-section').classList.add('active');
-    loadDashboard(); // Load dashboard when switching to analytics
-    updateCharts(); // Update charts when switching to analytics
-    generateDailyHeadlines(); // Generate today's headlines
-    window.location.hash = 'analytics';
-  } else if (sectionName === 'tracking') {
-    document.getElementById('tracking-section').classList.add('active');
-    loadRecentEntries(); // Load recent entries for tracking
-    window.location.hash = 'tracking';
-  } else if (sectionName === 'assistant') {
-    document.getElementById('assistant-section').classList.add('active');
-    // Don't load assistant data automatically - only when user interacts
-    window.location.hash = 'assistant';
-  }
-};
-
-// Handle URL hash navigation
-function handleHashNavigation() {
-  const hash = window.location.hash.substring(1);
-  if (hash === 'add-pet') {
-    showSection('add-pet');
-  } else if (hash === 'notes') {
-    showSection('notes');
-  } else if (hash === 'analytics') {
-    showSection('analytics');
-  } else if (hash === 'tracking') {
-    showSection('tracking');
-  } else if (hash === 'recording') {
-    showSection('recording');
-  } else {
-    showSection('assistant'); // Default to assistant
+/** Load the data a section shows for the selected pet. */
+export function refreshSection(name = activeSection()) {
+  if (!state.selectedPet) return;
+  if (name === "notes") {
+    loadNotes();
+    loadRecords();
+  } else if (name === "analytics") {
+    loadDashboard();
+    updateCharts();
+    loadHighlights();
+  } else if (name === "tracking") {
+    loadRecentEntries();
+  } else if (name === "assistant") {
+    if (!state.insightsLoaded) loadInsights();
+  } else if (name === "recording") {
+    loadNotes({ targetId: "voice-recent-notes", limit: 5 });
   }
 }
 
-// Listen for hash changes
-window.addEventListener('hashchange', handleHashNavigation);
+export function showSection(name) {
+  if (!SECTIONS.includes(name)) name = "assistant";
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.section === name);
+  });
+  const petSelectorCard = document.getElementById("pet-selector-card");
+  if (petSelectorCard) petSelectorCard.style.display = name === "add-pet" ? "none" : "block";
+  document.querySelectorAll(".section").forEach((section) => section.classList.remove("active"));
+  document.getElementById(`${name}-section`).classList.add("active");
+  if (window.location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
+  if (name === "recording") loadSamples();
+  refreshSection(name);
+}
 
-export { handleHashNavigation };
+export function handleHashNavigation() {
+  showSection(window.location.hash.substring(1) || "assistant");
+}
+
+export function initNav() {
+  document.querySelectorAll(".nav-item[data-section]").forEach((item) => {
+    item.addEventListener("click", () => showSection(item.dataset.section));
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        showSection(item.dataset.section);
+      }
+    });
+  });
+  window.addEventListener("hashchange", handleHashNavigation);
+}

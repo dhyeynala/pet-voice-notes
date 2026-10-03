@@ -1,57 +1,47 @@
-// public/js/main.js: Entry point for main.html: wires modules together and boots the app.
-import { state } from "./state.js";
-import { handleHashNavigation } from "./nav.js";
-import { loadPets } from "./pets.js";
+// public/js/main.js: entry point for main.html. Requires a demo session, renders the banner and
+// user menu, wires every module's event handlers, then loads the user's pets.
+import { requireSession, refreshMe, renderUserMenu } from "./auth.js";
+import { initBanner } from "./banner.js";
+import { initNav, handleHashNavigation } from "./nav.js";
+import { initPets, loadPets } from "./pets.js";
+import { initChat, resetAssistantState } from "./chat.js";
+import { initNotes } from "./notes.js";
+import { initRecords } from "./records.js";
+import { initRecorder } from "./recorder.js";
 import { setupAnalyticsFormHandlers } from "./analytics.js";
-import { auth, onAuthStateChanged } from "./auth.js";
-import "./markdown.js";
-import "./knowledge.js";
-import "./recorder.js";
-import "./notes.js";
-import "./chat.js";
-import "./ux.js";
-import "./cache.js";
+import { initInsights } from "./insights.js";
+import { initKnowledge } from "./knowledge.js";
+import { initializeUXEnhancements } from "./ux.js";
+import { describeError } from "./api.js";
+import { showNotification, updateCharacterCount } from "./dom.js";
 
-// Enable Enter key for chat input and form handlers
-document.addEventListener('DOMContentLoaded', function() {
-  const chatInput = document.getElementById('chat-input');
-  const knowledgeSearch = document.getElementById('knowledge-search');
-  const addPetForm = document.getElementById('add-pet-form');
-  
-  if (chatInput) {
-    chatInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendChatMessage();
-      }
-    });
-  }
-  
-  if (knowledgeSearch) {
-    knowledgeSearch.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        searchKnowledge();
-      }
-    });
-  }
-  
-  if (addPetForm) {
-    addPetForm.addEventListener('submit', handleAddPetForm);
-  }
-});
+async function boot() {
+  if (!requireSession()) return;
 
-// Authentication
-onAuthStateChanged(auth, user => {
-  if (!user) {
-    window.location.href = "/index.html";
-  } else {
-    state.currentUser = user;
-    loadPets().then(() => {
-      // After pets are loaded, handle navigation
-      handleHashNavigation();
-      // Assistant data will be loaded on-demand when user interacts
-    });
-    setupAnalyticsFormHandlers();
+  initNav();
+  initPets();
+  initChat();
+  initNotes();
+  initRecords();
+  initRecorder();
+  setupAnalyticsFormHandlers();
+  initInsights();
+  initKnowledge();
+  initializeUXEnhancements();
+  document.getElementById("pet-input-text").addEventListener("input", () => updateCharacterCount("pet-input-text", "text-char-count", 2000));
+  resetAssistantState();
+
+  const healthReady = initBanner();
+  try {
+    await refreshMe(); // validates the token (a 401 sends us back to the login page)
+  } catch (err) {
+    if (err.status !== 401) showNotification(`Could not verify your session: ${describeError(err)}`, "error");
+    if (err.status === 401) return;
   }
-});
+  renderUserMenu();
+  await healthReady;
+  await loadPets();
+  handleHashNavigation();
+}
+
+boot();

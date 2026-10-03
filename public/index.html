@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>PetPulse - Login</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="/vendor/fontawesome-free-6.7.2/css/all.min.css" rel="stylesheet">
+  <link href="/css/app.css" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -185,159 +185,49 @@
     }
   </style>
 </head>
-<body>
-  <div class="login-container">
+<body class="login-page">
+  <main class="login-container">
     <div class="logo">🐾</div>
-            <h1>PetPulse</h1>
+    <h1>PetPulse</h1>
     <p class="subtitle">Your pet's health journey, recorded and organized with AI-powered insights</p>
-    
-    <button class="google-btn" onclick="signInWithGoogle()">
-      <svg class="google-icon" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-      Continue with Google
-    </button>
 
-    <div style="margin-top: 20px;">
-      <a href="/auth-troubleshoot.html" style="color: #7f8c8d; text-decoration: none; font-size: 0.9rem;">
-        Having login issues? Click here for troubleshooting
-      </a>
-    </div>
+    <h2 style="font-size: 1rem; color: #2c3e50; margin-bottom: 14px;">Choose a demo user</h2>
+    <div id="demo-users" class="demo-users" aria-live="polite"></div>
+    <form id="new-user-form" class="new-user-form">
+      <label for="new-user-name">Or start fresh as a new demo user (no pets yet):</label>
+      <div class="new-user-row">
+        <input id="new-user-name" type="text" maxlength="40" placeholder="Display name, e.g. Sam" autocomplete="off">
+        <button type="submit" class="btn-new-user">Create</button>
+      </div>
+    </form>
+    <p id="login-status" class="login-status" role="status" hidden></p>
+
+    <p class="login-note">
+      Demo login: no password. Each user only sees their own pets. Log in as Alice, then switch to Bob
+      to see that Alice's pets are hidden from him.
+    </p>
 
     <div class="features">
       <div class="feature">
         <i class="fas fa-microphone"></i>
-        <span>Voice recording with AI transcription</span>
+        <span>Voice notes recorded in the browser, with transcription</span>
       </div>
       <div class="feature">
         <i class="fas fa-file-pdf"></i>
-        <span>PDF upload and smart summarization</span>
+        <span>PDF vet records with summaries</span>
       </div>
       <div class="feature">
-        <i class="fas fa-users"></i>
-        <span>Share with family and veterinarians</span>
+        <i class="fas fa-comments"></i>
+        <span>An assistant that cites your pet's records</span>
       </div>
       <div class="feature">
         <i class="fas fa-shield-alt"></i>
-        <span>Secure cloud storage</span>
+        <span>Per-user access: pets are private to their owners</span>
       </div>
     </div>
-  </div>
+  </main>
 
-  <script type="module">
-    import { app } from "./firebase-config.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signInWithRedirect,
-      getRedirectResult,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    // Add additional scopes and settings
-    provider.addScope('email');
-    provider.addScope('profile');
-    
-    // Set custom parameters for development
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1';
-    
-    provider.setCustomParameters({
-      prompt: 'select_account'
-    });
-
-    // Check for redirect result first (in case we used redirect method)
-    getRedirectResult(auth).then((result) => {
-      if (result && result.user) {
-        console.log("Redirect sign-in successful:", result.user.email);
-        window.location.href = "/main.html";
-      }
-    }).catch((error) => {
-      console.log("No redirect result or redirect failed:", error.code);
-    });
-
-    window.signInWithGoogle = async function () {
-      try {
-        console.log("Attempting Google sign-in...");
-        console.log("Current domain:", window.location.hostname);
-        console.log("Current port:", window.location.port);
-        console.log("Full URL:", window.location.href);
-        console.log("Is development:", isDevelopment);
-        
-        const result = await signInWithPopup(auth, provider);
-        console.log("Sign-in successful:", result.user.email);
-        
-        // Small delay to ensure auth state is properly set
-        setTimeout(() => {
-          window.location.href = "/main.html";
-        }, 100);
-        
-      } catch (error) {
-        console.error("Login error:", error);
-        console.error("Error code:", error.code);
-        console.error("Error message:", error.message);
-        
-        // More specific error handling
-        if (error.code === 'auth/unauthorized-domain') {
-          console.log("Unauthorized domain error - trying redirect method...");
-          
-          // Show helpful message
-          const currentUrl = window.location.href;
-          const localhostUrl = currentUrl.replace(window.location.hostname, 'localhost');
-          
-          if (confirm(`Domain authorization issue. Would you like to:\n\n1. Try redirect authentication (click OK)\n2. Or manually navigate to: ${localhostUrl} (click Cancel)\n\nNote: If this persists, the domain needs to be added to Firebase console.`)) {
-            try {
-              console.log("Trying redirect method...");
-              await signInWithRedirect(auth, provider);
-              // This will redirect the page, so no further code executes
-            } catch (redirectError) {
-              console.error("Redirect method also failed:", redirectError);
-              alert(`Both authentication methods failed. Please try:\n\n1. Access via: ${localhostUrl}\n2. Clear browser cache and cookies\n3. Contact administrator to add domain to Firebase`);
-            }
-          } else {
-            alert(`Please navigate to: ${localhostUrl}`);
-          }
-          
-        } else if (error.code === 'auth/popup-blocked') {
-          alert("Popup was blocked. Please allow popups for this site and try again.");
-        } else if (error.code === 'auth/popup-closed-by-user') {
-          alert("Login was cancelled. Please try again.");
-        } else {
-          alert("Login failed: " + error.message);
-        }
-      }
-    };
-
-    // Check auth state on page load
-    onAuthStateChanged(auth, user => {
-      console.log("Auth state changed:", user ? user.email : "No user");
-      if (user) {
-        setTimeout(() => {
-          window.location.href = "/main.html";
-        }, 100);
-      }
-    });
-
-    // Add some debugging info
-    console.log("Firebase app initialized:", app);
-    console.log("Auth object:", auth);
-    console.log("Current URL:", window.location.href);
-    console.log("Development mode:", isDevelopment);
-    
-    // Add a helpful message for development
-    if (isDevelopment) {
-      console.log("Development environment detected - should work with localhost");
-    } else {
-      console.log("⚠️ Production environment - make sure domain is authorized in Firebase");
-    }
-  </script>
+  <script type="module" src="/js/login.js"></script>
 </body>
 </html>
 

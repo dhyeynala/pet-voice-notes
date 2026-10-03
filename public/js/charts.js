@@ -1,160 +1,108 @@
-// public/js/charts.js: Analytics charts (Chart.js).
+// public/js/charts.js: analytics charts (vendored Chart.js, global `Chart`) and the chart that a
+// chat answer can carry ({type, title, data}).
+import { apiFetch, apiPath, asList } from "./api.js";
+import { el, icon, parseTimestamp } from "./dom.js";
 import { state } from "./state.js";
+import { entryFields, entryTime } from "./analytics.js";
 
-// Chart variables
+// Chart instances
 let activityChart, energyChart, dietChart, overviewChart, exerciseHistogram, medicationChart;
 
-// Enhanced update charts function
-async function updateCharts() {
+const CHART_IDS = ["activityChart", "energyChart", "dietChart", "overviewChart", "exerciseHistogram", "medicationChart", "activityHeatmap"];
+
+/** Fetch the server-built chart configs; fall back to charts computed here from raw entries. */
+export async function updateCharts() {
   if (!state.selectedPet) return;
-
-  // Show loading states on all charts
-  const chartIds = ['activityChart', 'energyChart', 'dietChart', 'overviewChart', 'exerciseHistogram', 'medicationChart', 'activityHeatmap'];
-  chartIds.forEach(chartId => showChartLoading(chartId));
-
+  CHART_IDS.forEach(showChartLoading);
   try {
-    // Get visualization data from enhanced API
-    const response = await fetch(`/api/pets/${state.selectedPet}/visualizations?days=30`);
-    const data = await response.json();
-    
-    if (data.visualizations) {
-      // Create/update all charts
-      updateActivityChart(data.visualizations.weekly_activity);
-      updateEnergyChart(data.visualizations.energy_distribution);
-      updateDietChart(data.visualizations.diet_frequency);
-      updateOverviewChart(data.visualizations.health_overview);
-      updateExerciseHistogram(data.visualizations.exercise_histogram);
-      updateMedicationChart(data.visualizations.medication_adherence);
-      updateActivityHeatmap(data.visualizations.activity_heatmap);
-    }
-    
-    // Hide loading states
-    chartIds.forEach(chartId => hideChartLoading(chartId));
-    
+    const data = await apiFetch(apiPath("pets", state.selectedPet, "visualizations"), { query: { days: 30 } });
+    const v = (data && data.visualizations) || null;
+    if (!v) throw new Error("no visualizations in response");
+    updateActivityChart(v.weekly_activity);
+    updateEnergyChart(v.energy_distribution);
+    updateDietChart(v.diet_frequency);
+    updateOverviewChart(v.health_overview);
+    updateExerciseHistogram(v.exercise_histogram);
+    updateMedicationChart(v.medication_adherence);
+    updateActivityHeatmap(v.activity_heatmap);
   } catch (error) {
-    console.error('Error updating charts:', error);
-    // Hide loading states on error and fallback to basic charts
-    chartIds.forEach(chartId => hideChartLoading(chartId));
+    console.warn("Server visualizations unavailable, computing basic charts locally:", error.message || error);
     await updateChartsBasic();
+  } finally {
+    CHART_IDS.forEach(hideChartLoading);
   }
 }
 
-// Fallback to basic chart functionality
-async function updateChartsBasic() {
+/** Fallback: basic charts from GET /api/pets/{id}/analytics?days=30. */
+export async function updateChartsBasic() {
   try {
-    const response = await fetch(`/api/pets/${state.selectedPet}/analytics?days=30`);
-    const data = await response.json();
-    const entries = data.data || [];
-    
-    // Prepare data for charts
+    const entries = asList(await apiFetch(apiPath("pets", state.selectedPet, "analytics"), { query: { days: 30 } })).map(entryFields);
     const chartData = prepareChartData(entries);
-    
-    // Update Activity Chart
     updateActivityChart(chartData.activity);
-    
-    // Update Energy Chart
     updateEnergyChart(chartData.energy);
-    
-    // Update Diet Chart
     updateDietChart(chartData.diet);
-    
-    // Update Overview Chart
     updateOverviewChart(chartData.overview);
-    
   } catch (error) {
-    console.error('Error updating charts:', error);
+    console.error("Error updating charts:", error);
   }
 }
 
-function prepareChartData(entries) {
-  const last7Days = [];
-  const today = new Date();
-  
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function prepareChartData(entries) {
+  const days = [];
   for (let i = 6; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    last7Days.push(date.toISOString().split('T')[0]);
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d);
   }
-  
-  // Activity data (exercise entries + daily_activity entries per day)
-  const activityData = last7Days.map(date => {
-    return entries.filter(entry => 
-      (entry.category === 'exercise' || entry.category === 'daily_activity') && 
-      entry.timestamp.startsWith(date)
-    ).length;
-  });
-  
-  // Energy data
-  const energyData = entries
-    .filter(entry => entry.category === 'energy_levels')
-    .map(entry => entry.level || 3);
-  
-  // Diet data (meals per type)
+  const keyOf = (e) => {
+    const t = parseTimestamp(entryTime(e));
+    return t ? localDateKey(t) : null;
+  };
+  const activity = days.map((d) => entries.filter((e) => (e.category === "exercise" || e.category === "daily_activity") && keyOf(e) === localDateKey(d)).length);
+  const energy = entries.filter((e) => e.category === "energy_levels" && Number.isFinite(Number(e.level))).map((e) => Number(e.level));
   const dietTypes = {};
-  entries.filter(entry => entry.category === 'diet').forEach(entry => {
-    const type = entry.type || 'meal';
+  entries.filter((e) => e.category === "diet").forEach((e) => {
+    const type = e.type || "meal";
     dietTypes[type] = (dietTypes[type] || 0) + 1;
   });
-  
-  // Overview data (entries per category)
-  const overview = {};
-  entries.forEach(entry => {
-    const category = entry.category;
-    overview[category] = (overview[category] || 0) + 1;
+  const perCategory = {};
+  entries.forEach((e) => {
+    perCategory[e.category] = (perCategory[e.category] || 0) + 1;
   });
-  
   return {
-    activity: { labels: last7Days.map(date => new Date(date).toLocaleDateString()), data: activityData },
-    energy: energyData,
-    diet: dietTypes,
-    overview: overview
+    activity: { labels: days.map((d) => d.toLocaleDateString()), data: activity },
+    energy,
+    diet: { labels: Object.keys(dietTypes), data: Object.values(dietTypes) },
+    overview: {
+      type: "bar",
+      data: { labels: Object.keys(perCategory).map((c) => c.replace(/_/g, " ")), datasets: [{ label: "Entries", data: Object.values(perCategory), backgroundColor: "#667eea" }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } },
+    },
   };
 }
 
-// Helper function to show loading state on charts
 function showChartLoading(chartId) {
   const canvas = document.getElementById(chartId);
-  if (canvas) {
-    const container = canvas.parentElement;
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'chart-loading';
-    loadingDiv.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: #7f8c8d;
-      z-index: 10;
-      font-size: 14px;
-    `;
-    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i><br><span style="margin-top: 8px; display: block;">Loading chart...</span>';
-    
-    // Remove existing loading div if present
-    const existingLoading = container.querySelector('.chart-loading');
-    if (existingLoading) {
-      existingLoading.remove();
-    }
-    
-    container.style.position = 'relative';
-    container.appendChild(loadingDiv);
-  }
+  if (!canvas) return;
+  const container = canvas.parentElement;
+  const existing = container.querySelector(".chart-loading");
+  if (existing) existing.remove();
+  container.style.position = "relative";
+  container.appendChild(el("div", { class: "chart-loading" }, icon("fas fa-spinner fa-spin"), el("span", { text: "Loading chart…" })));
 }
 
-// Helper function to hide chart loading state
 function hideChartLoading(chartId) {
   const canvas = document.getElementById(chartId);
-  if (canvas) {
-    const container = canvas.parentElement;
-    const loadingDiv = container.querySelector('.chart-loading');
-    if (loadingDiv) {
-      loadingDiv.remove();
-    }
-  }
+  const loading = canvas && canvas.parentElement.querySelector(".chart-loading");
+  if (loading) loading.remove();
 }
 
 // Enhanced chart update functions
-function updateActivityChart(input) {
+export function updateActivityChart(input) {
   const ctx = document.getElementById('activityChart');
   if (!ctx) return;
   
@@ -206,7 +154,7 @@ function updateActivityChart(input) {
   }
 }
 
-function updateEnergyChart(input) {
+export function updateEnergyChart(input) {
   const ctx = document.getElementById('energyChart');
   if (!ctx) return;
   
@@ -261,7 +209,7 @@ function updateEnergyChart(input) {
   }
 }
 
-function updateDietChart(input) {
+export function updateDietChart(input) {
   const ctx = document.getElementById('dietChart');
   if (!ctx) return;
   
@@ -300,7 +248,7 @@ function updateDietChart(input) {
   }
 }
 
-function updateOverviewChart(input) {
+export function updateOverviewChart(input) {
   const ctx = document.getElementById('overviewChart');
   if (!ctx) return;
   
@@ -342,7 +290,7 @@ function updateOverviewChart(input) {
   }
 }
 
-function updateExerciseHistogram(chartConfig) {
+export function updateExerciseHistogram(chartConfig) {
   const ctx = document.getElementById('exerciseHistogram');
   if (!ctx) return;
   
@@ -353,7 +301,7 @@ function updateExerciseHistogram(chartConfig) {
   }
 }
 
-function updateMedicationChart(chartConfig) {
+export function updateMedicationChart(chartConfig) {
   const ctx = document.getElementById('medicationChart');
   if (!ctx) return;
   
@@ -364,17 +312,18 @@ function updateMedicationChart(chartConfig) {
   }
 }
 
-function updateActivityHeatmap(heatmapData) {
+export function updateActivityHeatmap(heatmapData) {
   const container = document.getElementById('activityHeatmap');
   if (!container || !heatmapData) return;
   
   const { hours, activities, max_activity } = heatmapData;
-  
-  container.innerHTML = '';
+  if (!Array.isArray(hours) || !Array.isArray(activities)) return;
+
+  container.replaceChildren();
   
   hours.forEach((hour, index) => {
     const activity = activities[index] || 0;
-    const intensity = max_activity > 0 ? activity / max_activity : 0;
+    const intensity = max_activity > 0 ? Math.min(1, Math.max(0, Number(activity) / max_activity)) || 0 : 0;
     
     const block = document.createElement('div');
     block.style.cssText = `
@@ -410,4 +359,53 @@ function updateActivityHeatmap(heatmapData) {
   });
 }
 
-export { updateCharts, updateChartsBasic, prepareChartData, showChartLoading, hideChartLoading, updateActivityChart, updateEnergyChart, updateDietChart, updateOverviewChart, updateExerciseHistogram, updateMedicationChart, updateActivityHeatmap };
+/** Normalize a chat chart payload {type, title, data} into a Chart.js config (or null). */
+export function chatChartConfig(chart) {
+  if (!chart || typeof chart !== "object") return null;
+  const type = ["line", "bar", "pie", "doughnut", "radar", "polarArea", "scatter"].includes(chart.type) ? chart.type : "bar";
+  let data = chart.data;
+  if (Array.isArray(data)) {
+    // [{label|date|x, value|count|y}] -> labels + one dataset
+    data = {
+      labels: data.map((p) => p.label ?? p.date ?? p.x ?? ""),
+      datasets: [{ label: chart.title || "", data: data.map((p) => p.value ?? p.count ?? p.y ?? null) }],
+    };
+  } else if (data && !data.datasets && Array.isArray(data.labels) && Array.isArray(data.values)) {
+    data = { labels: data.labels, datasets: [{ label: chart.title || "", data: data.values }] };
+  }
+  if (!data || !Array.isArray(data.labels) || !Array.isArray(data.datasets) || data.datasets.length === 0) return null;
+  data = {
+    labels: data.labels.map((l) => String(l)),
+    datasets: data.datasets.map((d, i) => ({
+      borderColor: ["#667eea", "#4ecdc4", "#ff6b6b", "#feca57"][i % 4],
+      backgroundColor: type === "line" ? "rgba(102, 126, 234, 0.15)" : ["#667eea", "#4ecdc4", "#ff6b6b", "#feca57", "#96ceb4", "#ff9ff3"],
+      ...d,
+      label: d.label === undefined ? chart.title || "" : String(d.label),
+    })),
+  };
+  return {
+    type,
+    data,
+    options: {
+      responsive: true,
+      spanGaps: true,
+      plugins: { title: { display: Boolean(chart.title), text: String(chart.title || "") }, legend: { display: data.datasets.length > 1 } },
+      ...(type === "line" || type === "bar" ? { scales: { y: { beginAtZero: true } } } : {}),
+    },
+  };
+}
+
+/** Render a chat chart into a new canvas inside `container`. Returns the Chart or null. */
+export function renderChatChart(container, chart) {
+  const config = chatChartConfig(chart);
+  if (!config || typeof Chart === "undefined") return null;
+  const canvas = el("canvas", { width: 400, height: 220 });
+  container.appendChild(canvas);
+  try {
+    return new Chart(canvas, config);
+  } catch (error) {
+    console.error("Chart render failed:", error);
+    canvas.replaceWith(el("div", { class: "muted", text: "This chart could not be displayed." }));
+    return null;
+  }
+}

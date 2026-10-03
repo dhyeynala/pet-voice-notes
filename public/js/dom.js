@@ -1,275 +1,166 @@
-// public/js/dom.js: Shared DOM and UX helpers.
-import { state } from "./state.js";
+// public/js/dom.js: shared DOM helpers. Rule of thumb for this codebase: dynamic data goes in
+// with textContent (or el()), never innerHTML. innerHTML is only used for static markup or for
+// strings that went through escapeHtml() first (see markdown.js).
+// Nothing here touches `document` at import time, so the pure helpers can be unit-tested in node.
 
-// Enhanced UX helper functions
-function addLoadingState(element) {
-  if (element) {
-    element.classList.add('loading');
-    element.disabled = true;
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+/** Escape a value for safe interpolation into HTML text or a quoted attribute. */
+export function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+}
+
+/**
+ * Create an element. props: {class, text, style, title, dataset, attrs, on: {click: fn}}.
+ * Children may be nodes, strings (added as text nodes) or null/false (skipped).
+ */
+export function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value === undefined || value === null) continue;
+    if (key === "class" || key === "className") node.className = value;
+    else if (key === "text") node.textContent = value;
+    else if (key === "style") node.style.cssText = value;
+    else if (key === "dataset") Object.assign(node.dataset, value);
+    else if (key === "attrs") for (const [a, v] of Object.entries(value)) node.setAttribute(a, v);
+    else if (key === "on") for (const [ev, fn] of Object.entries(value)) node.addEventListener(ev, fn);
+    else node[key] = value;
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.appendChild(typeof child === "string" || typeof child === "number" ? document.createTextNode(String(child)) : child);
+  }
+  return node;
+}
+
+/** Font Awesome icon element (class names are static strings from our own code). */
+export function icon(classes) {
+  return el("i", { class: classes, attrs: { "aria-hidden": "true" } });
+}
+
+/** Replace all children of `node` with `children`. */
+export function replaceChildren(node, ...children) {
+  if (!node) return;
+  node.replaceChildren();
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
   }
 }
 
-function removeLoadingState(element) {
-  if (element) {
-    element.classList.remove('loading');
-    element.disabled = false;
-  }
+/** Set a status line: text plus a CSS class (e.g. "status-message error"). */
+export function setStatus(node, text, className, autoHideMs = 0) {
+  if (!node) return;
+  node.textContent = text;
+  node.className = className;
+  node.style.display = "block";
+  if (autoHideMs) setTimeout(() => (node.style.display = "none"), autoHideMs);
 }
 
-function validateFormField(fieldId, validationFn, errorMessage) {
-  const field = document.getElementById(fieldId);
-  const formGroup = field?.closest('.form-group');
-  const errorDiv = document.getElementById(fieldId + '-error');
-
-  if (!field) return true;
-
-  const isValid = validationFn(field.value);
-  
-  if (formGroup) {
-    formGroup.classList.remove('error', 'success');
-    formGroup.classList.add(isValid ? 'success' : 'error');
-  }
-
-  if (errorDiv) {
-    errorDiv.textContent = isValid ? '' : errorMessage;
-    errorDiv.classList.toggle('show', !isValid);
-  }
-
-  return isValid;
-}
-
-function updateCharacterCount(textareaId, countId, maxLength) {
-  const textarea = document.getElementById(textareaId);
-  const counter = document.getElementById(countId);
-  
-  if (textarea && counter) {
-    const count = textarea.value.length;
-    counter.textContent = count;
-    counter.style.color = count > maxLength * 0.9 ? '#e53e3e' : '#7f8c8d';
-  }
-}
-
-function showFeedback(message, type = 'success', duration = 3000) {
-  const feedback = document.createElement('div');
-  feedback.className = `feedback-${type}`;
-  feedback.innerHTML = `
-    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-    ${message}
-  `;
-  
-  document.body.appendChild(feedback);
-  
+/** Toast notification. The message is always rendered as text. */
+export function showNotification(message, type = "info", duration = 4000) {
+  const iconChar = type === "success" ? "✓" : type === "error" ? "✕" : type === "warning" ? "⚠" : "ℹ";
+  const toast = el(
+    "div",
+    { class: `notification-toast ${type}`, attrs: { role: type === "error" ? "alert" : "status" } },
+    el("span", { style: "font-size: 16px;", text: iconChar }),
+    el("span", { text: String(message) })
+  );
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add("show"), 100);
   setTimeout(() => {
-    feedback.style.animation = 'slideInDown 0.3s ease reverse';
-    setTimeout(() => feedback.remove(), 300);
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 400);
   }, duration);
 }
 
-function copyToClipboard(text, feedbackMessage = 'Copied to clipboard!') {
-  navigator.clipboard.writeText(text).then(() => {
-    const copyFeedback = document.createElement('div');
-    copyFeedback.className = 'copy-feedback show';
-    copyFeedback.innerHTML = `<i class="fas fa-clipboard-check"></i> ${feedbackMessage}`;
-    
-    document.body.appendChild(copyFeedback);
-    
-    setTimeout(() => {
-      copyFeedback.classList.remove('show');
-      setTimeout(() => copyFeedback.remove(), 300);
-    }, 2000);
-  });
+/** Put a button into a loading state; the original children are restored by hideLoadingState. */
+export function showLoadingState(element, message = "Loading") {
+  if (!element || element.dataset.loading) return;
+  element.dataset.loading = "1";
+  element._originalChildren = Array.from(element.childNodes);
+  replaceChildren(element, el("span", { class: "loading-dots", text: message }));
+  element.disabled = true;
+  element.classList.add("loading-shimmer");
 }
 
-function updateFormProgress() {
-  const form = document.getElementById('add-pet-form');
-  const progressFill = document.getElementById('form-progress');
-  
-  if (!form || !progressFill) return;
-  
-  const fields = form.querySelectorAll('input[required], select[required]');
-  const filledFields = Array.from(fields).filter(field => field.value.trim() !== '');
-  const progress = fields.length > 0 ? (filledFields.length / fields.length) * 100 : 0;
-  
-  progressFill.style.width = `${progress}%`;
+export function hideLoadingState(element) {
+  if (!element) return;
+  if (element._originalChildren) {
+    replaceChildren(element, element._originalChildren);
+    delete element._originalChildren;
+  }
+  delete element.dataset.loading;
+  element.disabled = false;
+  element.classList.remove("loading-shimmer");
 }
 
-function debounce(func, wait) {
+export function showOverlay(show) {
+  const overlay = document.getElementById("loading-overlay");
+  if (overlay) overlay.style.display = show ? "flex" : "none";
+}
+
+export function updateCharacterCount(textareaId, countId, maxLength) {
+  const textarea = document.getElementById(textareaId);
+  const counter = document.getElementById(countId);
+  if (textarea && counter) {
+    const count = textarea.value.length;
+    counter.textContent = count;
+    counter.style.color = count > maxLength * 0.9 ? "#e53e3e" : "#7f8c8d";
+  }
+}
+
+export function debounce(func, wait) {
   let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
+  return function debounced(...args) {
     clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    timeout = setTimeout(() => func(...args), wait);
   };
 }
 
-// Enhanced pet selection with validation
-function validatePetSelection() {
-  const petSelect = document.getElementById('pet-select');
-  const petStatus = document.getElementById('pet-status');
-  const errorDiv = document.getElementById('pet-select-error');
-  
-  if (!state.selectedPet) {
-    if (errorDiv) {
-      errorDiv.textContent = 'Please select a pet to continue';
-      errorDiv.classList.add('show');
-    }
-    if (petStatus) {
-      petStatus.className = 'status-indicator error';
-      petStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Select Pet';
-    }
-    return false;
+export function validateFormField(fieldId, validationFn, errorMessage) {
+  const field = document.getElementById(fieldId);
+  if (!field) return true;
+  const formGroup = field.closest(".form-group");
+  const errorDiv = document.getElementById(fieldId + "-error");
+  const isValid = validationFn(field.value);
+  if (formGroup) {
+    formGroup.classList.remove("error", "success");
+    formGroup.classList.add(isValid ? "success" : "error");
   }
-  
   if (errorDiv) {
-    errorDiv.classList.remove('show');
+    errorDiv.textContent = isValid ? "" : errorMessage;
+    errorDiv.classList.toggle("show", !isValid);
   }
-  if (petStatus) {
-    petStatus.className = 'status-indicator online';
-    petStatus.innerHTML = '<i class="fas fa-circle"></i> Ready';
-  }
-  return true;
+  return isValid;
 }
 
-// Setup character counters and form validation
-document.addEventListener('DOMContentLoaded', function() {
-  // Character counters
-  const chatInput = document.getElementById('chat-input');
-  const textInput = document.getElementById('pet-input-text');
-  
-  if (chatInput) {
-    const charCounter = document.getElementById('char-count');
-    if (charCounter) {
-      chatInput.addEventListener('input', () => updateCharacterCount('chat-input', 'char-count', 1000));
-    }
-  }
-  
-  if (textInput) {
-    const textCharCounter = document.getElementById('text-char-count');
-    if (textCharCounter) {
-      textInput.addEventListener('input', () => updateCharacterCount('pet-input-text', 'text-char-count', 2000));
-    }
-  }
-
-  // Form progress tracking
-  const addPetForm = document.getElementById('add-pet-form');
-  if (addPetForm) {
-    const formFields = addPetForm.querySelectorAll('input, select');
-    formFields.forEach(field => {
-      field.addEventListener('input', debounce(updateFormProgress, 300));
-      field.addEventListener('change', updateFormProgress);
-    });
-  }
-
-  // Real-time validation for add pet form
-  const petName = document.getElementById('pet-name');
-  const animalType = document.getElementById('animal-type');
-  
-  if (petName) {
-    petName.addEventListener('blur', () => {
-      validateFormField('pet-name', 
-        value => value.trim().length >= 2,
-        'Pet name must be at least 2 characters long'
-      );
-    });
-  }
-  
-  if (animalType) {
-    animalType.addEventListener('change', () => {
-      validateFormField('animal-type',
-        value => value !== '',
-        'Please select an animal type'
-      );
-    });
-  }
-
-  // Auto-save indicators for forms
-  const forms = document.querySelectorAll('form');
-  forms.forEach(form => {
-    form.addEventListener('input', debounce(() => {
-      const statusIndicator = form.querySelector('.status-indicator.saving');
-      if (statusIndicator) {
-        statusIndicator.style.display = 'inline-flex';
-        setTimeout(() => {
-          statusIndicator.style.display = 'none';
-        }, 1000);
-      }
-    }, 1000));
-  });
-});
-
-// Enable keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-  // Ctrl/Cmd + Enter to send chat message
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    const activeElement = document.activeElement;
-    if (activeElement && activeElement.id === 'chat-input') {
-      e.preventDefault();
-      sendChatMessage();
-    }
-  }
-  
-  // Escape to close any open modals or reset focus
-  if (e.key === 'Escape') {
-    const activeElement = document.activeElement;
-    if (activeElement && activeElement.blur) {
-      activeElement.blur();
-    }
-  }
-});
-
-// ===================== Enhanced UX JavaScript Functions =====================
-
-// Smart Notification System
-function showNotification(message, type = 'info', duration = 4000) {
-    const notification = document.createElement('div');
-    notification.className = `notification-toast ${type}`;
-    
-    const icon = type === 'success' ? '✓' : 
-                 type === 'error' ? '✕' : 
-                 type === 'warning' ? '⚠' : 'ℹ';
-    
-    notification.innerHTML = `
-        <span style="font-size: 16px;">${icon}</span>
-        <span>${message}</span>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Trigger animation
-    setTimeout(() => notification.classList.add('show'), 100);
-    
-    // Auto remove
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            if (notification.parentElement) {
-                document.body.removeChild(notification);
-            }
-        }, 400);
-    }, duration);
+export function updateFormProgress() {
+  const form = document.getElementById("add-pet-form");
+  const progressFill = document.getElementById("form-progress");
+  if (!form || !progressFill) return;
+  const fields = form.querySelectorAll("input[required], select[required]");
+  const filled = Array.from(fields).filter((f) => f.value.trim() !== "");
+  progressFill.style.width = `${fields.length ? (filled.length / fields.length) * 100 : 0}%`;
 }
 
-// Enhanced Loading States
-function showLoadingState(element, message = 'Loading') {
-    const originalContent = element.innerHTML;
-    element.dataset.originalContent = originalContent;
-    element.innerHTML = `
-        <span class="loading-dots">${message}</span>
-    `;
-    element.disabled = true;
-    element.classList.add('loading-shimmer');
+/** Parse a backend timestamp. Values without an offset are treated as UTC (the backend stores UTC). */
+export function parseTimestamp(value) {
+  if (!value) return null;
+  const s = String(value);
+  const hasZone = /[zZ]$|[+-]\d\d:?\d\d$/.test(s);
+  const d = new Date(hasZone || !s.includes("T") ? s : s + "Z");
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function hideLoadingState(element) {
-    if (element.dataset.originalContent) {
-        element.innerHTML = element.dataset.originalContent;
-        delete element.dataset.originalContent;
-    }
-    element.disabled = false;
-    element.classList.remove('loading-shimmer');
+export function formatDateTime(value) {
+  const d = parseTimestamp(value);
+  if (!d) return "";
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export { addLoadingState, removeLoadingState, validateFormField, updateCharacterCount, showFeedback, copyToClipboard, updateFormProgress, debounce, validatePetSelection, showNotification, showLoadingState, hideLoadingState };
+export function formatDate(value) {
+  const d = parseTimestamp(value);
+  return d ? d.toLocaleDateString() : String(value || "");
+}

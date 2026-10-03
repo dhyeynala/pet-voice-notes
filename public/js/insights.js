@@ -1,117 +1,81 @@
-// public/js/insights.js: AI health insights panel.
-import { state } from "./state.js";
+// public/js/insights.js: GET /api/pets/{id}/insights?tz= -> {facts, alerts, headline, mode}.
+// Facts and alerts are computed by code on the backend; there is no "health score".
+import { apiFetch, apiPath, browserTimeZone, describeError } from "./api.js";
+import { el, icon, replaceChildren } from "./dom.js";
+import { state, selectedPetName } from "./state.js";
+import { responseModeTag } from "./banner.js";
 
-// AI Assistant Functions
-async function loadAssistantData() {
-  if (!state.selectedPet) return;
-  
-  // Update AI health summary with loading state
-  const summaryDiv = document.getElementById('ai-health-summary');
-  summaryDiv.innerHTML = `
-    <div style="text-align: center;">
-      <div style="font-size: 2.5rem; margin-bottom: 10px;">🔄</div>
-      <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Loading Health Summary...</div>
-      <div style="opacity: 0.9;">
-        <i class="fas fa-spinner fa-spin"></i> Analyzing your pet's health data...
-      </div>
-    </div>
-  `;
-  
+function itemText(item) {
+  if (item === null || item === undefined) return "";
+  if (typeof item === "string") return item;
+  return item.text || item.message || item.title || item.fact || item.alert || JSON.stringify(item);
+}
+
+function itemLevel(item) {
+  return (item && typeof item === "object" && (item.level || item.severity)) || "";
+}
+
+export function renderInsights(data, { compact = false } = {}) {
+  const facts = Array.isArray(data.facts) ? data.facts : [];
+  const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+  const wrap = el("div", { class: "insights" });
+  wrap.appendChild(
+    el(
+      "div",
+      { class: "insights-header" },
+      el("span", { class: "insights-headline", text: data.headline || `No headline for ${selectedPetName()} yet.` }),
+      responseModeTag(data.mode)
+    )
+  );
+  if (alerts.length) {
+    wrap.appendChild(
+      el(
+        "ul",
+        { class: "insights-alerts" },
+        alerts.map((a) => el("li", { class: `alert-${itemLevel(a) || "info"}` }, icon("fas fa-exclamation-triangle"), ` ${itemText(a)}`))
+      )
+    );
+  }
+  if (facts.length) {
+    wrap.appendChild(el("ul", { class: "insights-facts" }, facts.slice(0, compact ? 4 : facts.length).map((f) => el("li", { text: itemText(f) }))));
+  }
+  if (!alerts.length && !facts.length) wrap.appendChild(el("div", { class: "insights-empty", text: "Not enough data yet. Add notes or tracking entries to see insights." }));
+  return wrap;
+}
+
+async function fetchInsights() {
+  return apiFetch(apiPath("pets", state.selectedPet, "insights"), { query: { tz: browserTimeZone() } });
+}
+
+/** Assistant section card. */
+export async function loadInsights() {
+  const box = document.getElementById("ai-health-summary");
+  if (!box || !state.selectedPet) return;
+  state.insightsLoaded = true;
+  replaceChildren(box, el("div", { style: "text-align:center;" }, icon("fas fa-spinner fa-spin"), " Loading insights…"));
   try {
-    // Load AI health summary
-    const response = await fetch(`/api/pets/${state.selectedPet}/assistant_summary`);
-    const data = await response.json();
-    
-    if (data.status === 'success' && data.summary) {
-      summaryDiv.innerHTML = `
-        <div style="text-align: left;">
-          <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 2rem; margin-right: 10px;">🏥</div>
-            <div style="font-size: 1.2rem; font-weight: 600;">AI Health Summary</div>
-          </div>
-          <div style="line-height: 1.6; opacity: 0.95; font-size: 0.95rem; white-space: pre-line;">
-            ${data.summary}
-          </div>
-          <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-            Based on ${data.data_sources?.length || 0} data sources • Updated ${new Date().toLocaleString()}
-          </div>
-        </div>
-      `;
-    } else {
-      summaryDiv.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-          <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Assistant Ready</div>
-          <div style="opacity: 0.9;">Ask me anything about your pet's health, behavior, or symptoms</div>
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error loading assistant data:', error);
-    summaryDiv.innerHTML = `
-      <div style="text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-        <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Assistant Ready</div>
-        <div style="opacity: 0.9;">Ask me anything about your pet's health, behavior, or symptoms</div>
-      </div>
-    `;
+    replaceChildren(box, renderInsights((await fetchInsights()) || {}));
+  } catch (err) {
+    state.insightsLoaded = false;
+    replaceChildren(box, el("div", { text: `Insights are unavailable: ${describeError(err)}` }));
   }
 }
 
-async function loadInsightsData() {
-  if (!state.selectedPet) return;
-  
-  // Update AI health summary with loading state
-  const summaryDiv = document.getElementById('ai-health-summary');
-  summaryDiv.innerHTML = `
-    <div style="text-align: center;">
-      <div style="font-size: 2.5rem; margin-bottom: 10px;">🔄</div>
-      <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Loading Health Insights...</div>
-      <div style="opacity: 0.9;">
-        <i class="fas fa-spinner fa-spin"></i> Analyzing your pet's health patterns...
-      </div>
-    </div>
-  `;
-  
+/** Analytics section "Today's highlights" card. */
+export async function loadHighlights() {
+  const box = document.getElementById("daily-headlines");
+  if (!box || !state.selectedPet) return;
+  replaceChildren(box, el("div", { style: "text-align:center; color: rgba(255,255,255,0.85);" }, icon("fas fa-spinner fa-spin"), " Loading highlights…"));
   try {
-    // Load AI health summary
-    const response = await fetch(`/api/pets/${state.selectedPet}/assistant_summary`);
-    const data = await response.json();
-    
-    if (data.status === 'success' && data.summary) {
-      summaryDiv.innerHTML = `
-        <div style="text-align: left;">
-          <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 2rem; margin-right: 10px;">🏥</div>
-            <div style="font-size: 1.2rem; font-weight: 600;">AI Health Insights</div>
-          </div>
-          <div style="line-height: 1.6; opacity: 0.95; font-size: 0.95rem; white-space: pre-line;">
-            ${data.summary}
-          </div>
-          <div style="margin-top: 15px; font-size: 0.85rem; opacity: 0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-            Based on ${data.data_sources?.length || 0} data sources • Updated ${new Date().toLocaleString()}
-          </div>
-        </div>
-      `;
-    } else {
-      summaryDiv.innerHTML = `
-        <div style="text-align: center;">
-          <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
-          <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ready for Analysis</div>
-          <div style="opacity: 0.9;">Use the search tool above or ask the AI assistant questions to get personalized insights</div>
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error loading insights data:', error);
-    summaryDiv.innerHTML = `
-      <div style="text-align: center;">
-        <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
-        <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ready for Analysis</div>
-        <div style="opacity: 0.9;">Use the search tool above or ask the AI assistant questions to get personalized insights</div>
-      </div>
-    `;
+    replaceChildren(box, renderInsights((await fetchInsights()) || {}, { compact: true }));
+  } catch (err) {
+    replaceChildren(box, el("div", { style: "text-align:center;" }, icon("fas fa-exclamation-triangle"), ` Could not load highlights: ${describeError(err)}`));
   }
 }
 
-export { loadAssistantData, loadInsightsData };
+export function initInsights() {
+  const refresh = document.getElementById("refresh-insights-btn");
+  if (refresh) refresh.addEventListener("click", loadInsights);
+  const highlights = document.getElementById("refresh-highlights-btn");
+  if (highlights) highlights.addEventListener("click", loadHighlights);
+}

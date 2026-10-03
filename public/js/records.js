@@ -1,97 +1,123 @@
-// public/js/records.js: PDF medical-record upload.
+// public/js/records.js: PDF vet records. Upload (POST /api/pets/{id}/records, multipart file),
+// list (GET .../records) and owner-only download (GET .../records/{rid}/file, fetched with the
+// Bearer token and handed to the browser as a blob, since a plain link can't send the header).
+import { apiFetch, apiPath, asList, describeError } from "./api.js";
+import { el, icon, replaceChildren, showNotification, formatDateTime } from "./dom.js";
 import { state } from "./state.js";
-import { showNotification } from "./dom.js";
+import { featureMode } from "./banner.js";
 
-function setupPdfForm() {
-  // PDF upload form handler
-  const pdfForm = document.getElementById("pdf-form");
-  if (pdfForm) {
-    pdfForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      if (!state.currentUser) {
-        alert("User not authenticated");
-        return;
-      }
-      
-      const petId = document.getElementById("pet-select").value;
-      if (!petId) {
-        alert("Please select a pet first");
-        return;
-      }
-      
-      const fileInput = document.getElementById("pdf-file");
-      const file = fileInput.files[0];
-      
-      if (!file) {
-        alert("Please select a PDF file");
-        return;
-      }
-      
-      if (file.type !== "application/pdf") {
-        alert("Please select a valid PDF file");
-        return;
-      }
-      
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        alert("File size too large. Please select a file under 10MB");
-        return;
-      }
-      
-      try {
-        // Show loading state
-        const resultBox = document.getElementById("pdf-result");
-        resultBox.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Uploading and analyzing PDF...</div>';
-        resultBox.classList.add("has-content");
-        
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("uid", state.currentUser.uid);
-        formData.append("pet", petId);
-        
-        const response = await fetch("/api/upload_pdf", {
-          method: "POST",
-          body: formData
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.summary) {
-          resultBox.innerHTML = `
-            <div style="color: #38a169; margin-bottom: 15px;">
-              <i class="fas fa-check-circle"></i> PDF uploaded and analyzed successfully!
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #4ecdc4;">
-              <h4 style="margin-bottom: 10px;"><i class="fas fa-file-medical"></i> ${file.name}</h4>
-              <div style="margin-bottom: 10px;"><strong>AI Summary:</strong></div>
-              <div style="line-height: 1.6;">${data.summary}</div>
-              ${data.url ? `<div style="margin-top: 10px;"><a href="${data.url}" target="_blank" style="color: #667eea;"><i class="fas fa-external-link-alt"></i> View Original Document</a></div>` : ''}
-            </div>
-          `;
-          
-          // Clear the file input
-          fileInput.value = "";
-          
-          // Show success notification
-          showNotification("PDF uploaded and analyzed successfully!", "success");
-          
-        } else {
-          throw new Error(data.error || "Failed to process PDF");
-        }
-        
-      } catch (error) {
-        console.error("PDF upload error:", error);
-        const resultBox = document.getElementById("pdf-result");
-        resultBox.innerHTML = `
-          <div style="color: #e53e3e; padding: 15px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 8px;">
-            <i class="fas fa-exclamation-triangle"></i> Error uploading PDF: ${error.message}
-          </div>
-        `;
-        showNotification("Error uploading PDF", "error");
-      }
-    });
+const MAX_BYTES = 10 * 1024 * 1024;
+
+function renderRecord(record) {
+  const download = el("button", { type: "button", class: "btn btn-secondary btn-small" }, icon("fas fa-download"), " Download");
+  download.addEventListener("click", () => downloadRecord(record, download));
+  const meta = [record.pages ? `${record.pages} page${record.pages === 1 ? "" : "s"}` : null, record.status, formatDateTime(record.created_at)]
+    .filter(Boolean)
+    .join(" · ");
+  return el(
+    "div",
+    { class: "record-card", dataset: { recordId: record.id } },
+    el("div", { class: "record-card-header" }, el("h4", {}, icon("fas fa-file-medical"), " ", el("span", { text: record.filename || "record.pdf" })), download),
+    el("div", { class: "record-meta", text: meta }),
+    record.summary
+      ? el(
+          "div",
+          { class: "record-summary" },
+          el("strong", { text: featureMode("pdf_summary") === "demo" ? "Summary (simulated): " : "Summary: " }),
+          el("span", { text: record.summary })
+        )
+      : el("div", { class: "muted", text: record.status === "needs_ocr" ? "No text layer found (scanned PDF), so there is no summary." : "No summary available." })
+  );
+}
+
+export async function loadRecords() {
+  const container = document.getElementById("records-list");
+  if (!container || !state.selectedPet) return;
+  replaceChildren(container, el("div", { class: "muted" }, icon("fas fa-spinner fa-spin"), " Loading records…"));
+  try {
+    const records = asList(await apiFetch(apiPath("pets", state.selectedPet, "records")));
+    replaceChildren(container, records.length ? records.map(renderRecord) : el("div", { class: "muted", text: "No records uploaded yet." }));
+  } catch (err) {
+    replaceChildren(container, el("div", { class: "status-message error", style: "display:block", text: `Could not load records: ${describeError(err)}` }));
   }
 }
 
-export { setupPdfForm };
+async function downloadRecord(record, button) {
+  button.disabled = true;
+  try {
+    const res = await apiFetch(apiPath("pets", state.selectedPet, "records", record.id, "file"), { raw: true });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = el("a", { href: url, download: record.filename || "record.pdf" });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    showNotification(`Download failed: ${describeError(err)}`, "error");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  const resultBox = document.getElementById("pdf-result");
+  const show = (...children) => {
+    replaceChildren(resultBox, ...children);
+    resultBox.classList.add("has-content");
+  };
+  if (!state.selectedPet) return showNotification("Please select a pet first", "warning");
+  const fileInput = document.getElementById("pdf-file");
+  const file = fileInput.files[0];
+  if (!file) return showNotification("Please select a PDF file", "warning");
+  if (file.type && file.type !== "application/pdf") return showNotification("Please select a PDF file", "warning");
+  if (file.size > MAX_BYTES) return showNotification("File too large: the limit is 10 MB", "warning");
+
+  show(el("div", { style: "text-align:center; padding: 20px;" }, icon("fas fa-spinner fa-spin"), " Uploading and analyzing PDF…"));
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const record = await apiFetch(apiPath("pets", state.selectedPet, "records"), { body: form });
+    show(el("div", { class: "upload-ok" }, icon("fas fa-check-circle"), " PDF uploaded."), renderRecord(record));
+    fileInput.value = "";
+    document.getElementById("pdf-file-name").textContent = "";
+    showNotification("PDF uploaded", "success");
+    loadRecords();
+  } catch (err) {
+    const hint = err.status === 413 ? " (the file is too large)" : err.status === 415 ? " (the file is not a valid PDF)" : "";
+    show(el("div", { class: "status-message error", style: "display:block" }, icon("fas fa-exclamation-triangle"), ` Upload failed: ${describeError(err)}${hint}`));
+    showNotification("Error uploading PDF", "error");
+  }
+}
+
+export function initRecords() {
+  document.getElementById("pdf-form").addEventListener("submit", onSubmit);
+  const fileInput = document.getElementById("pdf-file");
+  const drop = document.getElementById("pdf-drop");
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+  fileInput.addEventListener("click", (e) => e.stopPropagation());
+  fileInput.addEventListener("change", () => {
+    document.getElementById("pdf-file-name").textContent = fileInput.files[0] ? fileInput.files[0].name : "";
+  });
+  drop.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    drop.classList.add("dragover");
+  });
+  drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("dragover");
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event("change"));
+    }
+  });
+  document.getElementById("refresh-records-btn").addEventListener("click", loadRecords);
+}

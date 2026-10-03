@@ -1,148 +1,144 @@
-// public/js/notes.js: Typed smart notes and page notes.
+// public/js/notes.js: typed notes (POST /api/pets/{id}/notes {text, tz}), the recent-notes list
+// (GET /api/pets/{id}/notes?limit=) and the shared Note renderer (also used for voice notes).
+import { apiFetch, apiPath, asList, browserTimeZone, describeError } from "./api.js";
+import { el, icon, replaceChildren, setStatus, showNotification, showOverlay, formatDateTime } from "./dom.js";
 import { state } from "./state.js";
-import { loadDashboard } from "./analytics.js";
-import { updateCharts } from "./charts.js";
-import { showNotification } from "./dom.js";
+import { responseModeTag } from "./banner.js";
 
-// Smart Text Input Function with Classification
-window.submitPetText = async function() {
-  if (!state.currentUser) return alert("User not authenticated");
-  const petId = document.getElementById("pet-select").value;
-  if (!petId) return alert("Please select a pet first");
-
-  const textInput = document.getElementById("pet-input-text");
-  const inputText = textInput.value.trim();
-  const statusElement = document.getElementById("pet-input-status");
-  const loadingOverlay = document.getElementById("loading-overlay");
-
-  if (!inputText) {
-    statusElement.textContent = "⚠️ Please enter some text first";
-    statusElement.className = "status-message error";
-    setTimeout(() => statusElement.style.display = "none", 3000);
-    return;
-  }
-
-  try {
-    // Show processing state
-    statusElement.textContent = "🔄 Processing your note with AI...";
-    statusElement.className = "status-message processing";
-    statusElement.style.display = "block";
-    loadingOverlay.style.display = "flex";
-
-    const response = await fetch(`/api/pets/${petId}/textinput`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: inputText })
-    });
-
-    const data = await response.json();
-    loadingOverlay.style.display = "none";
-
-    if (data.status === "success") {
-      // Display the input text and AI analysis in the output area
-      const outputElement = document.getElementById("pet-text-output");
-      const textContentElement = document.getElementById("pet-text-content");
-      const textSummaryElement = document.getElementById("pet-text-summary");
-      const textTypeBadge = document.getElementById("pet-text-type-badge");
-      
-      if (textContentElement && textSummaryElement && textTypeBadge) {
-        textContentElement.textContent = inputText;
-        textSummaryElement.textContent = data.summary;
-        
-        // Show content type badge with enhanced styling
-        const contentType = data.content_type || "MIXED";
-        const confidence = ((data.confidence || 0.5) * 100).toFixed(0);
-        const keywords = data.keywords || [];
-        
-        let badgeClass = "badge-mixed";
-        let badgeIcon = "fas fa-brain";
-        let badgeText = contentType;
-        
-        if (contentType === "MEDICAL") {
-          badgeClass = "badge-medical";
-          badgeIcon = "fas fa-heartbeat";
-          badgeText = "Health & Medical";
-        } else if (contentType === "DAILY_ACTIVITY") {
-          badgeClass = "badge-activity";
-          badgeIcon = "fas fa-heart";
-          badgeText = "Daily Life & Activities";
-        } else {
-          badgeText = "Mixed Content";
-        }
-        
-        textTypeBadge.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="content-type-badge ${badgeClass}">
-              <i class="${badgeIcon}"></i> ${badgeText}
-            </span>
-            <small style="color: #666; font-size: 0.85em;">Confidence: ${confidence}%</small>
-          </div>
-          ${keywords.length > 0 ? `<div style="font-size: 0.85em; color: #666;"><strong>Keywords:</strong> ${keywords.join(', ')}</div>` : ''}
-        `;
-        textTypeBadge.style.display = "block";
-        
-        // Show the output area
-        if (outputElement) {
-          outputElement.classList.add("has-content");
-        }
-      }
-      
-      // Clear the input
-      textInput.value = "";
-      
-      // Show success message
-      statusElement.textContent = `${badgeText} processed successfully!`;
-      statusElement.className = "status-message success";
-      statusElement.style.display = "block";
-      
-      // Auto-hide status after 5 seconds
-      setTimeout(() => {
-        statusElement.style.display = "none";
-      }, 5000);
-
-      // Show notification
-      showNotification(`📝 ${badgeText} note added successfully!`, 'success', 3000);
-
-      // If we're in analytics section, refresh the dashboard
-      const currentSection = document.querySelector('.section.active');
-      if (currentSection && currentSection.id === 'analytics-section') {
-        setTimeout(() => {
-          loadDashboard();
-          updateCharts();
-        }, 1000);
-      }
-
-    } else {
-      statusElement.textContent = `Error: ${data.message || "Failed to process note"}`;
-      statusElement.className = "status-message error";
-      statusElement.style.display = "block";
-      setTimeout(() => statusElement.style.display = "none", 5000);
-    }
-
-  } catch (error) {
-    console.error('Error submitting text:', error);
-    loadingOverlay.style.display = "none";
-    statusElement.textContent = "Network error. Please try again.";
-    statusElement.className = "status-message error";
-    statusElement.style.display = "block";
-    setTimeout(() => statusElement.style.display = "none", 5000);
-  }
+const KIND_BADGES = {
+  MEDICAL: { cls: "badge-medical", icon: "fas fa-heartbeat", text: "Health & Medical" },
+  DAILY_ACTIVITY: { cls: "badge-activity", icon: "fas fa-heart", text: "Daily Life & Activities" },
+  MIXED: { cls: "badge-mixed", icon: "fas fa-brain", text: "Mixed Content" },
+  OTHER: { cls: "badge-mixed", icon: "fas fa-sticky-note", text: "Other" },
+  UNKNOWN: { cls: "badge-unknown", icon: "fas fa-question-circle", text: "Unknown" },
 };
+const SOURCE_ICONS = { text: "fas fa-keyboard", voice: "fas fa-microphone", pdf: "fas fa-file-pdf" };
 
-// Notes functions  
-async function loadMarkdown() {
-  if (!state.selectedPet) return;
-  
+export function kindBadge(kind) {
+  const b = KIND_BADGES[kind] || KIND_BADGES.UNKNOWN;
+  return el("span", { class: `content-type-badge ${b.cls}` }, el("i", { class: b.icon }), ` ${KIND_BADGES[kind] ? b.text : kind || b.text}`);
+}
+
+function describeItem(item) {
+  if (item === null || item === undefined) return "";
+  if (typeof item === "string") return item;
+  const label = item.category || item.flag || item.type || "";
+  const text = item.text || item.summary || item.value || "";
+  return label && text ? `${label}: ${text}` : label || text || JSON.stringify(item);
+}
+
+function sentenceRefs(sentences) {
+  if (!Array.isArray(sentences) || sentences.length === 0) return "";
+  return ` [${sentences.map((s) => (typeof s === "number" ? `S${s}` : String(s))).join(", ")}]`;
+}
+
+/** Render one Note as a card. Every value is inserted as text. */
+export function renderNote(note, { showText = true } = {}) {
+  const flags = Array.isArray(note.red_flags) ? note.red_flags : [];
+  const observations = Array.isArray(note.observations) ? note.observations : [];
+  const card = el("div", { class: `note-card${note.urgent ? " urgent" : ""}`, dataset: { noteId: note.id || "" } });
+
+  card.appendChild(
+    el(
+      "div",
+      { class: "note-card-header" },
+      kindBadge(note.kind),
+      el("span", { class: "note-source", title: `Source: ${note.source || "text"}` }, el("i", { class: SOURCE_ICONS[note.source] || "fas fa-sticky-note" }), ` ${note.source || "text"}`),
+      note.needs_review ? el("span", { class: "pill pill-review", text: "Needs review" }) : null,
+      note.status && note.status !== "processed" && note.status !== "ok" ? el("span", { class: "pill pill-status", text: note.status }) : null,
+      responseModeTag(note.mode),
+      el("span", { class: "note-date", text: formatDateTime(note.created_at) })
+    )
+  );
+
+  if (note.urgent) {
+    card.appendChild(
+      el(
+        "div",
+        { class: "urgent-banner", attrs: { role: "alert" } },
+        icon("fas fa-exclamation-triangle"),
+        ` Contact your vet: possible red flag${note.mode === "demo" ? " (simulated)" : ""}.`
+      )
+    );
+  }
+  if (note.status === "unprocessed") {
+    card.appendChild(el("div", { class: "note-warning", text: "AI processing failed. The note was saved unprocessed and marked for review." }));
+  }
+  if (showText && note.text) card.appendChild(el("blockquote", { class: "note-text", text: note.text }));
+  if (note.summary) card.appendChild(el("div", { class: "note-summary" }, el("strong", { text: "Summary: " }), note.summary));
+
+  const presentFlags = flags.filter((f) => f && f.flag);
+  if (presentFlags.length) {
+    card.appendChild(
+      el(
+        "ul",
+        { class: "note-flags" },
+        presentFlags.map((f) =>
+          el("li", { class: `flag-${f.status || "unknown"}`, text: `${f.flag.replace(/_/g, " ")} (${f.status || "unknown"})${sentenceRefs(f.sentences)}` })
+        )
+      )
+    );
+  }
+  if (observations.length) {
+    card.appendChild(
+      el(
+        "details",
+        { class: "note-observations" },
+        el("summary", { text: `${observations.length} observation${observations.length === 1 ? "" : "s"}` }),
+        el("ul", {}, observations.map((o) => el("li", { text: describeItem(o) + sentenceRefs(o && o.sentences) })))
+      )
+    );
+  }
+  return card;
+}
+
+/** Load the latest notes into a container (default: the Notes section list). */
+export async function loadNotes({ targetId = "notes-list", limit = 20 } = {}) {
+  const container = document.getElementById(targetId);
+  if (!container || !state.selectedPet) return;
+  replaceChildren(container, el("div", { class: "muted" }, icon("fas fa-spinner fa-spin"), " Loading notes…"));
   try {
-    const response = await fetch('/api/markdown');
-    const data = await response.json();
-    
-    if (data.content) {
-      document.getElementById('markdown-content').innerHTML = data.content;
+    const notes = asList(await apiFetch(apiPath("pets", state.selectedPet, "notes"), { query: { limit } }));
+    if (notes.length === 0) {
+      replaceChildren(container, el("div", { class: "muted", text: "No notes yet. Add one above or record a voice note." }));
+      return;
     }
-  } catch (error) {
-    console.error('Error loading notes:', error);
+    replaceChildren(container, notes.map((n) => renderNote(n)));
+  } catch (err) {
+    replaceChildren(container, el("div", { class: "status-message error", style: "display:block", text: `Could not load notes: ${describeError(err)}` }));
   }
 }
 
-export { loadMarkdown };
+async function submitPetText() {
+  const status = document.getElementById("pet-input-status");
+  if (!state.selectedPet) return setStatus(status, "Please select a pet first", "status-message error", 3000);
+  const input = document.getElementById("pet-input-text");
+  const text = input.value.trim();
+  if (!text) return setStatus(status, "⚠️ Please enter some text first", "status-message error", 3000);
+
+  const button = document.getElementById("submit-note-btn");
+  button.disabled = true;
+  setStatus(status, "🔄 Processing your note…", "status-message processing");
+  showOverlay(true);
+  try {
+    const note = await apiFetch(apiPath("pets", state.selectedPet, "notes"), { json: { text, tz: browserTimeZone() } });
+    const output = document.getElementById("pet-text-output");
+    replaceChildren(document.getElementById("pet-text-result"), renderNote(note));
+    output.classList.add("has-content");
+    input.value = "";
+    document.getElementById("text-char-count").textContent = "0";
+    setStatus(status, note.urgent ? "Note saved. It contains a possible red flag." : "Note saved.", "status-message success", 5000);
+    showNotification(note.urgent ? "Note saved: possible red flag, see the note." : "📝 Note added", note.urgent ? "warning" : "success", 3000);
+    loadNotes();
+  } catch (err) {
+    setStatus(status, `Error: ${describeError(err)}`, "status-message error");
+  } finally {
+    showOverlay(false);
+    button.disabled = false;
+  }
+}
+
+export function initNotes() {
+  document.getElementById("submit-note-btn").addEventListener("click", submitPetText);
+  document.getElementById("refresh-notes-btn").addEventListener("click", () => loadNotes());
+}

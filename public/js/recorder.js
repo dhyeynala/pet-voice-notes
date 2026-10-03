@@ -1,184 +1,243 @@
-// public/js/recorder.js: Voice recording controls.
+// public/js/recorder.js: voice notes recorded in the browser with MediaRecorder and uploaded to
+// POST /api/pets/{id}/voice-notes (multipart: audio=<blob>, tz), or a bundled sample
+// (sample_id from GET /api/voice/samples). Response: {transcription: {status, text, confidence}, note}.
+// 422 = no speech, 502 = speech-to-text error (nothing stored in either case), 415 = unsupported type.
+import { apiFetch, apiPath, asList, browserTimeZone, describeError } from "./api.js";
+import { el, icon, replaceChildren, showNotification, showOverlay } from "./dom.js";
 import { state } from "./state.js";
-import { showNotification } from "./dom.js";
+import { renderNote, loadNotes } from "./notes.js";
 
-// Voice recording functions
-window.toggleRecording = async function () {
-  if (!state.currentUser) {
-    showNotification("Please log in first", 'error');
-    return;
-  }
-  
-  const petId = document.getElementById("pet-select").value;
-  if (!petId) {
-    showNotification("Please select a pet first", 'warning');
-    return;
-  }
+export const MAX_SECONDS = 60;
+export const MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4"];
 
-  const button = document.getElementById("record-button");
-  const statusElement = document.getElementById("status");
-  const outputElement = document.getElementById("output");
-  const loadingOverlay = document.getElementById("loading-overlay");
-
-  // Prevent double-clicks during processing
-  if (button.disabled) {
-    console.log("Button disabled, ignoring click");
-    return;
-  }
-
-  console.log("🔍 Current recording state:", state.isRecording);
-  console.log("🔍 Button classes:", button.className);
-  console.log("🔍 Button innerHTML:", button.innerHTML);
-
-  if (!state.isRecording) {
-    // Start recording
+/** First MediaRecorder mime type the browser supports, or "" to let the browser choose. */
+export function pickMimeType(isTypeSupported) {
+  if (typeof isTypeSupported !== "function") return "";
+  for (const type of MIME_CANDIDATES) {
     try {
-      console.log("🎙️ Starting recording...");
-      button.disabled = true; // Prevent double-click
-      
-      const res = await fetch('/api/start_recording', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: state.currentUser.uid, pet: petId })
-      });
-
-      const data = await res.json();
-      console.log('Start recording response:', data);
-      
-      if (data.status === "recording") {
-        state.isRecording = true;
-        button.innerHTML = '<i class="fas fa-stop"></i> <span>Stop Recording</span>';
-        button.classList.add('recording');
-        button.disabled = false; // Re-enable for stop action
-        statusElement.textContent = "🎙️ Recording in progress... Click Stop when finished";
-        statusElement.className = "status recording";
-        statusElement.style.display = "block";
-        outputElement.classList.remove("has-content");
-        showNotification('Recording started! Speak clearly into your microphone.', 'info');
-      } else {
-        button.disabled = false; // Re-enable on error
-        statusElement.textContent = "Failed to start recording: " + (data.message || data.error || "Unknown error");
-        statusElement.className = "status error";
-        statusElement.style.display = "block";
-        showNotification('Failed to start recording. Please try again.', 'error');
-      }
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      button.disabled = false; // Re-enable on error
-      statusElement.textContent = "Failed to start recording";
-      statusElement.className = "status error";
-      statusElement.style.display = "block";
-      showNotification('Network error. Please check your connection and try again.', 'error');
-    }
-  } else {
-    // Stop recording
-    try {
-      console.log("🛑 Stopping recording...");
-      button.disabled = true;
-      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Processing...</span>';
-      statusElement.textContent = "⏳ Processing your recording...";
-      statusElement.className = "status processing";
-      statusElement.style.display = "block";
-      loadingOverlay.style.display = "flex";
-      
-      const res = await fetch('/api/stop_recording', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: state.currentUser.uid, pet: petId })
-      });
-
-      const data = await res.json();
-      console.log('Stop recording response:', data);
-      
-      // Handle both successful AI processing and basic transcription
-      if (data.status === "success" && data.transcript && data.summary) {
-        // Full AI processing successful
-        document.getElementById("transcript-content").textContent = data.transcript;
-        document.getElementById("summary-content").textContent = data.summary;
-        
-        // Show content type badge
-        const contentTypeBadge = document.getElementById("content-type-badge");
-        const contentType = data.content_type || "MIXED";
-        const confidence = data.confidence || 0.5;
-        
-        let badgeClass = "badge-mixed";
-        let badgeIcon = "fas fa-brain";
-        let badgeText = contentType;
-        
-        if (contentType === "MEDICAL") {
-          badgeClass = "badge-medical";
-          badgeIcon = "fas fa-heartbeat";
-          badgeText = "Health & Medical";
-        } else if (contentType === "DAILY_ACTIVITY") {
-          badgeClass = "badge-activity";
-          badgeIcon = "fas fa-heart";
-          badgeText = "Daily Life & Activities";
-        } else {
-          badgeText = "Mixed Content";
-        }
-        
-        contentTypeBadge.innerHTML = `<i class="${badgeIcon}"></i> ${badgeText}`;
-        contentTypeBadge.className = `content-type-badge ${badgeClass}`;
-        contentTypeBadge.style.display = "inline-block";
-        
-        outputElement.classList.add("has-content");
-        statusElement.textContent = `${badgeText} processed successfully!`;
-        statusElement.className = "status success";
-        
-        showNotification('Recording processed successfully!', 'success');
-        
-        setTimeout(() => {
-          statusElement.style.display = "none";
-        }, 5000);
-      } else if (data.status === "stopped" && data.transcript) {
-        // Basic transcription successful (no AI processing)
-        document.getElementById("transcript-content").textContent = data.transcript;
-        document.getElementById("summary-content").textContent = "Transcription completed successfully. AI processing was not available.";
-        
-        // Hide content type badge for basic transcription
-        const contentTypeBadge = document.getElementById("content-type-badge");
-        contentTypeBadge.style.display = "none";
-        
-        outputElement.classList.add("has-content");
-        statusElement.textContent = "Recording transcribed successfully!";
-        statusElement.className = "status success";
-        
-        showNotification('Recording transcribed successfully!', 'success');
-        
-        setTimeout(() => {
-          statusElement.style.display = "none";
-        }, 5000);
-      } else if (data.status === "stopped" || data.status === "success") {
-        // Recording stopped but no transcript (likely no speech detected)
-        statusElement.textContent = "⚠️ Recording stopped but no speech was detected. Try speaking louder or closer to your microphone.";
-        statusElement.className = "status error";
-        showNotification('No speech detected in recording. Please try again.', 'warning');
-      } else {
-        // Error case
-        const errorMsg = data.error || data.message || "Unknown error";
-        statusElement.textContent = "Error processing recording: " + errorMsg;
-        statusElement.className = "status error";
-        console.error('Recording processing error:', data);
-        showNotification('Error processing recording: ' + errorMsg, 'error');
-      }
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-      statusElement.textContent = "Network error while processing recording";
-      statusElement.className = "status error";
-      showNotification('Network error. Please check your connection and try again.', 'error');
-    } finally {
-      // Always reset the button state regardless of success or failure
-      console.log("🔄 Resetting recording UI state");
-      loadingOverlay.style.display = "none";
-      state.isRecording = false;
-      button.innerHTML = '<i class="fas fa-microphone"></i> <span>Start Recording</span>';
-      button.classList.remove('recording');
-      button.disabled = false;
-      
-      // Ensure status is visible if there was an error
-      if (statusElement.className.includes('error')) {
-        statusElement.style.display = "block";
-      }
+      if (isTypeSupported(type)) return type;
+    } catch {
+      /* ignore and try the next one */
     }
   }
-};
+  return "";
+}
+
+export function extensionFor(mime) {
+  if (!mime) return "webm";
+  if (mime.includes("ogg")) return "ogg";
+  if (mime.includes("mp4") || mime.includes("aac")) return "m4a";
+  if (mime.includes("wav")) return "wav";
+  return "webm";
+}
+
+/** User-facing message for an upload error (contract status codes). */
+export function voiceErrorMessage(err, mime) {
+  switch (err && err.status) {
+    case 422:
+      return "No speech was detected in the recording, so nothing was saved. Try again a little closer to the microphone.";
+    case 502:
+      return "The speech-to-text service failed, so nothing was saved. Please try again in a moment.";
+    case 415:
+      return `The server can't read this audio format${mime ? ` (${mime})` : ""}. Try another browser, or use a sample recording.`;
+    case 413:
+      return "The recording is too large. Keep voice notes under a minute.";
+    default:
+      return `Voice note failed: ${describeError(err)}`;
+  }
+}
+
+/** User-facing message for a getUserMedia / MediaRecorder failure. */
+export function micErrorMessage(err) {
+  const name = err && err.name;
+  if (name === "NotAllowedError" || name === "SecurityError" || name === "PermissionDeniedError") {
+    return "Microphone access was blocked. Allow the microphone for this site in your browser settings, or use a sample recording below.";
+  }
+  if (name === "NotFoundError" || name === "DevicesNotFoundError" || name === "OverconstrainedError") {
+    return "No microphone was found. Connect one, or use a sample recording below.";
+  }
+  if (name === "NotSupportedError" || name === "TypeError") {
+    return "Recording isn't available in this browser context (it needs HTTPS or localhost). Use a sample recording below.";
+  }
+  if (name === "NotReadableError" || name === "TrackStartError") {
+    return "The microphone is in use by another application. Close it and try again, or use a sample recording.";
+  }
+  return `Could not start recording: ${(err && err.message) || name || "unknown error"}`;
+}
+
+let recorder = null;
+let stream = null;
+let chunks = [];
+let timerId = null;
+let capId = null;
+let startedAt = 0;
+let samplesLoaded = false;
+
+const $ = (id) => document.getElementById(id);
+
+function setStatus(text, cls) {
+  const node = $("status");
+  node.textContent = text;
+  node.className = `status ${cls}`;
+  node.style.display = text ? "block" : "none";
+}
+
+function setButton(mode) {
+  const button = $("record-button");
+  button.classList.toggle("recording", mode === "recording");
+  button.disabled = mode === "busy";
+  const label = mode === "recording" ? "Stop Recording" : mode === "busy" ? "Processing…" : "Start Recording";
+  const iconCls = mode === "recording" ? "fas fa-stop" : mode === "busy" ? "fas fa-spinner fa-spin" : "fas fa-microphone";
+  replaceChildren(button, icon(iconCls), " ", el("span", { id: "record-button-text", text: label }));
+}
+
+function fmt(seconds) {
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+}
+
+function cleanup() {
+  clearInterval(timerId);
+  clearTimeout(capId);
+  timerId = capId = null;
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  stream = null;
+}
+
+function showResult(result) {
+  const t = result.transcription || {};
+  $("transcript-content").textContent = t.text || "(empty transcript)";
+  replaceChildren($("summary-content"), result.note ? renderNote(result.note, { showText: false }) : el("div", { text: "No note was returned." }));
+  $("output").classList.add("has-content");
+}
+
+async function upload(form, mimeForErrors) {
+  if (!state.selectedPet) {
+    showNotification("Please select a pet first", "warning");
+    return;
+  }
+  form.append("tz", browserTimeZone());
+  setButton("busy");
+  setStatus("⏳ Transcribing and analyzing…", "processing");
+  showOverlay(true);
+  try {
+    const result = await apiFetch(apiPath("pets", state.selectedPet, "voice-notes"), { body: form });
+    showResult(result || {});
+    const urgent = result && result.note && result.note.urgent;
+    setStatus(urgent ? "Voice note saved. It contains a possible red flag." : "Voice note saved.", urgent ? "error" : "success");
+    showNotification(urgent ? "Voice note saved: possible red flag" : "Voice note saved", urgent ? "warning" : "success");
+    loadNotes({ targetId: "voice-recent-notes", limit: 5 });
+  } catch (err) {
+    setStatus(voiceErrorMessage(err, mimeForErrors), "error");
+  } finally {
+    showOverlay(false);
+    setButton("idle");
+  }
+}
+
+async function startRecording() {
+  if (!state.selectedPet) {
+    showNotification("Please select a pet first", "warning");
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") {
+    setStatus("This browser can't record audio here (recording needs a modern browser on HTTPS or localhost). Use a sample recording below.", "error");
+    return;
+  }
+  setButton("busy");
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    cleanup();
+    setButton("idle");
+    setStatus(micErrorMessage(err), "error");
+    return;
+  }
+  const mimeType = pickMimeType(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported.bind(MediaRecorder));
+  try {
+    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  } catch (err) {
+    cleanup();
+    setButton("idle");
+    setStatus(micErrorMessage(err), "error");
+    return;
+  }
+  chunks = [];
+  recorder.addEventListener("dataavailable", (e) => {
+    if (e.data && e.data.size) chunks.push(e.data);
+  });
+  recorder.addEventListener("stop", () => {
+    const type = recorder.mimeType || mimeType || "audio/webm";
+    const blob = new Blob(chunks, { type });
+    cleanup();
+    recorder = null;
+    if (!blob.size) {
+      setButton("idle");
+      setStatus("The recording was empty. Please try again.", "error");
+      return;
+    }
+    const form = new FormData();
+    form.append("audio", blob, `voice-note.${extensionFor(type)}`);
+    upload(form, type);
+  });
+  recorder.start(1000);
+  startedAt = Date.now();
+  setButton("recording");
+  $("output").classList.remove("has-content");
+  const tick = () => setStatus(`🎙️ Recording… ${fmt((Date.now() - startedAt) / 1000)} / ${fmt(MAX_SECONDS)}. Click Stop when finished.`, "recording");
+  tick();
+  timerId = setInterval(tick, 500);
+  capId = setTimeout(() => {
+    showNotification(`Recording stopped at the ${MAX_SECONDS}-second limit`, "info");
+    stopRecording();
+  }, MAX_SECONDS * 1000);
+}
+
+function stopRecording() {
+  if (recorder && recorder.state !== "inactive") {
+    setButton("busy");
+    recorder.stop();
+  }
+}
+
+export function toggleRecording() {
+  if (recorder && recorder.state === "recording") stopRecording();
+  else if (!recorder) startRecording();
+}
+
+/** Fill the "Use a sample recording" picker (once). */
+export async function loadSamples() {
+  if (samplesLoaded) return;
+  const select = $("sample-select");
+  const button = $("sample-button");
+  if (!select) return;
+  try {
+    const samples = asList(await apiFetch("/api/voice/samples"));
+    select.replaceChildren(el("option", { value: "", text: samples.length ? "Choose a sample…" : "No samples available" }));
+    for (const s of samples) select.appendChild(el("option", { value: s.id, text: s.label || s.id }));
+    button.disabled = !samples.length;
+    samplesLoaded = true;
+  } catch (err) {
+    select.replaceChildren(el("option", { value: "", text: "Samples unavailable" }));
+    button.disabled = true;
+    console.warn("Could not load voice samples:", describeError(err));
+  }
+}
+
+function useSample() {
+  const id = $("sample-select").value;
+  if (!id) {
+    showNotification("Choose a sample first", "warning");
+    return;
+  }
+  if (recorder) return;
+  const form = new FormData();
+  form.append("sample_id", id);
+  $("output").classList.remove("has-content");
+  upload(form, null);
+}
+
+export function initRecorder() {
+  $("record-button").addEventListener("click", toggleRecording);
+  $("sample-button").addEventListener("click", useSample);
+  window.addEventListener("beforeunload", cleanup);
+}

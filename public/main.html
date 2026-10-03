@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>PetPulse - Pet Health Management</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Vendored (pinned) so the demo works offline; see public/vendor/README.md -->
+  <link href="/vendor/fontawesome-free-6.7.2/css/all.min.css" rel="stylesheet">
+  <link href="/css/app.css" rel="stylesheet">
+  <script src="/vendor/chartjs-4.5.1/chart.umd.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -2175,35 +2176,32 @@
       </div>
       <div style="display: flex; align-items: center;">
         <div class="nav-menu">
-          <div class="nav-item" onclick="showSection('add-pet')">
+          <div class="nav-item" data-section="add-pet" role="button" tabindex="0">
             <i class="fas fa-plus"></i>
             <span>Add a Pet</span>
           </div>
-          <div class="nav-item active" onclick="showSection('assistant')">
+          <div class="nav-item active" data-section="assistant" role="button" tabindex="0">
             <i class="fas fa-robot"></i>
             <span>Pet Health Assistant</span>
           </div>
-          <div class="nav-item" onclick="showSection('recording')">
+          <div class="nav-item" data-section="recording" role="button" tabindex="0">
             <i class="fas fa-microphone"></i>
             <span>Voice Recording</span>
           </div>
-          <div class="nav-item" onclick="showSection('notes')">
+          <div class="nav-item" data-section="notes" role="button" tabindex="0">
             <i class="fas fa-file-alt"></i>
             <span>Notes & Files</span>
           </div>
-          <div class="nav-item" onclick="showSection('tracking')">
+          <div class="nav-item" data-section="tracking" role="button" tabindex="0">
             <i class="fas fa-clipboard-list"></i>
             <span>Tracking</span>
           </div>
-          <div class="nav-item" onclick="showSection('analytics')">
+          <div class="nav-item" data-section="analytics" role="button" tabindex="0">
             <i class="fas fa-chart-line"></i>
             <span>Analytics</span>
           </div>
         </div>
-        <button class="logout-btn" onclick="logout()">
-          <i class="fas fa-sign-out-alt"></i>
-          Logout
-        </button>
+        <div id="user-menu" class="user-menu" aria-label="Demo user"></div>
       </div>
     </div>
   </div>
@@ -2296,8 +2294,8 @@
               id="pet-age" 
               placeholder=" " 
               min="0" 
-              max="30" 
-              step="0.1"
+              max="40" 
+              step="1"
               aria-describedby="pet-age-error"
               data-tooltip="Age helps us provide age-appropriate care recommendations"
               class="tooltip"
@@ -2366,6 +2364,7 @@
         <div class="section-title" style="font-size: 1.5rem; margin-bottom: 25px;">
           <i class="fas fa-comments"></i>
           Chat with AI Assistant
+          <span class="mode-badge" data-feature="chat" hidden></span>
         </div>
         
         <!-- Chat Messages Container -->
@@ -2386,6 +2385,8 @@
           position: relative;
           overflow-x: hidden;
         ">
+        </div>
+        <template id="chat-welcome">
           <div class="assistant-message">
             <div style="display: flex; align-items: flex-start; gap: 16px;">
               <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2, #4ecdc4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 22px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4); animation: float 3s ease-in-out infinite;">
@@ -2394,21 +2395,20 @@
               <div style="background: rgba(255, 255, 255, 0.95); padding: 24px; border-radius: 20px; border: 1px solid rgba(225, 232, 237, 0.6); flex: 1; line-height: 1.7; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08); backdrop-filter: blur(10px); position: relative; overflow: hidden;">
                 <div style="position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #4ecdc4); opacity: 0.7;"></div>
                 <strong style="color: #667eea; font-size: 1.2rem; background: linear-gradient(135deg, #667eea, #764ba2); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hello! I'm your Pet Health Assistant.</strong><br><br>
-                I have access to all your pet's health data including:
+                I answer from your pet's records and tell you when something isn't in them. I can use:
                 <ul style="margin: 16px 0; padding-left: 24px; color: #4a5568; line-height: 1.6;">
                   <li style="margin: 8px 0;">📝 Voice notes and text entries</li>
                   <li style="margin: 8px 0;">🏥 Medical records from PDFs</li>
                   <li style="margin: 8px 0;">📊 Health tracking data</li>
-                  <li style="margin: 8px 0;">🩺 Veterinary knowledge base</li>
-                </ul>
+                                  </ul>
                 <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(78, 205, 196, 0.1)); padding: 18px; border-radius: 16px; margin-top: 16px; border: 1px solid rgba(102, 126, 234, 0.2);">
                   <strong style="color: #667eea; background: linear-gradient(135deg, #667eea, #764ba2); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Ask me questions like:</strong>
-                  <br><em style="color: #4a5568; font-style: italic;">"How has my pet's energy been lately?" or "What patterns do you see in their health data?"</em>
+                  <br><em style="color: #4a5568; font-style: italic;">"How has Max's energy been lately?" or "When did I first mention Max being tired?"</em>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </template>
 
         <!-- Enhanced Chat Input with Smart UX -->
         <div style="display: flex; gap: 15px; align-items: flex-end;">
@@ -2422,14 +2422,13 @@
               maxlength="1000"
             ></textarea>
             <div style="font-size: 0.75rem; color: #7f8c8d; text-align: right; margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: #667eea; font-weight: 500;">💡 Try: "Is my dog's weight normal?" or "What vaccines does my cat need?"</span>
+              <span style="color: #667eea; font-weight: 500;">💡 Try: "When did I first mention vomiting?" or "Show exercise this month"</span>
               <span id="char-count">0</span>/1000 characters
             </div>
           </div>
           <button 
             id="send-chat" 
             class="btn btn-primary" 
-            onclick="sendChatMessage()"
             style="height: fit-content; white-space: nowrap; padding: 16px 24px; font-size: 1rem; font-weight: 600; position: relative;"
             aria-label="Send message to AI assistant"
           >
@@ -2450,17 +2449,17 @@
             </div>
             <div id="quick-questions-buttons" style="display: none;">
               <div style="display: flex; flex-wrap: wrap; gap: 12px; width: 100%;">
-                <button class="quick-question-btn" onclick="askQuickQuestion('How has my pet been feeling lately?')">
+                <button class="quick-question-btn" data-question="How has my pet been feeling lately?">
                   <i class="fas fa-heart"></i> Recent Health Summary
                 </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('What patterns do you see in my pet\'s behavior?')">
-                  <i class="fas fa-chart-line"></i> Behavior Patterns
+                <button class="quick-question-btn" data-question="How has my pet's energy been this week?">
+                  <i class="fas fa-chart-line"></i> Energy This Week
                 </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('Any health concerns I should be aware of?')">
+                <button class="quick-question-btn" data-question="Any health concerns I should be aware of?">
                   <i class="fas fa-exclamation-triangle"></i> Health Alerts
                 </button>
-                <button class="quick-question-btn" onclick="askQuickQuestion('Generate a health report for my vet visit')">
-                  <i class="fas fa-file-medical"></i> Vet Report
+                <button class="quick-question-btn" data-question="What medication is my pet on?">
+                  <i class="fas fa-pills"></i> Medications
                 </button>
               </div>
             </div>
@@ -2489,34 +2488,40 @@
               placeholder="Search symptoms, treatments, conditions..."
               style="flex: 1;"
             />
-            <button class="btn btn-secondary" onclick="searchKnowledge()">
+            <button class="btn btn-secondary" id="knowledge-search-btn" type="button">
               <i class="fas fa-search"></i>
               Search
             </button>
           </div>
           
-          <div id="knowledge-results" style="min-height: 100px; background: #f8fafc; border-radius: 8px; padding: 20px; border: 1px solid #e1e8ed;">
+          <div id="knowledge-results" style="min-height: 100px; background: #f8fafc; border-radius: 8px; padding: 20px; border: 1px solid #e1e8ed;"></div>
+          <template id="knowledge-placeholder">
             <div style="text-align: center; color: #7f8c8d;">
               <i class="fas fa-book-medical"></i>
               <p>Search our veterinary knowledge base for symptoms, treatments, and health information</p>
             </div>
-          </div>
+          </template>
         </div>
 
         <!-- Health Analytics Summary -->
         <div class="card">
           <div class="section-title">
             <i class="fas fa-chart-pie"></i>
-            AI Health Insights
+            Health Insights
+            <span class="mode-badge" data-feature="insights" hidden></span>
+            <button class="btn btn-secondary btn-small" id="refresh-insights-btn" type="button" style="margin-left: auto;">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
           </div>
           
-          <div id="ai-health-summary" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 12px;">
+          <div id="ai-health-summary" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 12px;"></div>
+          <template id="insights-placeholder">
             <div style="text-align: center;">
-              <div style="font-size: 2.5rem; margin-bottom: 10px;">🤖</div>
-              <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">AI Health Insights</div>
-              <div style="opacity: 0.9;">Ask a question below or use the chat to get personalized health insights based on your pet's data</div>
+              <div style="font-size: 2.5rem; margin-bottom: 10px;">🔍</div>
+              <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Health Insights</div>
+              <div style="opacity: 0.9;">Facts and alerts computed from your pet's notes and tracking data. Click Refresh or ask the assistant a question.</div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
     </div>
@@ -2532,6 +2537,8 @@
         <div class="section-title">
           <i class="fas fa-microphone"></i>
           Smart Voice Recording
+          <span class="mode-badge" data-feature="voice" hidden></span>
+          <span class="mode-badge" data-feature="notes" hidden></span>
         </div>
         
         <div style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #667eea;">
@@ -2570,10 +2577,23 @@
           </div>
         </div>
         
-        <button id="record-button" class="btn btn-primary record-button" onclick="toggleRecording()" aria-label="Start or stop voice recording">
+        <button id="record-button" type="button" class="btn btn-primary record-button" aria-label="Start or stop voice recording">
           <i class="fas fa-microphone"></i>
           <span id="record-button-text">Start Recording</span>
         </button>
+        <p class="muted" style="margin: -10px 0 20px; font-size: 0.9rem;">
+          Recordings are made in your browser (up to 60 seconds) and uploaded for transcription. Audio is discarded after transcription.
+        </p>
+
+        <div class="sample-picker">
+          <label for="sample-select"><i class="fas fa-headphones"></i> No microphone? Use a sample recording:</label>
+          <div class="sample-picker-row">
+            <select id="sample-select" aria-label="Sample recording"><option value="">Loading samples…</option></select>
+            <button id="sample-button" type="button" class="btn btn-secondary" disabled>
+              <i class="fas fa-play"></i> Use this sample
+            </button>
+          </div>
+        </div>
 
         <div id="status" class="status" role="status" aria-live="polite"></div>
 
@@ -2583,11 +2603,18 @@
             <div id="transcript-content"></div>
           </div>
           <div class="summary">
-            <h3><i class="fas fa-brain"></i> AI Analysis</h3>
-            <div id="content-type-badge" style="display: none; margin-bottom: 10px;"></div>
+            <h3><i class="fas fa-brain"></i> Resulting note</h3>
             <div id="summary-content"></div>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-history"></i>
+          Recent notes
+        </div>
+        <div id="voice-recent-notes" class="notes-list"></div>
       </div>
     </div>
 
@@ -2598,26 +2625,12 @@
         <p>Manage pet health records, notes, and medical documents</p>
       </div>
 
-      <div class="grid">
-        <div class="card">
-          <div class="section-title">
-            <i class="fas fa-sticky-note"></i>
-            Shared Page Notes
-          </div>
-          <div class="form-group">
-            <textarea id="markdown-input" placeholder="Write shared notes for all pets on this page..."></textarea>
-          </div>
-          <button class="btn btn-primary" onclick="saveMarkdown()">
-            <i class="fas fa-save"></i>
-            Save Page Notes
-          </button>
-          <div id="markdown-status" class="status-message"></div>
-        </div>
-
+      <div>
         <div class="card">
           <div class="section-title">
             <i class="fas fa-edit"></i>
             Smart Pet Notes
+            <span class="mode-badge" data-feature="notes" hidden></span>
           </div>
           <div style="margin-bottom: 15px; padding: 15px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #667eea;">
             <h4 style="margin: 0 0 10px 0; color: #667eea;">
@@ -2684,7 +2697,7 @@ The AI will automatically detect the content type and provide the perfect summar
               </span>
             </div>
           </div>
-          <button class="btn btn-success" onclick="submitPetText()" id="submit-note-btn" aria-label="Submit pet note for AI processing">
+          <button class="btn btn-success" type="button" id="submit-note-btn" aria-label="Submit pet note for AI processing">
             <i class="fas fa-plus"></i>
             Add Smart Note
           </button>
@@ -2692,34 +2705,40 @@ The AI will automatically detect the content type and provide the perfect summar
           
           <!-- Results Display -->
           <div id="pet-text-output" class="output">
-            <div class="transcript">
-              <h3><i class="fas fa-quote-left"></i> Your Note</h3>
-              <div id="pet-text-content"></div>
-            </div>
-            <div class="summary">
-              <h3><i class="fas fa-brain"></i> AI Analysis</h3>
-              <div id="pet-text-type-badge" style="display: none; margin-bottom: 10px;"></div>
-              <div id="pet-text-summary"></div>
-            </div>
+            <h3><i class="fas fa-brain"></i> Saved note</h3>
+            <div id="pet-text-result"></div>
           </div>
         </div>
       </div>
 
       <div class="card">
         <div class="section-title">
+          <i class="fas fa-history"></i>
+          Recent notes
+          <button class="btn btn-secondary btn-small" id="refresh-notes-btn" type="button" style="margin-left: auto;">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+        </div>
+        <div id="notes-list" class="notes-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
           <i class="fas fa-file-medical"></i>
           Upload Medical Documents
+          <span class="mode-badge" data-feature="pdf_summary" hidden></span>
         </div>
         <form id="pdf-form">
-          <div class="file-upload" onclick="document.getElementById('pdf-file').click()">
+          <div class="file-upload" id="pdf-drop" role="button" tabindex="0" aria-label="Choose a PDF to upload">
             <div class="upload-icon">
               <i class="fas fa-cloud-upload-alt"></i>
             </div>
             <div class="upload-text">
               <strong>Click to upload</strong> or drag and drop<br>
-              PDF files only
+              PDF files only (max 10 MB)
             </div>
-            <input type="file" id="pdf-file" accept="application/pdf" required />
+            <div id="pdf-file-name" class="muted" style="margin-top: 8px;"></div>
+            <input type="file" id="pdf-file" accept="application/pdf" required hidden />
           </div>
           <button type="submit" class="btn btn-primary" style="margin-top: 20px; width: 100%;">
             <i class="fas fa-upload"></i>
@@ -2727,6 +2746,17 @@ The AI will automatically detect the content type and provide the perfect summar
           </button>
         </form>
         <div id="pdf-result" class="result-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <i class="fas fa-folder-open"></i>
+          Vet records
+          <button class="btn btn-secondary btn-small" id="refresh-records-btn" type="button" style="margin-left: auto;">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+        </div>
+        <div id="records-list" class="records-list"></div>
       </div>
     </div>
 
@@ -2741,16 +2771,17 @@ The AI will automatically detect the content type and provide the perfect summar
       <div class="card">
         <div class="section-title">
           <i class="fas fa-star"></i>
-          Today's Highlights
+          Highlights
+          <span class="mode-badge" data-feature="insights" hidden></span>
         </div>
         <div id="daily-headlines" style="min-height: 60px; padding: 20px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; color: white; margin-bottom: 20px;">
           <div style="text-align: center; color: rgba(255,255,255,0.8);">
             <i class="fas fa-clock"></i> Loading today's highlights...
           </div>
         </div>
-        <button onclick="generateDailyHeadlines()" class="btn btn-secondary">
-          <i class="fas fa-magic"></i>
-          Generate AI Headlines
+        <button id="refresh-highlights-btn" type="button" class="btn btn-secondary">
+          <i class="fas fa-sync-alt"></i>
+          Refresh Highlights
         </button>
       </div>
 
@@ -2758,7 +2789,7 @@ The AI will automatically detect the content type and provide the perfect summar
       <div class="card">
         <div class="section-title">
           <i class="fas fa-chart-line"></i>
-          Health Dashboard
+          Health Dashboard <small class="muted" style="font-weight: 400; font-size: 0.85rem;">(last 30 days)</small>
         </div>
 
         <div id="dashboard-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
@@ -2779,7 +2810,7 @@ The AI will automatically detect the content type and provide the perfect summar
           </div>
           <div class="metric-card" data-category="daily_activity">
             <div class="metric-icon">📝</div>
-            <div class="metric-label">Daily Activities</div>
+            <div class="metric-label">Activity Notes</div>
             <div class="metric-value">0</div>
           </div>
           <div class="metric-card" data-category="medical_notes">
@@ -2812,7 +2843,7 @@ The AI will automatically detect the content type and provide the perfect summar
               <canvas id="dietChart" width="400" height="200"></canvas>
             </div>
             <div class="chart-container">
-              <h4>Health Metrics Overview</h4>
+              <h4>Entries by Category</h4>
               <canvas id="overviewChart" width="400" height="200"></canvas>
             </div>
           </div>
@@ -2862,28 +2893,28 @@ The AI will automatically detect the content type and provide the perfect summar
 
         <!-- Tab Navigation -->
         <div class="tab-navigation" style="display: flex; gap: 8px; margin-bottom: 30px; border-bottom: 2px solid #f1f3f4; padding-bottom: 10px; flex-wrap: wrap;">
-          <button class="tab-btn active" onclick="showTab('diet')">
+          <button class="tab-btn active" type="button" data-tab="diet">
             <i class="fas fa-utensils"></i> Diet & Nutrition
           </button>
-          <button class="tab-btn" onclick="showTab('exercise')">
+          <button class="tab-btn" type="button" data-tab="exercise">
             <i class="fas fa-running"></i> Exercise
           </button>
-          <button class="tab-btn" onclick="showTab('medication')">
+          <button class="tab-btn" type="button" data-tab="medication">
             <i class="fas fa-pills"></i> Medication
           </button>
-          <button class="tab-btn" onclick="showTab('grooming')">
+          <button class="tab-btn" type="button" data-tab="grooming">
             <i class="fas fa-cut"></i> Grooming
           </button>
-          <button class="tab-btn" onclick="showTab('monitoring')">
+          <button class="tab-btn" type="button" data-tab="monitoring">
             <i class="fas fa-heartbeat"></i> Monitoring
           </button>
-          <button class="tab-btn" onclick="showTab('weight')">
+          <button class="tab-btn" type="button" data-tab="weight">
             <i class="fas fa-weight"></i> Weight
           </button>
-          <button class="tab-btn" onclick="showTab('sleep')">
+          <button class="tab-btn" type="button" data-tab="sleep">
             <i class="fas fa-bed"></i> Sleep
           </button>
-          <button class="tab-btn" onclick="showTab('mood')">
+          <button class="tab-btn" type="button" data-tab="mood">
             <i class="fas fa-smile"></i> Mood
           </button>
         </div>

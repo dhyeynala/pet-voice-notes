@@ -1,450 +1,218 @@
-// public/js/analytics.js: Tracking forms, dashboard metrics, recent entries and daily headlines.
+// public/js/analytics.js: tracking forms (POST /api/pets/{id}/analytics/{category}, one typed
+// body per category), dashboard metrics and the recent-entries list (GET .../analytics?days=).
+import { apiFetch, apiPath, asList, describeError } from "./api.js";
+import { el, icon, replaceChildren, showNotification, formatDateTime, parseTimestamp } from "./dom.js";
 import { state } from "./state.js";
-import { setupPdfForm } from "./records.js";
 import { updateCharts } from "./charts.js";
-import { showNotification } from "./dom.js";
 
-// Analytics form handlers
-function setupAnalyticsFormHandlers() {
-  console.log("Setting up analytics form handlers...");
-  
-  setupPdfForm();
-
-  
-  // Set default times for forms
-  const now = new Date();
-  document.getElementById("diet-time").value = now.toTimeString().slice(0, 5);
-  document.getElementById("medication-time").value = now.toTimeString().slice(0, 5);
-  document.getElementById("bowel-time").value = now.toTimeString().slice(0, 5);
-  
-  // Diet form
-  const dietForm = document.getElementById("diet-form");
-  if (dietForm) {
-    dietForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        food: document.getElementById("diet-food").value,
-        quantity: document.getElementById("diet-quantity").value,
-        time: document.getElementById("diet-time").value,
-        type: document.getElementById("diet-type").value,
-        notes: document.getElementById("diet-notes").value
-      };
-      await submitAnalyticsForm(formData, "diet");
-      dietForm.reset();
-    });
-  }
-
-  // Exercise form
-  const exerciseForm = document.getElementById("exercise-form");
-  if (exerciseForm) {
-    exerciseForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        type: document.getElementById("exercise-type").value,
-        duration: parseInt(document.getElementById("exercise-duration").value),
-        intensity: document.getElementById("exercise-intensity").value,
-        location: document.getElementById("exercise-location").value,
-        notes: document.getElementById("exercise-notes").value
-      };
-      await submitAnalyticsForm(formData, "exercise");
-      exerciseForm.reset();
-    });
-  }
-
-  // Medication form
-  const medicationForm = document.getElementById("medication-form");
-  if (medicationForm) {
-    medicationForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        name: document.getElementById("medication-name").value,
-        dosage: document.getElementById("medication-dosage").value,
-        time: document.getElementById("medication-time").value,
-        frequency: document.getElementById("medication-frequency").value,
-        purpose: document.getElementById("medication-purpose").value
-      };
-      await submitAnalyticsForm(formData, "medication");
-      medicationForm.reset();
-    });
-  }
-
-  // Grooming form
-  const groomingForm = document.getElementById("grooming-form");
-  if (groomingForm) {
-    groomingForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const selectedTypes = Array.from(document.getElementById("grooming-type").selectedOptions)
-        .map(option => option.value);
-      const formData = {
-        types: selectedTypes,
-        duration: parseInt(document.getElementById("grooming-duration").value) || 0,
-        products: document.getElementById("grooming-products").value,
-        notes: document.getElementById("grooming-notes").value
-      };
-      await submitAnalyticsForm(formData, "grooming");
-      groomingForm.reset();
-    });
-  }
-
-  // Energy form
-  const energyForm = document.getElementById("energy-form");
-  if (energyForm) {
-    energyForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        level: parseInt(document.getElementById("energy-level").value),
-        notes: document.getElementById("energy-notes").value
-      };
-      await submitAnalyticsForm(formData, "energy_levels");
-      energyForm.reset();
-    });
-  }
-
-  // Bowel form
-  const bowelForm = document.getElementById("bowel-form");
-  if (bowelForm) {
-    bowelForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        consistency: document.getElementById("bowel-consistency").value,
-        time: document.getElementById("bowel-time").value,
-        notes: document.getElementById("bowel-notes").value
-      };
-      await submitAnalyticsForm(formData, "bowel_movements");
-      bowelForm.reset();
-    });
-  }
-
-  // Exit form
-  const exitForm = document.getElementById("exit-form");
-  if (exitForm) {
-    exitForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        type: document.getElementById("exit-type").value,
-        duration: parseInt(document.getElementById("exit-duration").value) || 0,
-        destination: document.getElementById("exit-destination").value
-      };
-      await submitAnalyticsForm(formData, "exit_events");
-      exitForm.reset();
-    });
-  }
-
-  // Weight form
-  const weightForm = document.getElementById("weight-form");
-  if (weightForm) {
-    weightForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        value: parseFloat(document.getElementById("weight-value").value),
-        unit: document.getElementById("weight-unit").value,
-        method: document.getElementById("weight-method").value,
-        time: document.getElementById("weight-time").value,
-        notes: document.getElementById("weight-notes").value
-      };
-      await submitAnalyticsForm(formData, "weight");
-      weightForm.reset();
-    });
-  }
-
-  // Sleep form
-  const sleepForm = document.getElementById("sleep-form");
-  if (sleepForm) {
-    sleepForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = {
-        duration: parseFloat(document.getElementById("sleep-duration").value),
-        quality: document.getElementById("sleep-quality").value,
-        location: document.getElementById("sleep-location").value,
-        interruptions: parseInt(document.getElementById("sleep-interruptions").value) || 0,
-        notes: document.getElementById("sleep-notes").value
-      };
-      await submitAnalyticsForm(formData, "sleep");
-      sleepForm.reset();
-    });
-  }
-
-  // Mood form
-  const moodForm = document.getElementById("mood-form");
-  if (moodForm) {
-    moodForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const selectedTriggers = Array.from(document.getElementById("mood-triggers").selectedOptions)
-        .map(option => option.value);
-      const selectedBehaviors = Array.from(document.getElementById("mood-behavior").selectedOptions)
-        .map(option => option.value);
-      const formData = {
-        level: parseInt(document.getElementById("mood-level").value),
-        triggers: selectedTriggers,
-        behavior: selectedBehaviors,
-        time: document.getElementById("mood-time").value,
-        notes: document.getElementById("mood-notes").value
-      };
-      await submitAnalyticsForm(formData, "mood");
-      moodForm.reset();
-    });
-  }
-}
-
-// Tab functionality
-window.showTab = function(tabName) {
-  // Hide all tab contents
-  const tabContents = document.querySelectorAll('.tab-content');
-  tabContents.forEach(content => content.classList.remove('active'));
-  
-  // Remove active class from all tab buttons
-  const tabBtns = document.querySelectorAll('.tab-btn');
-  tabBtns.forEach(btn => btn.classList.remove('active'));
-  
-  // Show selected tab content
-  document.getElementById(`${tabName}-tab`).classList.add('active');
-  
-  // Add active class to clicked button
-  event.target.classList.add('active');
+const ICONS = {
+  diet: "🍽️",
+  exercise: "🏃",
+  medication: "💊",
+  grooming: "✨",
+  energy_levels: "⚡",
+  bowel_movements: "💩",
+  exit_events: "🚪",
+  weight: "⚖️",
+  sleep: "😴",
+  mood: "😊",
+  daily_activity: "📝",
+  medical_notes: "🏥",
+  mixed_notes: "📋",
 };
 
-// Submit analytics form data
-async function submitAnalyticsForm(formData, category) {
+/** Entry fields may be top-level or nested under data/fields depending on the backend version. */
+export function entryFields(entry) {
+  return { ...(entry.data || {}), ...(entry.fields || {}), ...entry };
+}
+
+export function entryTime(entry) {
+  return entry.timestamp || entry.created_at || entry.at || entry.logged_at || null;
+}
+
+const val = (id) => document.getElementById(id).value.trim();
+const selected = (id) => Array.from(document.getElementById(id).selectedOptions).map((o) => o.value);
+const int = (id) => (val(id) === "" ? undefined : Number.parseInt(val(id), 10));
+const num = (id) => (val(id) === "" ? undefined : Number(val(id)));
+
+/** Drop empty optional values so the typed schemas (extra="forbid") only see what was entered. */
+export function compact(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (typeof v === "number" && !Number.isFinite(v)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+/** form id -> [category, builder]. Field names match the backend's per-category schemas. */
+const FORMS = {
+  "diet-form": ["diet", () => ({ food: val("diet-food"), quantity: val("diet-quantity"), time: val("diet-time"), type: val("diet-type"), notes: val("diet-notes") })],
+  "exercise-form": [
+    "exercise",
+    () => ({ type: val("exercise-type"), duration: int("exercise-duration"), intensity: val("exercise-intensity"), location: val("exercise-location"), notes: val("exercise-notes") }),
+  ],
+  "medication-form": [
+    "medication",
+    () => ({ name: val("medication-name"), dosage: val("medication-dosage"), time: val("medication-time"), frequency: val("medication-frequency"), purpose: val("medication-purpose") }),
+  ],
+  "grooming-form": ["grooming", () => ({ types: selected("grooming-type"), duration: int("grooming-duration"), products: val("grooming-products"), notes: val("grooming-notes") })],
+  "energy-form": ["energy_levels", () => ({ level: int("energy-level"), notes: val("energy-notes") })],
+  "bowel-form": ["bowel_movements", () => ({ consistency: val("bowel-consistency"), time: val("bowel-time"), notes: val("bowel-notes") })],
+  "exit-form": ["exit_events", () => ({ type: val("exit-type"), duration: int("exit-duration"), destination: val("exit-destination") })],
+  "weight-form": ["weight", () => ({ value: num("weight-value"), unit: val("weight-unit"), method: val("weight-method"), time: val("weight-time"), notes: val("weight-notes") })],
+  "sleep-form": [
+    "sleep",
+    () => ({ duration: num("sleep-duration"), quality: val("sleep-quality"), location: val("sleep-location"), interruptions: int("sleep-interruptions"), notes: val("sleep-notes") }),
+  ],
+  "mood-form": ["mood", () => ({ level: int("mood-level"), triggers: selected("mood-triggers"), behavior: selected("mood-behavior"), time: val("mood-time"), notes: val("mood-notes") })],
+};
+
+function setDefaultTimes() {
+  const now = new Date().toTimeString().slice(0, 5);
+  for (const id of ["diet-time", "medication-time", "bowel-time", "weight-time", "mood-time"]) {
+    const input = document.getElementById(id);
+    if (input && !input.value) input.value = now;
+  }
+}
+
+export async function submitAnalyticsForm(data, category) {
   if (!state.selectedPet) {
-    showNotification("Please select a pet first", 'error');
-    return;
+    showNotification("Please select a pet first", "error");
+    return false;
   }
-
   try {
-    const response = await fetch(`/api/pets/${state.selectedPet}/analytics/${category}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-
-      body: JSON.stringify(formData)
-    });
-
-    if (response.ok) {
-      showNotification(`${category.replace('_', ' ')} data saved successfully!`, 'success');
-      await loadDashboard();
-      await loadRecentEntries();
-      await updateCharts();
-    } else {
-      showNotification('Failed to save data', 'error');
-    }
-  } catch (error) {
-    console.error('Error submitting form:', error);
-    showNotification('Error saving data', 'error');
+    await apiFetch(apiPath("pets", state.selectedPet, "analytics", category), { json: data });
+    showNotification(`${category.replace(/_/g, " ")} entry saved`, "success");
+    loadDashboard();
+    loadRecentEntries();
+    updateCharts();
+    return true;
+  } catch (err) {
+    showNotification(`Could not save ${category.replace(/_/g, " ")}: ${describeError(err)}`, "error", 6000);
+    return false;
   }
 }
 
-// Load analytics dashboard
-async function loadDashboard() {
-  if (!state.selectedPet) return;
+export function setupAnalyticsFormHandlers() {
+  setDefaultTimes();
+  for (const [formId, [category, build]] of Object.entries(FORMS)) {
+    const form = document.getElementById(formId);
+    if (!form) continue;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.disabled = true;
+      const ok = await submitAnalyticsForm(compact(build()), category);
+      if (button) button.disabled = false;
+      if (ok) {
+        form.reset();
+        setDefaultTimes();
+      }
+    });
+  }
+  document.querySelectorAll(".tab-btn[data-tab]").forEach((btn) => btn.addEventListener("click", () => showTab(btn.dataset.tab, btn)));
+}
 
-  // Show loading state on metric cards
-  const metricCards = document.querySelectorAll('.metric-card');
-  metricCards.forEach(card => {
-    const valueElement = card.querySelector('.metric-value');
-    if (valueElement) {
-      valueElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    }
+export function showTab(tabName, button) {
+  document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+  document.getElementById(`${tabName}-tab`).classList.add("active");
+  if (button) button.classList.add("active");
+}
+
+async function fetchEntries(days, category) {
+  return asList(await apiFetch(apiPath("pets", state.selectedPet, "analytics"), { query: { days, category } }));
+}
+
+/** Dashboard metric cards: analytics entries (30 days) plus note kinds from the notes list. */
+export async function loadDashboard() {
+  if (!state.selectedPet) return;
+  const cards = document.querySelectorAll(".metric-card");
+  cards.forEach((card) => replaceChildren(card.querySelector(".metric-value"), icon("fas fa-spinner fa-spin")));
+  const [entriesRes, notesRes] = await Promise.allSettled([fetchEntries(30), apiFetch(apiPath("pets", state.selectedPet, "notes"), { query: { limit: 200 } })]);
+  const entries = entriesRes.status === "fulfilled" ? entriesRes.value.map(entryFields) : [];
+  const since = Date.now() - 30 * 86400000;
+  const notes = notesRes.status === "fulfilled" ? asList(notesRes.value).filter((n) => (parseTimestamp(n.created_at) || new Date()).getTime() >= since) : [];
+  if (entriesRes.status === "rejected") showNotification(`Could not load analytics: ${describeError(entriesRes.reason)}`, "error");
+
+  const count = (cat) => entries.filter((e) => e.category === cat).length;
+  const energy = entries.filter((e) => e.category === "energy_levels" && Number.isFinite(Number(e.level))).map((e) => Number(e.level));
+  const values = {
+    diet: count("diet"),
+    exercise: count("exercise"),
+    medication: count("medication"),
+    daily_activity: notes.filter((n) => n.kind === "DAILY_ACTIVITY" || n.kind === "MIXED").length,
+    medical_notes: notes.filter((n) => n.kind === "MEDICAL" || n.kind === "MIXED").length,
+    energy_levels: energy.length ? (energy.reduce((a, b) => a + b, 0) / energy.length).toFixed(1) : "–",
+  };
+  cards.forEach((card) => {
+    const v = values[card.dataset.category];
+    card.querySelector(".metric-value").textContent = v === undefined ? "–" : String(v);
   });
+}
 
-  try {
-    const response = await fetch(`/api/pets/${state.selectedPet}/analytics/summary`);
-    const data = await response.json();
-    const summary = data.summary || {};
-    
-    // Update metric cards
-    metricCards.forEach(card => {
-      const category = card.dataset.category;
-      const categoryData = summary[category] || { total: 0, this_week: 0, avg_daily: 0 };
-      
-      if (category === 'energy_levels') {
-        // Calculate average energy level
-        const recentEntries = categoryData.recent_entries || [];
-        const avgEnergy = recentEntries.length > 0 
-          ? recentEntries.reduce((sum, entry) => sum + (entry.level || 3), 0) / recentEntries.length
-          : 0;
-        card.querySelector('.metric-value').textContent = avgEnergy.toFixed(1);
-      } else {
-        card.querySelector('.metric-value').textContent = categoryData.total;
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error loading dashboard:', error);
-    // Reset loading states on error
-    const metricCards = document.querySelectorAll('.metric-card');
-    metricCards.forEach(card => {
-      const valueElement = card.querySelector('.metric-value');
-      if (valueElement && valueElement.innerHTML.includes('fa-spinner')) {
-        valueElement.textContent = '0';
-      }
-    });
+export function getEntryDescription(entry) {
+  const e = entryFields(entry);
+  const join = (a) => (Array.isArray(a) && a.length ? a.join(", ") : "");
+  switch (e.category) {
+    case "diet":
+      return `${e.food || "Food"} - ${e.type || "meal"}`;
+    case "exercise":
+      return `${e.type || "Exercise"}${e.duration ? ` for ${e.duration} minutes` : ""}`;
+    case "medication":
+      return `${e.name || "Medication"}${e.dosage ? ` - ${e.dosage}` : ""}`;
+    case "grooming":
+      return join(e.types) || "Grooming";
+    case "energy_levels":
+      return e.level ? `Energy level: ${e.level}/5` : "Energy logged";
+    case "bowel_movements":
+      return `${e.consistency || "Normal"} consistency`;
+    case "exit_events":
+      return `${e.type || "Exit"}${e.destination ? ` - ${e.destination}` : ""}`;
+    case "weight":
+      return e.value ? `Weight: ${e.value} ${e.unit || "lbs"}` : "Weight logged";
+    case "sleep":
+      return `Sleep${e.duration ? `: ${e.duration} hours` : ""}${e.quality ? ` - ${e.quality} quality` : ""}`;
+    case "mood":
+      return `Mood${e.level ? ` level: ${e.level}/5` : ""}${join(e.behavior) ? ` - ${join(e.behavior)}` : ""}`;
+    default:
+      return e.summary || e.text || e.notes || "Activity logged";
   }
 }
 
-// Load recent entries
-async function loadRecentEntries() {
+export async function loadRecentEntries() {
   if (!state.selectedPet) return;
-
+  const container = document.getElementById("recent-entries");
   try {
-    const response = await fetch(`/api/pets/${state.selectedPet}/analytics?days=7`);
-    const data = await response.json();
-    const entries = data.data || [];
-    
-    const container = document.getElementById('recent-entries');
-    
+    const entries = (await fetchEntries(7)).map(entryFields);
     if (entries.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-          <i class="fas fa-clock"></i>
-          <p>No recent entries. Start tracking your pet's activities above!</p>
-        </div>
-      `;
+      replaceChildren(
+        container,
+        el("div", { style: "text-align: center; color: #7f8c8d; padding: 40px;" }, icon("fas fa-clock"), el("p", { text: "No entries in the last 7 days. Start tracking above!" }))
+      );
       return;
     }
-
-    // Sort by timestamp (most recent first)
-    entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    const html = entries.slice(0, 10).map(entry => {
-      const date = new Date(entry.timestamp);
-      const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      
-      const icons = {
-        diet: '🍽️',
-        exercise: '🏃',
-        medication: '💊',
-        grooming: '✨',
-        energy_levels: '⚡',
-        bowel_movements: '💩',
-        exit_events: '🚪',
-        weight: '⚖️',
-        sleep: '😴',
-        mood: '😊',
-        daily_activity: '📝',
-        medical_notes: '🏥',
-        mixed_notes: '📋'
-      };
-      
-      const description = getEntryDescription(entry);
-      
-      return `
-        <div class="recent-entry">
-          <div class="entry-content">
-            <div class="entry-category">${entry.category.replace('_', ' ')}</div>
-            <div class="entry-description">${description}</div>
-            <div class="entry-time">${timeStr}</div>
-          </div>
-          <div class="entry-icon">${icons[entry.category] || '📝'}</div>
-        </div>
-      `;
-    }).join('');
-    
-    container.innerHTML = html;
-    
-  } catch (error) {
-    console.error('Error loading recent entries:', error);
+    entries.sort((a, b) => (parseTimestamp(entryTime(b)) || 0) - (parseTimestamp(entryTime(a)) || 0));
+    replaceChildren(
+      container,
+      entries.slice(0, 10).map((entry) =>
+        el(
+          "div",
+          { class: "recent-entry" },
+          el(
+            "div",
+            { class: "entry-content" },
+            el("div", { class: "entry-category", text: String(entry.category || "entry").replace(/_/g, " ") }),
+            el("div", { class: "entry-description", text: getEntryDescription(entry) }),
+            el("div", { class: "entry-time", text: formatDateTime(entryTime(entry)) })
+          ),
+          el("div", { class: "entry-icon", text: ICONS[entry.category] || "📝" })
+        )
+      )
+    );
+  } catch (err) {
+    replaceChildren(container, el("div", { class: "status-message error", style: "display:block", text: `Could not load entries: ${describeError(err)}` }));
   }
 }
-
-function getEntryDescription(entry) {
-  switch (entry.category) {
-    case 'diet':
-      return `${entry.food || 'Food'} - ${entry.type || 'meal'}`;
-    case 'exercise':
-      return `${entry.type || 'Exercise'} for ${entry.duration || 0} minutes`;
-    case 'medication':
-      return `${entry.name || 'Medication'} - ${entry.dosage || ''}`;
-    case 'grooming':
-      return `${Array.isArray(entry.types) ? entry.types.join(', ') : 'Grooming'}`;
-    case 'energy_levels':
-      return `Energy level: ${entry.level || 3}/5`;
-    case 'bowel_movements':
-      return `${entry.consistency || 'Normal'} consistency`;
-    case 'exit_events':
-      return `${entry.type || 'Exit'} - ${entry.destination || ''}`;
-    case 'weight':
-      return `Weight: ${entry.value || 0} ${entry.unit || 'lbs'}`;
-    case 'sleep':
-      return `Sleep: ${entry.duration || 0} hours - ${entry.quality || 'good'} quality`;
-    case 'mood':
-      return `Mood level: ${entry.level || 3}/5 - ${Array.isArray(entry.behavior) ? entry.behavior.join(', ') : 'mood logged'}`;
-    case 'daily_activity':
-      // Handle voice notes and daily activities
-      if (entry.source === 'voice_note') {
-        return `Voice note: ${entry.summary || entry.transcript || 'Daily activity recorded'}`;
-      } else if (entry.source === 'text_input') {
-        return `Text note: ${entry.summary || entry.input || 'Daily activity logged'}`;
-      }
-      return entry.summary || entry.notes || 'Daily activity logged';
-    case 'medical_notes':
-      // Handle medical notes from text input
-      if (entry.source === 'text_input') {
-        return `Medical note: ${entry.summary || entry.input || 'Medical information recorded'}`;
-      }
-      return entry.summary || entry.notes || 'Medical note logged';
-    case 'mixed_notes':
-      // Handle mixed content notes
-      if (entry.source === 'text_input') {
-        return `Mixed note: ${entry.summary || entry.input || 'Mixed content recorded'}`;
-      }
-      return entry.summary || entry.notes || 'Mixed content logged';
-    default:
-      return entry.summary || entry.notes || 'Activity logged';
-  }
-}
-
-window.generateDailyHeadlines = async function() {
-  if (!state.selectedPet) {
-    showNotification("Please select a pet first", 'error');
-    return;
-  }
-
-  const headlinesContainer = document.getElementById('daily-headlines');
-  headlinesContainer.innerHTML = `
-    <div style="text-align: center; color: rgba(255,255,255,0.8);">
-      <i class="fas fa-spinner fa-spin"></i> Generating AI headlines...
-    </div>
-  `;
-
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const response = await fetch(`/api/pets/${state.selectedPet}/daily_routine`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: today })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const headlines = data.headlines || [];
-      
-      if (headlines.length === 0) {
-        headlinesContainer.innerHTML = `
-          <div style="text-align: center; color: rgba(255,255,255,0.8);">
-            No activities recorded for today. Start tracking to see AI-generated headlines!
-          </div>
-        `;
-        return;
-      }
-      
-      const headlinesHtml = headlines.map(headline => `
-        <div class="daily-headline">
-          ${headline}
-        </div>
-      `).join('');
-      
-      headlinesContainer.innerHTML = headlinesHtml;
-      
-    } else {
-      throw new Error('Failed to generate headlines');
-    }
-  } catch (error) {
-    console.error('Error generating headlines:', error);
-    headlinesContainer.innerHTML = `
-      <div style="text-align: center; color: rgba(255,255,255,0.8);">
-        <i class="fas fa-exclamation-triangle"></i> Error generating headlines
-      </div>
-    `;
-  }
-};
-
-export { setupAnalyticsFormHandlers, submitAnalyticsForm, loadDashboard, loadRecentEntries, getEntryDescription };
