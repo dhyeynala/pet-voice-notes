@@ -32,8 +32,11 @@ from petpulse.auth import (  # noqa: E402
 )
 from petpulse.deps import get_blobs, get_settings, get_store  # noqa: E402
 from petpulse.routers import analytics as analytics_router  # noqa: E402
+from petpulse.routers import assistant as assistant_router  # noqa: E402
 from petpulse.routers import demo as demo_router  # noqa: E402
 from petpulse.routers import health as health_router  # noqa: E402
+from petpulse.routers import insights as insights_router  # noqa: E402
+from petpulse.routers import notes as notes_router  # noqa: E402
 from petpulse.routers import pets as pets_router  # noqa: E402
 from petpulse.routers import records as records_router  # noqa: E402
 
@@ -962,6 +965,10 @@ app.include_router(demo_router.router)
 app.include_router(pets_router.router)
 app.include_router(records_router.router)
 app.include_router(analytics_router.router)
+# Track C. Note: the legacy POST /api/pets/{pet_id}/chat above still matches first until it is removed.
+app.include_router(notes_router.router)
+app.include_router(assistant_router.router)
+app.include_router(insights_router.router)
 
 
 # Serve index last to avoid route shadowing
