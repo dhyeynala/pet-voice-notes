@@ -8,10 +8,23 @@ import { featureMode } from "./banner.js";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+const STATUS_LABELS = {
+  summarized: "summarized",
+  no_text: "no text layer",
+  needs_ocr: "no text layer",
+  summary_failed: "summary failed",
+};
+
+function noSummaryText(status) {
+  if (status === "no_text" || status === "needs_ocr") return "No text layer found (scanned PDF), so there is no summary.";
+  if (status === "summary_failed") return "The summary could not be generated. The PDF itself was saved and can be downloaded.";
+  return "No summary available.";
+}
+
 function renderRecord(record) {
   const download = el("button", { type: "button", class: "btn btn-secondary btn-small" }, icon("fas fa-download"), " Download");
   download.addEventListener("click", () => downloadRecord(record, download));
-  const meta = [record.pages ? `${record.pages} page${record.pages === 1 ? "" : "s"}` : null, record.status, formatDateTime(record.created_at)]
+  const meta = [record.pages ? `${record.pages} page${record.pages === 1 ? "" : "s"}` : null, STATUS_LABELS[record.status] || record.status, formatDateTime(record.created_at)]
     .filter(Boolean)
     .join(" · ");
   return el(
@@ -26,7 +39,7 @@ function renderRecord(record) {
           el("strong", { text: featureMode("pdf_summary") === "demo" ? "Summary (simulated): " : "Summary: " }),
           el("span", { text: record.summary })
         )
-      : el("div", { class: "muted", text: record.status === "needs_ocr" ? "No text layer found (scanned PDF), so there is no summary." : "No summary available." })
+      : el("div", { class: "muted", text: noSummaryText(record.status) })
   );
 }
 

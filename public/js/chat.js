@@ -116,7 +116,8 @@ export async function sendChatMessage() {
     if (!state.insightsLoaded) loadInsights();
   } catch (err) {
     removeLoadingMessage();
-    addChatMessage(`Sorry, I couldn't answer that: ${describeError(err)}`, "assistant");
+    const why = err && err.status === 503 ? "the assistant is unavailable right now. Please try again in a moment" : describeError(err);
+    addChatMessage(`Sorry, I couldn't answer that: ${why}`, "assistant");
   } finally {
     hideLoadingState(sendButton);
     input.disabled = false;

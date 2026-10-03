@@ -57,7 +57,8 @@ export async function loadInsights() {
     replaceChildren(box, renderInsights((await fetchInsights()) || {}));
   } catch (err) {
     state.insightsLoaded = false;
-    replaceChildren(box, el("div", { text: `Insights are unavailable: ${describeError(err)}` }));
+    const why = err && err.status === 503 ? "the insights service is unavailable right now. Try Refresh in a moment." : describeError(err);
+    replaceChildren(box, el("div", { text: `Insights are unavailable: ${why}` }));
   }
 }
 
