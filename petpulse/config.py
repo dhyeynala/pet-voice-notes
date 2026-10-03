@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[SecretStr] = None
     google_application_credentials: Optional[str] = None
     auth_secret: Optional[SecretStr] = None  # generated at startup when unset (auth track)
+    auth_token_ttl_minutes: int = 720  # demo login token lifetime
     seed_on_start: bool = True
     allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:8000"]
     live_call_cap: int = 6
@@ -89,6 +90,10 @@ class Settings(BaseSettings):
             problems.append("STT_PROVIDER=google requires GOOGLE_APPLICATION_CREDENTIALS (path to a service-account JSON).")
         if self.live_call_cap < 0:
             problems.append("LIVE_CALL_CAP must be >= 0.")
+        if self.auth_token_ttl_minutes <= 0:
+            problems.append("AUTH_TOKEN_TTL_MINUTES must be > 0.")
+        if "*" in self.allowed_origins:
+            problems.append("ALLOWED_ORIGINS must list explicit origins; '*' is not allowed.")
         if problems:
             raise ConfigError("Invalid PetPulse configuration:\n  - " + "\n  - ".join(problems))
 
