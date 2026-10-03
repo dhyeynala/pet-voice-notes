@@ -9,8 +9,9 @@ import os
 import tempfile
 import threading
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Iterator, Optional, Sequence
 
 from petpulse.store.base import (
     ArrayUnion,
@@ -90,10 +91,34 @@ class MemoryStore:
     def __init__(self, data: Optional[dict[str, dict[str, dict[str, Any]]]] = None) -> None:
         self._lock = threading.RLock()
         self._collections: dict[str, dict[str, dict[str, Any]]] = copy.deepcopy(data) if data else {}
+        self._batch_depth = 0
+        self._batch_dirty = False
 
     # ------------------------------------------------------------------ hooks
     def _changed(self) -> None:
         """Called after every successful write. ``JsonFileStore`` persists here."""
+
+    def _notify(self) -> None:
+        if self._batch_depth:
+            self._batch_dirty = True
+        else:
+            self._changed()
+
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """Group many writes into one ``_changed()`` call (one file write for ``JsonFileStore``).
+
+        Holds the store lock for the duration, so other threads see all of the batch or none.
+        """
+        with self._lock:
+            self._batch_depth += 1
+            try:
+                yield
+            finally:
+                self._batch_depth -= 1
+                if not self._batch_depth and self._batch_dirty:
+                    self._batch_dirty = False
+                    self._changed()
 
     # ------------------------------------------------------------------ Store API
     def get(self, path: str) -> Optional[dict[str, Any]]:
@@ -111,7 +136,7 @@ class MemoryStore:
             new_doc = {**existing, **resolved} if merge else resolved
             _check_json(new_doc)
             docs[doc_id] = copy.deepcopy(new_doc)
-            self._changed()
+            self._notify()
 
     def update(self, path: str, data: dict[str, Any]) -> None:
         """Merge into an existing document; raise ``NotFound`` if it does not exist."""
@@ -151,7 +176,7 @@ class MemoryStore:
         coll, doc_id = document_parts(path)
         with self._lock:
             if self._collections.get(coll, {}).pop(doc_id, None) is not None:
-                self._changed()
+                self._notify()
 
     # ------------------------------------------------------------------ helpers
     def collections(self) -> list[str]:
@@ -165,7 +190,7 @@ class MemoryStore:
     def clear(self) -> None:
         with self._lock:
             self._collections.clear()
-            self._changed()
+            self._notify()
 
 
 class JsonFileStore(MemoryStore):
