@@ -1,19 +1,68 @@
 # pdf_parser.py
+"""PDF text extraction and the (legacy-prompt) record summary.
 
-import pymupdf as fitz
-from datetime import datetime
-from firestore_store import store_pdf_summary
+Used by ``petpulse.routers.records`` until the LLM track's PDF service replaces it. PDFs are
+opened from memory only: nothing is written to a client-chosen path (review C3).
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Any, Optional
+
+import pymupdf
+
 from petpulse.deps import get_llm
 from petpulse.providers.llm import LegacyTask
 
+logger = logging.getLogger(__name__)
 
-def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url, blob_key=None):
-    # Step 1: Extract PDF text
-    doc = fitz.open(file_path)
-    text = "\n".join([page.get_text() for page in doc])
-    doc.close()
+PDF_MAGIC = b"%PDF-"
 
-    # Step 2: Summarize using GPT-4o (new SDK style)
+
+class PdfError(ValueError):
+    """The bytes are not a readable PDF (corrupt, encrypted, or over the page limit)."""
+
+
+@dataclass(frozen=True)
+class PdfText:
+    text: str
+    pages: int
+
+
+def extract_pdf_text(data: bytes, max_pages: int) -> PdfText:
+    """Open ``data`` in memory with PyMuPDF and return its text and page count."""
+    try:
+        # PyMuPDF's Document is only partially annotated; treat it as Any.
+        doc: Any = pymupdf.open(stream=data, filetype="pdf")  # type: ignore[no-untyped-call]
+    except (RuntimeError, ValueError) as exc:  # pymupdf.FileDataError is a RuntimeError
+        raise PdfError("file is not a readable PDF") from exc
+    try:
+        if doc.needs_pass:
+            raise PdfError("encrypted PDFs are not supported")
+        pages = doc.page_count
+        if pages < 1:
+            raise PdfError("PDF has no pages")
+        if pages > max_pages:
+            raise PdfError(f"PDF has {pages} pages; the limit is {max_pages}")
+        try:
+            text = "\n".join(str(page.get_text()) for page in doc)
+        except (RuntimeError, ValueError) as exc:
+            raise PdfError("could not read the PDF's text") from exc
+    finally:
+        doc.close()
+    return PdfText(text=text, pages=pages)
+
+
+def summarize_pdf_text(text: str) -> Optional[str]:
+    """Summarize extracted record text. Returns ``None`` when no summary could be generated.
+
+    A failure is reported as ``None`` (the caller marks the record), never stored as if it
+    were a summary (review H2/M12).
+    """
+    if not text.strip():
+        return None
     try:
         response = get_llm().legacy_chat(
             LegacyTask.PDF_SUMMARY,
@@ -31,13 +80,9 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url, 
             ],
             temperature=0.5,
         )
-        summary = response.choices[0].message.content.strip()
-    except Exception as e:
-        print("OpenAI error:", e)
-        summary = "Summary could not be generated due to OpenAI error."
-
-    # Step 3: Store in Firestore
-    timestamp = datetime.utcnow().isoformat()
-    store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url, blob_key=blob_key)
-
-    return {"summary": summary}
+        content = response.choices[0].message.content
+    except Exception:  # provider outage, timeout, unsupported task: no summary, no fake text
+        logger.exception("PDF summary failed")
+        return None
+    summary = content.strip() if isinstance(content, str) else ""
+    return summary or None

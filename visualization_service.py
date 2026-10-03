@@ -4,10 +4,54 @@ Generates chart configurations and data processing for pet health visualizations
 """
 
 import json
-from datetime import datetime, timedelta
+import logging
+import math
+import re
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict, Counter
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 import statistics
+
+logger = logging.getLogger(__name__)
+
+# _calculate_trend: below this many dated entries in the window there is no trend to report.
+TREND_MIN_ENTRIES = 4
+# ...and one half of the window must have at least this many times the other's entries.
+TREND_RATIO = 1.25
+
+
+def parse_timestamp(value: Any) -> Optional[datetime]:
+    """ISO 8601 -> naive UTC datetime; ``None`` for missing or malformed values (review M3)."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def to_number(value: Any) -> Optional[float]:
+    """A finite number from a stored field; ``None`` if missing or malformed (review M3/M4)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _level(value: Any) -> Optional[int]:
+    number = to_number(value)
+    return int(number) if number is not None and 1 <= number <= 5 and number == int(number) else None
+
+
+def _log_skipped(where: str, skipped: int) -> None:
+    if skipped:
+        logger.warning("%s: skipped %d row(s) with a missing or invalid value", where, skipped)
 
 
 class PetVisualizationService:
@@ -37,12 +81,17 @@ class PetVisualizationService:
             date = (today - timedelta(days=i)).strftime('%Y-%m-%d')
             daily_counts[date] = 0
 
-        # Count activities per day
+        # Count activities per day (rows without a valid timestamp are skipped, not fatal)
+        skipped = 0
         for entry in analytics_data:
-            timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None:
+                skipped += 1
+                continue
             date = timestamp.strftime('%Y-%m-%d')
             if date in daily_counts:
                 daily_counts[date] += 1
+        _log_skipped('weekly_activity', skipped)
 
         # Prepare chart data
         dates = sorted(daily_counts.keys())
@@ -90,23 +139,21 @@ class PetVisualizationService:
 
         # Process analytics data
         for entry in analytics_data:
-            try:
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
-                date = timestamp.strftime('%Y-%m-%d')
-
-                if date in daily_data:
-                    # Count activities (exercise, diet, social interactions, etc.)
-                    if entry.get('category') in ['exercise', 'diet', 'social_interaction', 'grooming']:
-                        daily_data[date]['activities'] += 1
-
-                    # Sum energy levels
-                    if entry.get('category') == 'energy_levels':
-                        level = entry.get('level', 0)
-                        if isinstance(level, (int, float)) and 1 <= level <= 5:
-                            daily_data[date]['energy_sum'] += level
-                            daily_data[date]['energy_count'] += 1
-            except:
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None:
                 continue
+            date = timestamp.strftime('%Y-%m-%d')
+            if date in daily_data:
+                # Count activities (exercise, diet, social interactions, etc.)
+                if entry.get('category') in ['exercise', 'diet', 'social_interaction', 'grooming']:
+                    daily_data[date]['activities'] += 1
+
+                # Sum energy levels
+                if entry.get('category') == 'energy_levels':
+                    level = _level(entry.get('level'))
+                    if level is not None:
+                        daily_data[date]['energy_sum'] += level
+                        daily_data[date]['energy_count'] += 1
 
         # Calculate averages and prepare data
         dates = []
@@ -191,9 +238,14 @@ class PetVisualizationService:
         energy_entries = [entry for entry in analytics_data if entry.get('category') == 'energy_levels']
         energy_counts = Counter()
 
+        skipped = 0
         for entry in energy_entries:
-            level = int(entry.get('level', 3))
+            level = _level(entry.get('level'))  # a missing level is not assumed to be "Normal (3)"
+            if level is None:
+                skipped += 1
+                continue
             energy_counts[level] += 1
+        _log_skipped('energy_distribution', skipped)
 
         # Prepare data for all energy levels (1-5)
         labels = ['Very Low (1)', 'Low (2)', 'Normal (3)', 'High (4)', 'Very High (5)']
@@ -321,12 +373,13 @@ class PetVisualizationService:
         durations = []
 
         for entry in exercise_entries:
-            duration = int(entry.get('duration', 0))
+            number = to_number(entry.get('duration'))
+            duration = int(number) if number is not None else 0
 
-            # For daily activities from voice notes, try to extract duration
+            # For daily activities from voice notes, try to extract a stated duration.
+            # No duration stated means no data point: nothing is imputed (review H2).
             if duration == 0 and entry.get('category') == 'daily_activity':
-                text = (entry.get('summary', '') + ' ' + entry.get('transcript', '')).lower()
-                import re
+                text = (str(entry.get('summary') or '') + ' ' + str(entry.get('transcript') or '')).lower()
 
                 # Look for patterns like "30 minute", "1 hour", etc.
                 minute_match = re.search(r'(\d+)\s*(?:minute|min)', text)
@@ -335,8 +388,6 @@ class PetVisualizationService:
                     duration = int(minute_match.group(1))
                 elif hour_match:
                     duration = int(hour_match.group(1)) * 60
-                else:
-                    duration = 15  # Default duration for daily activities
 
             if duration > 0:
                 durations.append(duration)
@@ -356,7 +407,7 @@ class PetVisualizationService:
         bin_labels = []
         current = min_duration
 
-        while current < max_duration:
+        while current < max_duration or not bins:  # at least one bin, also when min == max
             next_bin = current + bin_size
             bins.append((current, next_bin))
             bin_labels.append(f'{current}-{next_bin}min')
@@ -411,7 +462,9 @@ class PetVisualizationService:
 
         # Count actual doses
         for entry in medication_entries:
-            timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None:
+                continue
             date = timestamp.strftime('%Y-%m-%d')
             if date in daily_doses:
                 daily_doses[date] += 1
@@ -464,12 +517,9 @@ class PetVisualizationService:
 
         # Count activities by hour
         for entry in analytics_data:
-            try:
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
-                hour = timestamp.hour
-                hour_activity[hour] += 1
-            except:
-                continue
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is not None:
+                hour_activity[timestamp.hour] += 1
 
         # Convert to format suitable for heatmap
         hours = list(range(24))
@@ -517,8 +567,10 @@ class PetVisualizationService:
 
         # Exercise metrics
         if categories['exercise']:
-            total_duration = sum(int(entry.get('duration', 0)) for entry in categories['exercise'])
-            avg_duration = total_duration / len(categories['exercise'])
+            # Average over sessions that recorded a duration; missing ones are not counted as 0.
+            durations = [d for d in (to_number(e.get('duration')) for e in categories['exercise']) if d is not None]
+            total_duration = int(sum(durations))
+            avg_duration = total_duration / len(durations) if durations else 0
             metrics['exercise'] = {
                 'total_sessions': len(categories['exercise']),
                 'total_duration': total_duration,
@@ -528,8 +580,8 @@ class PetVisualizationService:
             }
 
         # Energy metrics
-        if categories['energy_levels']:
-            levels = [int(entry.get('level', 3)) for entry in categories['energy_levels']]
+        levels = [lvl for lvl in (_level(e.get('level')) for e in categories['energy_levels']) if lvl is not None]
+        if levels:
             avg_energy = statistics.mean(levels)
             metrics['energy'] = {
                 'total_recordings': len(levels),
@@ -551,22 +603,37 @@ class PetVisualizationService:
 
         return metrics
 
-    def _calculate_trend(self, entries: List[Dict], days: int) -> str:
-        """Calculate trend for a category"""
-        if len(entries) < 2:
-            return 'stable'
+    def _calculate_trend(self, entries: List[Dict], days: int, now: Optional[datetime] = None) -> str:
+        """Compare how many entries fall in the first vs the second half of the last ``days`` days.
 
-        # Split into first and second half
-        mid_point = len(entries) // 2
-        first_half = entries[:mid_point]
-        second_half = entries[mid_point:]
+        Returns ``increasing`` / ``decreasing`` when one half has at least ``TREND_RATIO`` times
+        the entries of the other, ``stable`` otherwise, and ``insufficient_data`` with fewer
+        than ``TREND_MIN_ENTRIES`` dated entries in the window (review M2). Entries without a
+        valid timestamp are ignored.
+        """
+        if days <= 0:
+            return 'insufficient_data'
+        end = now or datetime.now(timezone.utc).replace(tzinfo=None)
+        start = end - timedelta(days=days)
+        midpoint = start + (end - start) / 2
 
-        if len(second_half) > len(first_half):
+        first = second = 0
+        for entry in entries:
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None or not start <= timestamp <= end:
+                continue
+            if timestamp < midpoint:
+                first += 1
+            else:
+                second += 1
+
+        if first + second < TREND_MIN_ENTRIES:
+            return 'insufficient_data'
+        if second >= first * TREND_RATIO:
             return 'increasing'
-        elif len(second_half) < len(first_half):
+        if first >= second * TREND_RATIO:
             return 'decreasing'
-        else:
-            return 'stable'
+        return 'stable'
 
     def _calculate_energy_trend(self, levels: List[int]) -> str:
         """Calculate energy trend"""
@@ -602,7 +669,7 @@ class PetVisualizationService:
             return self._empty_chart_config("No medical records available")
 
         # Sort by timestamp
-        medical_entries.sort(key=lambda x: x.get('timestamp', ''))
+        medical_entries.sort(key=lambda x: str(x.get('timestamp') or ''))
 
         # Prepare timeline data
         dates = []
@@ -610,14 +677,12 @@ class PetVisualizationService:
         categories = []
 
         for entry in medical_entries[-10:]:  # Last 10 events
-            try:
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
-                date_str = timestamp.strftime('%m/%d')
-                dates.append(date_str)
-                events.append(entry.get('summary', entry.get('notes', 'Health Event'))[:30])
-                categories.append(entry.get('category', 'medical'))
-            except:
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None:
                 continue
+            dates.append(timestamp.strftime('%m/%d'))
+            events.append(str(entry.get('summary') or entry.get('notes') or 'Health Event')[:30])
+            categories.append(entry.get('category', 'medical'))
 
         return {
             'type': 'line',
@@ -843,12 +908,9 @@ class PetVisualizationService:
             filtered_data = []
 
             for entry in analytics_data:
-                try:
-                    timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
-                    if timestamp >= cutoff_date:
-                        filtered_data.append(entry)
-                except:
-                    continue
+                timestamp = parse_timestamp(entry.get('timestamp'))
+                if timestamp is not None and timestamp >= cutoff_date:
+                    filtered_data.append(entry)
 
             # Apply filters
             if filters:
@@ -907,50 +969,35 @@ class PetVisualizationService:
                 else:
                     result[x_val].append(y_val)
 
-            except Exception as e:
+            except (TypeError, ValueError, AttributeError):
                 continue
 
         # Apply aggregation
         return self._apply_aggregation(result, aggregation, group_by is not None)
 
     def _extract_x_value(self, entry: Dict, x_axis: str):
-        """Extract x-axis value based on type"""
-        try:
+        """Extract x-axis value based on type; ``None`` (row skipped) if it is missing or invalid"""
+        if x_axis in ('date', 'hour', 'day_of_week', 'month'):
+            timestamp = parse_timestamp(entry.get('timestamp'))
+            if timestamp is None:
+                return None
             if x_axis == 'date':
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
                 return timestamp.strftime('%Y-%m-%d')
-            elif x_axis == 'hour':
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
+            if x_axis == 'hour':
                 return timestamp.hour
-            elif x_axis == 'day_of_week':
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
+            if x_axis == 'day_of_week':
                 return timestamp.strftime('%A')
-            elif x_axis == 'month':
-                timestamp = datetime.fromisoformat(entry.get('timestamp', ''))
-                return timestamp.strftime('%B')
-            elif x_axis == 'category':
-                return entry.get('category', 'Unknown')
-            else:
-                return entry.get(x_axis)
-        except:
-            return None
+            return timestamp.strftime('%B')
+        if x_axis == 'category':
+            return entry.get('category', 'Unknown')
+        value = entry.get(x_axis)
+        return value if isinstance(value, (str, int, float)) and not isinstance(value, bool) else None
 
     def _extract_y_value(self, entry: Dict, y_axis: str):
-        """Extract y-axis value based on type"""
-        try:
-            if y_axis == 'count':
-                return 1
-            elif y_axis == 'duration':
-                return float(entry.get('duration', 0))
-            elif y_axis == 'level':
-                return float(entry.get('level', 0))
-            elif y_axis == 'value':
-                return float(entry.get('value', 0))
-            else:
-                val = entry.get(y_axis)
-                return float(val) if val is not None else None
-        except:
-            return None
+        """Extract y-axis value; ``None`` when the entry does not have it (review M4: missing is not 0)"""
+        if y_axis == 'count':
+            return 1
+        return to_number(entry.get(y_axis))
 
     def _apply_aggregation(self, data: Dict, aggregation: str, is_grouped: bool) -> Dict:
         """Apply aggregation to the processed data"""
@@ -1006,7 +1053,9 @@ class PetVisualizationService:
 
             for i, (group_name, group_data) in enumerate(data.items()):
                 color = colors[i % len(colors)]
-                dataset_data = [group_data.get(label, 0) for label in labels]
+                # A missing point is a gap (None), not a zero, except for counts (review M4).
+                missing = 0 if aggregation == 'count' else None
+                dataset_data = [group_data.get(label, missing) for label in labels]
 
                 dataset = {
                     'label': str(group_name).title(),
@@ -1037,7 +1086,7 @@ class PetVisualizationService:
 
                 labels, values = zip(*sorted_pairs) if sorted_pairs else ([], [])
                 labels, values = list(labels), list(values)
-            except:
+            except (TypeError, ValueError):
                 pass
 
             dataset = {

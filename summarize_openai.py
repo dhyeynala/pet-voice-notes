@@ -1,4 +1,5 @@
 # summarize_openai.py
+import math
 import time
 
 # The LLM is resolved per call (fake by default, OpenAI when OPENAI_API_KEY is set);
@@ -91,10 +92,10 @@ def summarize_text(text, max_retries=3):
                 print(f"⏳ Retrying in {wait_time} seconds...")
                 time.sleep(wait_time)
             else:
-                # Final fallback
-                return f"Unable to generate AI summary due to API error. Original text: {text[:200]}..."
+                # No summary rather than an error string posing as one (review H2).
+                return None
 
-    return "Summary generation failed after multiple attempts."
+    return None
 
 
 def summarize_pdf_text(pdf_text, max_retries=3):
@@ -165,17 +166,14 @@ def summarize_pdf_text(pdf_text, max_retries=3):
 
 def classify_pet_content(text, max_retries=3):
     """
-    Classify pet content as MEDICAL, DAILY_ACTIVITY, or MIXED
-    Returns classification and confidence score
+    Classify pet content as MEDICAL, DAILY_ACTIVITY, MIXED or OTHER.
+
+    Returns classification and confidence score. The model output is validated: a label
+    outside ``VALID_CLASSIFICATIONS``, a confidence outside 0..1, non-JSON or truncated output
+    all become ``UNKNOWN`` with ``needs_review=True`` (review M1), as does an outage (H2).
     """
     if not text or len(text.strip()) == 0:
-        return {
-            "classification": "UNKNOWN",
-            "confidence": 0.0,
-            "keywords": [],
-            "reasoning": "Empty input",
-            "primary_activities": [],
-        }
+        return unknown_classification("Empty input")
 
     classification_prompt = """You are a comprehensive pet content classifier. Analyze the following text and classify it accurately:
 
@@ -220,28 +218,21 @@ def classify_pet_content(text, max_retries=3):
 
             import json
 
-            response_content = response.choices[0].message.content.strip()
+            choice = response.choices[0]
+            if getattr(choice, "finish_reason", "stop") == "length":
+                print("⚠️ Classification output was truncated")
+                return unknown_classification("Model output was truncated")
+
+            response_content = (choice.message.content or "").strip()
             print(f"🔍 Raw classification response: {response_content[:100]}...")
 
-            # Try to parse JSON
+            # Parse and validate; no keyword guessing when the output is not valid JSON
             try:
-                result = json.loads(response_content)
+                raw = json.loads(response_content)
             except json.JSONDecodeError:
-                # Fallback: try to extract classification from text
-                print("⚠️ JSON parsing failed, attempting text extraction...")
-                result = extract_classification_from_text(response_content, text)
-
-            # Validate required fields
-            if not result.get("classification"):
-                result["classification"] = "MIXED"
-            if not isinstance(result.get("confidence"), (int, float)):
-                result["confidence"] = 0.5
-            if not result.get("keywords"):
-                result["keywords"] = []
-            if not result.get("reasoning"):
-                result["reasoning"] = "Classification completed"
-            if not result.get("primary_activities"):
-                result["primary_activities"] = []
+                print("⚠️ Classification output is not JSON")
+                return unknown_classification("Model output was not valid JSON")
+            result = validate_classification(raw)
 
             print(
                 f"📊 Content classified as: {result.get('classification', 'UNKNOWN')} (confidence: {result.get('confidence', 0.0)})"
@@ -261,90 +252,59 @@ def classify_pet_content(text, max_retries=3):
     return fallback_classification(text)
 
 
-def extract_classification_from_text(response_text, original_text):
-    """
-    Fallback function to extract classification from non-JSON response
-    """
-    response_lower = response_text.lower()
-    original_lower = original_text.lower()
+VALID_CLASSIFICATIONS = ("MEDICAL", "DAILY_ACTIVITY", "MIXED", "OTHER", "UNKNOWN")
 
-    # Determine classification based on content analysis
-    medical_keywords = [
-        'symptom',
-        'vet',
-        'medication',
-        'pain',
-        'injury',
-        'sick',
-        'illness',
-        'emergency',
-        'limp',
-        'vomit',
-        'diarrhea',
-        'appetite',
-        'concerning',
-        'treatment',
-        'diagnosis',
-        'health',
-        'doctor',
-    ]
 
-    daily_keywords = [
-        'walk',
-        'play',
-        'eat',
-        'meal',
-        'sleep',
-        'train',
-        'groom',
-        'bath',
-        'park',
-        'exercise',
-        'happy',
-        'energetic',
-        'social',
-        'learn',
-        'achieve',
-        'routine',
-        'fun',
-        'good',
-        'great',
-        'enjoy',
-    ]
-
-    medical_score = sum(1 for keyword in medical_keywords if keyword in original_lower)
-    daily_score = sum(1 for keyword in daily_keywords if keyword in original_lower)
-
-    if medical_score > daily_score and medical_score > 0:
-        classification = "MEDICAL"
-        confidence = min(0.9, 0.6 + (medical_score * 0.1))
-    elif daily_score > medical_score and daily_score > 0:
-        classification = "DAILY_ACTIVITY"
-        confidence = min(0.9, 0.6 + (daily_score * 0.1))
-    elif medical_score > 0 and daily_score > 0:
-        classification = "MIXED"
-        confidence = 0.7
-    else:
-        classification = "MIXED"
-        confidence = 0.5
-
+def unknown_classification(reason):
+    """The explicit "we don't know" result: never a guess, always flagged for review."""
     return {
-        "classification": classification,
-        "confidence": confidence,
-        "keywords": [kw for kw in medical_keywords + daily_keywords if kw in original_lower][:5],
-        "reasoning": f"Extracted from text analysis: {medical_score} medical, {daily_score} daily keywords",
-        "primary_activities": ["text_analysis_fallback"],
+        "classification": "UNKNOWN",
+        "confidence": 0.0,
+        "keywords": [],
+        "reasoning": reason,
+        "primary_activities": [],
+        "needs_review": True,
+    }
+
+
+def _string_list(value, limit=10, max_len=60):
+    if not isinstance(value, list):
+        return []
+    return [item.strip()[:max_len] for item in value if isinstance(item, str) and item.strip()][:limit]
+
+
+def validate_classification(raw):
+    """Validate model JSON against the classification schema (review M1).
+
+    Off-enum labels, non-numeric or out-of-range confidence, or a non-object payload are
+    rejected and become UNKNOWN with ``needs_review=True``.
+    """
+    if not isinstance(raw, dict):
+        return unknown_classification("Model output was not a JSON object")
+    label = raw.get("classification")
+    confidence = raw.get("confidence")
+    if label not in VALID_CLASSIFICATIONS:
+        return unknown_classification(f"Model returned an invalid classification: {str(label)[:40]!r}")
+    if (
+        isinstance(confidence, bool)
+        or not isinstance(confidence, (int, float))
+        or not math.isfinite(confidence)
+        or not 0.0 <= confidence <= 1.0
+    ):
+        return unknown_classification(f"Model returned an invalid confidence: {str(confidence)[:40]!r}")
+    reasoning = raw.get("reasoning")
+    return {
+        "classification": label,
+        "confidence": float(confidence),
+        "keywords": _string_list(raw.get("keywords")),
+        "reasoning": reasoning.strip()[:500] if isinstance(reasoning, str) else "",
+        "primary_activities": _string_list(raw.get("primary_activities")),
+        "needs_review": label == "UNKNOWN",
     }
 
 
 def fallback_classification(text):
     """
-    Final fallback classification when all else fails
+    Final fallback when the model is unavailable: UNKNOWN, never a positive assumption (review H2).
     """
-    return {
-        "classification": "DAILY_ACTIVITY",  # Default to positive assumption
-        "confidence": 0.5,
-        "keywords": [],
-        "reasoning": "Fallback classification due to API issues",
-        "primary_activities": ["general_pet_activity"],
-    }
+    return unknown_classification("Classification unavailable (AI service error)")

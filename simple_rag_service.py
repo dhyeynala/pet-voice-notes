@@ -214,6 +214,8 @@ try:
 
                 for doc in records_query.stream():
                     data = doc.to_dict()
+                    if not data.get('summary'):
+                        continue  # no summary (scanned PDF or summary failure): nothing to retrieve
                     content = f"Medical record: {data.get('summary', '')}"
 
                     documents.append(
@@ -250,7 +252,7 @@ try:
                         )
                     elif category == 'medication':
                         content_parts.append(
-                            f"Medication: {data.get('name', '')}, Dose: {data.get('dose', '')}, Time: {data.get('time', '')}"
+                            f"Medication: {data.get('name', '')}, Dosage: {data.get('dosage', '')}, Time: {data.get('time', '')}"
                         )
                     elif category == 'weight':
                         content_parts.append(
@@ -263,7 +265,9 @@ try:
                     elif category == 'sleep':
                         content_parts.append(f"Duration: {data.get('duration', '')} hours, Quality: {data.get('quality', '')}")
                     elif category == 'grooming':
-                        content_parts.append(f"Type: {data.get('type', '')}, Duration: {data.get('duration', '')} min")
+                        types = data.get('types')
+                        types_text = ", ".join(str(t) for t in types) if isinstance(types, list) else str(types or '')
+                        content_parts.append(f"Types: {types_text}, Duration: {data.get('duration', '')} min")
                     elif category == 'bowel_movements':
                         content_parts.append(f"Consistency: {data.get('consistency', '')}, Time: {data.get('time', '')}")
 
@@ -416,6 +420,8 @@ try:
                     "response": response,
                     "sources": sources,
                     "context_used": len(context_documents) > 0,
+                    # The retrieved text itself; the chat assistant needs this, not the flag above (review C4).
+                    "context_text": context_text,
                     "breed_info_used": bool(breed_info),
                 }
 
@@ -425,6 +431,7 @@ try:
                     "response": "I'm sorry, I encountered an error processing your request. Please try again.",
                     "sources": [],
                     "context_used": False,
+                    "context_text": "",
                     "breed_info_used": False,
                 }
 
@@ -493,6 +500,7 @@ try:
                     "response": response,
                     "sources": sources,
                     "context_used": len(context_documents) > 0,
+                    "context_text": context,
                     "cached_data_used": True,
                     "breed_info_used": bool(breed_info),
                 }
@@ -535,6 +543,8 @@ try:
 
             # Process medical records
             for record in cached_data.get('medical_records', []):
+                if not record.get('summary'):
+                    continue
                 content = f"Medical record: {record.get('summary', '')}"
                 documents.append(
                     {
@@ -561,9 +571,17 @@ try:
                     if entry.get('duration'):
                         content_parts.append(f"Duration: {entry.get('duration')} min")
                 elif category == 'energy_levels':
-                    content_parts.append(f"Energy level: {entry.get('level', 3)}/5")
+                    if entry.get('level') is not None:
+                        content_parts.append(f"Energy level: {entry.get('level')}/5")
                 elif category == 'mood':
-                    content_parts.append(f"Mood: {entry.get('mood', 'normal')}")
+                    if entry.get('level') is not None:
+                        content_parts.append(f"Mood level: {entry.get('level')}/5")
+                elif category == 'medication':
+                    content_parts.append(f"Medication: {entry.get('name', '')}, Dosage: {entry.get('dosage', '')}")
+                elif category == 'grooming':
+                    types = entry.get('types')
+                    if isinstance(types, list) and types:
+                        content_parts.append(f"Grooming: {', '.join(str(t) for t in types)}")
 
                 notes = entry.get('notes', '')
                 if notes and notes.strip():

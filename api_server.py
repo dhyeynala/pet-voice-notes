@@ -21,12 +21,14 @@ builds SDK clients at import time.
 load_dotenv()
 
 from petpulse.deps import get_blobs, get_settings  # noqa: E402
+from fastapi import HTTPException  # noqa: E402
+
+from petpulse.routers import analytics as analytics_router  # noqa: E402
 from petpulse.routers import health as health_router  # noqa: E402
-from petpulse.store.blobs import new_key  # noqa: E402
+from petpulse.routers import records as records_router  # noqa: E402
 
 from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
-from pdf_parser import extract_text_and_summarize
 from transcribe import start_recording, stop_recording, get_recording_status
 
 # Lazy-loaded service instances to improve startup performance
@@ -117,48 +119,24 @@ async def start(request: Request):
 
 @app.post("/api/upload_pdf")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
-    # Get form data
+    """Legacy upload route; delegates to the safe implementation in petpulse/routers/records.py.
+
+    Kept until the frontend switches to ``POST /api/pets/{pet_id}/records`` (review C3).
+    """
+    from petpulse.deps import get_store
+
     form = await request.form()
-    uid = form.get("uid")
     pet = form.get("pet")
+    if not isinstance(pet, str) or not pet:
+        raise HTTPException(status_code=422, detail="Missing pet parameter")
+    store = get_store()
+    if store.get(f"pets/{pet}") is None:
+        raise HTTPException(status_code=404, detail="pet not found")
 
-    if not uid or not pet:
-        return {"error": "Missing uid or pet parameter"}
-
-    if not file.filename:
-        return {"error": "No file provided"}
-
-    try:
-        contents = await file.read()
-        temp_path = f"/tmp/{file.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(contents)
-
-        # Local, private blob storage with a server-generated key (replaces public GCS objects).
-        # There is no public URL; an owner-checked download route arrives with the C3 fix.
-        blob_key = new_key("records", suffix=".pdf")
-        get_blobs().put(blob_key, contents)
-
-        result = extract_text_and_summarize(temp_path, uid, pet, file.filename, None, blob_key=blob_key)
-
-        # Clean up temporary file
-        try:
-            os.remove(temp_path)
-        except:
-            pass
-
-        if "error" in result:
-            return {"error": result["error"]}
-
-        return {"message": "PDF processed", "summary": result["summary"], "url": None}
-
-    except Exception as e:
-        # Clean up temporary file on error
-        try:
-            os.remove(temp_path)
-        except:
-            pass
-        return {"error": f"Failed to process PDF: {str(e)}"}
+    data = await records_router.read_capped(file)
+    record = records_router.create_record(store, get_blobs(), pet, data, file.filename)
+    # No public URL: the original is served by the owner-checked records/{id}/file route.
+    return {"message": "PDF processed", "summary": record["summary"], "url": None, "record": record}
 
 
 @app.get("/api/user-pets/{user_id}")
@@ -172,15 +150,16 @@ async def create_pet(user_id: str, request: Request):
 
     # Validate required fields
     if not data.get("name"):
-        return {"error": "Pet name is required"}
+        raise HTTPException(status_code=422, detail="Pet name is required")
     if not data.get("animal_type"):
-        return {"error": "Animal type is required"}
+        raise HTTPException(status_code=422, detail="Animal type is required")
 
     try:
         result = add_pet_to_page_and_user(user_id, data, data.get("pageId", "default-page"))
         return {"status": "success", "pet": result}
     except Exception as e:
-        return {"error": f"Failed to create pet: {str(e)}"}
+        print(f"Failed to create pet: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create pet") from None
 
 
 @app.post("/api/pages/invite")
@@ -234,31 +213,36 @@ async def add_pet_textinput(pet_id: str, request: Request):
     data = await request.json()
     input_text = data.get("input", "")
     if not input_text:
-        return {"status": "error", "message": "Input is empty"}
+        raise HTTPException(status_code=422, detail="Input is empty")
 
     # Enhanced: Classify and summarize the content
     from summarize_openai import summarize_text, classify_pet_content
 
-    # Classify the content type
+    # Classify the content type (UNKNOWN + needs_review when the model is unavailable or invalid)
     classification = classify_pet_content(input_text)
 
-    # Generate AI summary
+    # Generate AI summary (None when it could not be generated; never an error string)
     summary = summarize_text(input_text)
+
+    content_type = classification.get("classification", "UNKNOWN")
+    confidence = classification.get("confidence", 0.0)
+    needs_review = bool(classification.get("needs_review")) or summary is None
 
     # Store with enhanced metadata
     entry_data = {
         "input": input_text,
         "summary": summary,
-        "content_type": classification.get("classification", "MIXED"),
-        "confidence": classification.get("confidence", 0.5),
+        "content_type": content_type,
+        "confidence": confidence,
         "keywords": classification.get("keywords", []),
+        "needs_review": needs_review,
         "timestamp": datetime.utcnow().isoformat(),
     }
 
     db.collection("pets").document(pet_id).collection("textinput").add(entry_data)
 
     # If daily activity content, also store in analytics for dashboard visibility
-    if classification.get('classification') == 'DAILY_ACTIVITY':
+    if content_type == 'DAILY_ACTIVITY' and summary is not None:
         from firestore_store import store_analytics_from_voice
 
         store_analytics_from_voice(pet_id, input_text, summary, classification)
@@ -267,10 +251,15 @@ async def add_pet_textinput(pet_id: str, request: Request):
     return {
         "status": "success",
         "summary": summary,
-        "content_type": classification.get("classification", "MIXED"),
-        "confidence": classification.get("confidence", 0.5),
+        "content_type": content_type,
+        "confidence": confidence,
         "keywords": classification.get("keywords", []),
-        "message": f"Added {classification.get('classification', 'MIXED').lower()} note with AI summary",
+        "needs_review": needs_review,
+        "message": (
+            "Added note; AI processing was unavailable, so it needs review"
+            if needs_review
+            else f"Added {content_type.lower()} note with AI summary"
+        ),
     }
 
 
@@ -282,7 +271,7 @@ async def start_recording_endpoint(request: Request):
     pet_id = data.get("pet")
 
     if not user_id or not pet_id:
-        return {"status": "error", "message": "Missing uid or pet"}
+        raise HTTPException(status_code=422, detail="Missing uid or pet")
 
     result = start_recording()
     return result
@@ -296,76 +285,81 @@ async def stop_recording_endpoint(request: Request):
     pet_id = data.get("pet")
 
     if not user_id or not pet_id:
-        return {"status": "error", "message": "Missing uid or pet"}
+        raise HTTPException(status_code=422, detail="Missing uid or pet")
 
     try:
         result = stop_recording()
 
+        # The legacy transcriber reports "no speech" and failures as transcript *strings*.
+        # Those must never be classified, summarized or stored as a note (review H2).
+        transcript = result.get("transcript") if result.get("status") == "stopped" else None
+        if isinstance(transcript, str) and transcript.startswith("Error:"):
+            print(f"Transcription failed: {transcript}")
+            raise HTTPException(status_code=502, detail="Transcription failed; nothing was saved")
+        if isinstance(transcript, str) and (transcript == "No speech detected" or not transcript.strip()):
+            transcript = None
+
         # Handle the transcription result
-        if result["status"] == "stopped" and result.get("transcript"):
+        if transcript:
             # We have a transcript, try to process with AI
             try:
                 from summarize_openai import summarize_text, classify_pet_content
 
-                transcript = result["transcript"]
-
                 # Classify the content type
                 classification = classify_pet_content(transcript)
 
-                # Generate enhanced summary
+                # Generate enhanced summary (None if unavailable)
                 summary = summarize_text(transcript)
-
-                # Store with enhanced metadata
-                entry_data = {
-                    "transcript": transcript,
-                    "summary": summary,
-                    "content_type": classification.get("classification", "MIXED"),
-                    "confidence": classification.get("confidence", 0.5),
-                    "keywords": classification.get("keywords", []),
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-
-                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
-
-                return {
-                    "status": "success",
-                    "transcript": transcript,
-                    "summary": summary,
-                    "content_type": classification.get("classification", "MIXED"),
-                    "confidence": classification.get("confidence", 0.5),
-                    "message": f"Processed {classification.get('classification', 'MIXED').lower()} voice note",
-                }
+                content_type = classification.get("classification", "UNKNOWN")
+                confidence = classification.get("confidence", 0.0)
+                needs_review = bool(classification.get("needs_review")) or summary is None
 
             except Exception as ai_error:
                 print(f"AI processing failed: {ai_error}")
-                # AI processing failed, but we still have transcript
-                # Store basic transcript without AI enhancement
-                entry_data = {
-                    "transcript": result["transcript"],
-                    "summary": "Transcription completed. AI processing unavailable.",
-                    "content_type": "TRANSCRIPTION_ONLY",
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+                summary, content_type, confidence, needs_review = None, "UNKNOWN", 0.0, True
+                classification = {"keywords": []}
 
-                db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+            # Store with enhanced metadata
+            entry_data = {
+                "transcript": transcript,
+                "summary": summary,
+                "content_type": content_type,
+                "confidence": confidence,
+                "keywords": classification.get("keywords", []),
+                "needs_review": needs_review,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
 
-                return {
-                    "status": "stopped",
-                    "transcript": result["transcript"],
-                    "message": "Transcription successful, AI processing unavailable",
-                }
+            db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
+
+            return {
+                "status": "success",
+                "transcript": transcript,
+                "summary": summary,
+                "content_type": content_type,
+                "confidence": confidence,
+                "needs_review": needs_review,
+                "message": (
+                    "Saved voice note; AI processing was unavailable, so it needs review"
+                    if needs_review
+                    else f"Processed {content_type.lower()} voice note"
+                ),
+            }
 
         elif result["status"] == "stopped":
-            # Recording stopped but no transcript (no speech detected)
+            # Recording stopped but no transcript (no speech detected): nothing is stored
             return {"status": "stopped", "message": "Recording stopped but no speech was detected"}
 
         else:
             # Recording failed or other error
-            return {"status": "error", "message": result.get("message", "Recording failed")}
+            message = result.get("message", "Recording failed")
+            raise HTTPException(status_code=409 if message == "Not recording" else 422, detail=message)
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error in stop_recording_endpoint: {e}")
-        return {"status": "error", "message": f"Server error: {str(e)}"}
+        raise HTTPException(status_code=500, detail="Server error while stopping the recording") from None
 
 
 # NEW: Get recording status endpoint
@@ -377,116 +371,44 @@ async def recording_status_endpoint():
 # Enhanced Analytics endpoints for comprehensive pet tracking
 @app.post("/api/pets/{pet_id}/analytics/{category}")
 async def add_analytics_entry(pet_id: str, category: str, request: Request):
-    data = await request.json()
+    """Typed write (review M7); delegates to petpulse/routers/analytics.py."""
+    import json
 
-    # Validate category
-    valid_categories = [
-        "diet",
-        "activity",
-        "medication",
-        "grooming",
-        "exercise",
-        "energy_levels",
-        "bowel_movements",
-        "exit_events",
-        "weight",
-        "temperature",
-        "mood",
-        "sleep",
-        "water_intake",
-    ]
+    from fastapi.responses import JSONResponse
 
-    if category not in valid_categories:
-        return {"status": "error", "message": "Invalid category"}
+    from petpulse.deps import get_store
 
-    # Add timestamp and store in Firestore
-    entry_data = {**data, "timestamp": datetime.utcnow().isoformat(), "category": category}
+    try:
+        data = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise HTTPException(status_code=422, detail="request body must be JSON") from None
 
-    db.collection("pets").document(pet_id).collection("analytics").add(entry_data)
-
-    return {"status": "success", "data": entry_data}
+    entry = analytics_router.create_entry(get_store(), pet_id, category, data)
+    return JSONResponse(status_code=201, content=entry)
 
 
 @app.get("/api/pets/{pet_id}/analytics")
 async def get_analytics_data(pet_id: str, category: str = None, days: int = 30):
-    """Get analytics data including voice recordings for dashboard charts"""
-    query = db.collection("pets").document(pet_id).collection("analytics")
+    """Typed analytics entries of the last ``days`` days, newest first (``[Entry]``, see the API contract).
 
-    if category:
-        query = query.where("category", "==", category)
+    Notes (voice/text) are no longer mixed in here; they have their own routes.
+    """
+    from petpulse.deps import get_store
 
-    # Get data from last N days
-    from datetime import datetime, timedelta
-
-    cutoff_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
-    query = query.where("timestamp", ">=", cutoff_date)
-
-    results = query.stream()
-    analytics_data = []
-
-    for doc in results:
-        data = doc.to_dict()
-        data["id"] = doc.id
-        analytics_data.append(data)
-
-    # Also include voice-notes as daily activities if no specific category requested
-    if not category or category == "daily_activity":
-        voice_query = db.collection("pets").document(pet_id).collection("voice-notes")
-        voice_query = voice_query.where("timestamp", ">=", cutoff_date)
-
-        for doc in voice_query.stream():
-            data = doc.to_dict()
-            # Convert voice note to analytics format
-            voice_entry = {
-                "id": doc.id,
-                "category": "daily_activity",
-                "source": "voice_note",
-                "transcript": data.get("transcript", ""),
-                "summary": data.get("summary", ""),
-                "timestamp": data.get("timestamp", ""),
-                "notes": f"Voice recording: {data.get('summary', '')[:100]}...",
-            }
-            analytics_data.append(voice_entry)
-
-    # Also include text input as daily activities/medical notes if no specific category requested
-    if not category or category in ["daily_activity", "medical_notes", "mixed_notes"]:
-        text_query = db.collection("pets").document(pet_id).collection("textinput")
-        text_query = text_query.where("timestamp", ">=", cutoff_date)
-
-        for doc in text_query.stream():
-            data = doc.to_dict()
-            content_type = data.get("content_type", "DAILY_ACTIVITY")
-
-            # Map content type to category
-            if content_type == "DAILY_ACTIVITY":
-                text_category = "daily_activity"
-            elif content_type == "MEDICAL":
-                text_category = "medical_notes"
-            else:
-                text_category = "mixed_notes"
-
-            # Only include if matches requested category
-            if not category or category == text_category:
-                text_entry = {
-                    "id": doc.id,
-                    "category": text_category,
-                    "source": "text_input",
-                    "input": data.get("input", ""),
-                    "summary": data.get("summary", ""),
-                    "content_type": content_type,
-                    "timestamp": data.get("timestamp", ""),
-                    "notes": f"Text note: {data.get('summary', '')[:100]}...",
-                }
-                analytics_data.append(text_entry)
-
-    return {"data": analytics_data}
+    return analytics_router.list_entries(get_store(), pet_id, category, days)
 
 
 @app.get("/api/pets/{pet_id}/analytics/summary")
 async def get_analytics_summary(pet_id: str):
-    """Get summary statistics for all analytics categories including voice-notes"""
+    """Get summary statistics for all analytics categories including voice-notes.
+
+    Rows with a missing or malformed timestamp are skipped and counted in ``skipped_rows``
+    instead of failing the whole request (review M3).
+    """
     from collections import defaultdict
     from datetime import datetime, timedelta
+
+    parse_timestamp = analytics_router.parse_timestamp
 
     # Get all analytics data
     analytics_results = db.collection("pets").document(pet_id).collection("analytics").stream()
@@ -498,25 +420,32 @@ async def get_analytics_summary(pet_id: str):
     text_results = db.collection("pets").document(pet_id).collection("textinput").stream()
 
     summary = defaultdict(lambda: {"total": 0, "this_week": 0, "avg_daily": 0, "recent_entries": []})
+    skipped = 0
 
     one_week_ago = datetime.utcnow() - timedelta(days=7)
+
+    def add(category, entry, timestamp):
+        summary[category]["total"] += 1
+        summary[category]["recent_entries"].append(entry)
+        if timestamp >= one_week_ago:
+            summary[category]["this_week"] += 1
 
     # Process analytics collection data
     for doc in analytics_results:
         data = doc.to_dict()
-        category = data.get("category", "unknown")
-        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
-
-        summary[category]["total"] += 1
-        summary[category]["recent_entries"].append(data)
-
-        if timestamp >= one_week_ago:
-            summary[category]["this_week"] += 1
+        timestamp = parse_timestamp(data.get("timestamp"))
+        if timestamp is None:
+            skipped += 1
+            continue
+        add(str(data.get("category") or "unknown"), data, timestamp)
 
     # Process voice-notes and classify as daily activities
     for doc in voice_results:
         data = doc.to_dict()
-        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
+        timestamp = parse_timestamp(data.get("timestamp"))
+        if timestamp is None:
+            skipped += 1
+            continue
 
         # Classify as daily activity for now (could enhance with stored classification)
         category = "daily_activity"
@@ -524,23 +453,21 @@ async def get_analytics_summary(pet_id: str):
             "category": category,
             "source": "voice_note",
             "transcript": data.get("transcript", ""),
-            "summary": data.get("summary", ""),
-            "timestamp": data.get("timestamp", ""),
+            "summary": data.get("summary"),
+            "timestamp": data.get("timestamp"),
         }
-
-        summary[category]["total"] += 1
-        summary[category]["recent_entries"].append(voice_entry)
-
-        if timestamp >= one_week_ago:
-            summary[category]["this_week"] += 1
+        add(category, voice_entry, timestamp)
 
     # Process text input data with classification
     for doc in text_results:
         data = doc.to_dict()
-        timestamp = datetime.fromisoformat(data.get("timestamp", ""))
+        timestamp = parse_timestamp(data.get("timestamp"))
+        if timestamp is None:
+            skipped += 1
+            continue
 
-        # Use stored classification or default to daily activity
-        content_type = data.get("content_type", "DAILY_ACTIVITY")
+        # Use the stored classification; anything else (including UNKNOWN) is not assumed to be daily activity
+        content_type = data.get("content_type", "UNKNOWN")
         if content_type == "DAILY_ACTIVITY":
             category = "daily_activity"
         elif content_type == "MEDICAL":
@@ -552,16 +479,11 @@ async def get_analytics_summary(pet_id: str):
             "category": category,
             "source": "text_input",
             "input": data.get("input", ""),
-            "summary": data.get("summary", ""),
+            "summary": data.get("summary"),
             "content_type": content_type,
-            "timestamp": data.get("timestamp", ""),
+            "timestamp": data.get("timestamp"),
         }
-
-        summary[category]["total"] += 1
-        summary[category]["recent_entries"].append(text_entry)
-
-        if timestamp >= one_week_ago:
-            summary[category]["this_week"] += 1
+        add(category, text_entry, timestamp)
 
     # Calculate averages
     for category in summary:
@@ -569,10 +491,12 @@ async def get_analytics_summary(pet_id: str):
             summary[category]["avg_daily"] = round(summary[category]["this_week"] / 7, 1)
             # Keep only most recent 5 entries
             summary[category]["recent_entries"] = sorted(
-                summary[category]["recent_entries"], key=lambda x: x["timestamp"], reverse=True
+                summary[category]["recent_entries"], key=lambda x: parse_timestamp(x.get("timestamp")), reverse=True
             )[:5]
 
-    return {"summary": dict(summary)}
+    if skipped:
+        print(f"analytics summary: skipped {skipped} row(s) with a missing or invalid timestamp (pet={pet_id})")
+    return {"summary": dict(summary), "skipped_rows": skipped}
 
 
 @app.post("/api/pets/{pet_id}/daily_routine")
@@ -679,25 +603,15 @@ async def get_health_insights(pet_id: str, days: int = 30):
         pet_doc = db.collection("pets").document(pet_id).get()
         pet_name = pet_doc.to_dict().get("name", "Pet") if pet_doc.exists else "Pet"
 
-        # Generate AI insights
+        # Generate AI insights (rule-based, with no invented score, when the model is unavailable)
         insights = pet_ai.generate_health_insights(pet_name, analytics_data, days)
 
         return {"insights": insights, "timeframe_days": days, "data_points": len(analytics_data), "pet_name": pet_name}
 
     except Exception as e:
-        # Fallback to simple insights
-        return {
-            "insights": {
-                "overall_health_score": 7,
-                "key_insights": ["Regular activity tracking in progress"],
-                "recommendations": ["Continue monitoring daily activities"],
-                "alerts": [],
-                "positive_trends": ["Consistent data collection"],
-            },
-            "timeframe_days": days,
-            "data_points": 0,
-            "error": "AI insights temporarily unavailable",
-        }
+        # No fabricated fallback (review H2): say the insights are unavailable instead.
+        print(f"Health insights failed for pet {pet_id}: {e}")
+        raise HTTPException(status_code=503, detail="Health insights are temporarily unavailable") from None
 
 
 @app.get("/api/pets/{pet_id}/visualizations")
@@ -789,7 +703,8 @@ async def get_visualization_data(pet_id: str, chart_type: str = "all", days: int
         return {"visualizations": visualizations, "data_points": len(analytics_data), "timeframe_days": days}
 
     except Exception as e:
-        return {"error": f"Failed to generate visualizations: {str(e)}", "visualizations": {}, "data_points": 0}
+        print(f"Failed to generate visualizations for pet {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate visualizations") from None
 
 
 def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
@@ -814,18 +729,33 @@ def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
         else:
             headlines.append(f"🍖 {pet_name} had their daily nutrition on {date}")
 
+    import math
+
+    def number(value):
+        # Missing or malformed values are skipped, not assumed (review M3, H2).
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            return None
+        try:
+            parsed = float(value)
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
+
     if "exercise" in categories:
         exercise_count = len(categories["exercise"])
-        total_duration = sum(int(e.get("duration", 0)) for e in categories["exercise"])
+        durations = [number(e.get("duration")) for e in categories["exercise"]]
+        total_duration = int(sum(d for d in durations if d is not None and d > 0))
         if total_duration > 60:
             headlines.append(f"🏃 Active day: {pet_name} exercised for {total_duration} minutes!")
         elif exercise_count > 1:
             headlines.append(f"🚶 {pet_name} stayed active with {exercise_count} exercise sessions")
 
     if "energy_levels" in categories:
-        energy_levels = [int(e.get("level", 3)) for e in categories["energy_levels"]]
-        avg_energy = sum(energy_levels) / len(energy_levels) if energy_levels else 3
-        if avg_energy >= 4:
+        energy_levels = [lvl for lvl in (number(e.get("level")) for e in categories["energy_levels"]) if lvl is not None]
+        avg_energy = sum(energy_levels) / len(energy_levels) if energy_levels else None
+        if avg_energy is None:
+            pass
+        elif avg_energy >= 4:
             headlines.append(f"⚡ High energy day: {pet_name} was full of life!")
         elif avg_energy <= 2:
             headlines.append(f"😴 Relaxed day: {pet_name} took it easy")
@@ -872,7 +802,8 @@ async def preload_pet_data(pet_id: str, request: Request):
         return result
 
     except Exception as e:
-        return {"status": "error", "message": f"Failed to preload pet data: {str(e)}"}
+        print(f"Failed to preload pet data for {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to preload pet data") from None
 
 
 @app.post("/api/pets/{pet_id}/cache/clear")
@@ -885,7 +816,8 @@ async def clear_pet_cache(pet_id: str):
         return {"status": "success", "message": f"Cache cleared for pet {pet_id}"}
 
     except Exception as e:
-        return {"status": "error", "message": f"Failed to clear cache: {str(e)}"}
+        print(f"Failed to clear cache for {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to clear cache") from None
 
 
 @app.get("/api/pets/{pet_id}/cache/status")
@@ -913,7 +845,8 @@ async def get_cache_status(pet_id: str):
             return {"status": "success", "cached": False, "message": "No cached data available for this pet"}
 
     except Exception as e:
-        return {"status": "error", "message": f"Failed to check cache status: {str(e)}"}
+        print(f"Failed to check cache status for {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to check cache status") from None
 
 
 @app.post("/api/pets/{pet_id}/chat")
@@ -926,15 +859,22 @@ async def chat_with_assistant(pet_id: str, request: Request):
         query = data.get("query", "")
 
         if not query:
-            return {"error": "Query is required"}
+            raise HTTPException(status_code=422, detail="Query is required")
 
         # Generate intelligent response with optional visualization
         response = await intelligent_chatbot_service.generate_intelligent_response(pet_id, query)
+        if response.get("status") == "error":
+            # The service reports a model failure in-band; surface it as an HTTP error, not a 200 answer.
+            print(f"Chat failed for pet {pet_id}: {response.get('error')}")
+            raise HTTPException(status_code=503, detail="The assistant is temporarily unavailable")
 
         return response
 
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "error": f"Failed to process chat request: {str(e)}"}
+        print(f"Failed to process chat request for {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process chat request") from None
 
 
 @app.post("/api/pets/{pet_id}/knowledge_search")
@@ -947,7 +887,7 @@ async def search_knowledge_base(pet_id: str, request: Request):
         query = data.get("query", "")
 
         if not query:
-            return {"error": "Query is required"}
+            raise HTTPException(status_code=422, detail="Query is required")
 
         # Search knowledge base
         knowledge_results = simple_rag_service.search_knowledge_base(query, top_k=5)
@@ -968,8 +908,11 @@ async def search_knowledge_base(pet_id: str, request: Request):
 
         return {"status": "success", "results": results, "query": query, "timestamp": datetime.utcnow().isoformat()}
 
+    except HTTPException:
+        raise
     except Exception as e:
-        return {"status": "error", "error": f"Failed to search knowledge base: {str(e)}"}
+        print(f"Failed to search knowledge base: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search knowledge base") from None
 
 
 @app.get("/api/pets/{pet_id}/assistant_summary")
@@ -1005,7 +948,8 @@ async def get_assistant_summary(pet_id: str):
         }
 
     except Exception as e:
-        return {"status": "error", "error": f"Failed to generate assistant summary: {str(e)}"}
+        print(f"Failed to generate assistant summary for {pet_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate assistant summary") from None
 
 
 # NEW: Simple test endpoint for diagnostics
@@ -1021,6 +965,8 @@ async def test_endpoint():
 
 # New-style routers (one per track). Registered before the static mount.
 app.include_router(health_router.router)
+app.include_router(records_router.router)
+app.include_router(analytics_router.router)
 
 
 # Serve index last to avoid route shadowing
