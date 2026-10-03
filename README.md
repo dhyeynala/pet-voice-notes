@@ -142,7 +142,7 @@ pet-voice-notes/
 ├── intelligent_chatbot_service.py   # AI chat with function calling
 ├── simple_rag_service.py           # RAG system for breed-specific info
 ├── visualization_service.py        # Chart generation logic
-├── transcribe.py                   # Speech-to-text processing
+├── petpulse/providers/stt.py       # Speech-to-text (FakeSTT, OpenAI, Google)
 ├── firestore_store.py             # Database operations + caching
 ├── public/                         # Frontend files
 │   ├── main.html                  # Main dashboard interface
@@ -215,10 +215,9 @@ pytest
 FastAPI generates interactive documentation at `http://localhost:8000/docs`. Here are the core endpoints I built:
 
 **Voice & Text Input:**
-- `POST /api/start_recording` - Start voice recording session
-- `POST /api/stop_recording` - Stop recording, transcribe, and analyze
+- `POST /api/pets/{pet_id}/voice-notes` - Upload a browser recording (`audio`, webm/ogg/mp4/wav) or a bundled `sample_id`; transcribe and store it as a note
+- `GET /api/voice/samples` - Bundled sample recordings (work without a microphone)
 - `POST /api/pets/{pet_id}/textinput` - Add typed notes with AI classification
-- `GET /api/recording_status` - Check current recording state
 
 **AI & Analytics:**
 - `POST /api/pets/{pet_id}/chat` - Natural language queries with chart generation
@@ -268,9 +267,9 @@ docker-compose -f docker-compose.prod.yml up -d
 # Health check
 curl http://localhost:8000/api/health
 
-# Test voice recording
-curl -X POST http://localhost:8000/api/start_recording
-curl -X POST http://localhost:8000/api/stop_recording
+# Voice note from a bundled sample (needs a demo token: POST /api/demo/login)
+curl -X POST -H "Authorization: Bearer $TOKEN" -F sample_id=vomiting_blood -F tz=America/New_York \
+  http://localhost:8000/api/pets/$PET_ID/voice-notes
 
 # Test PDF upload
 curl -X POST -F "file=@test.pdf" http://localhost:8000/api/upload_pdf

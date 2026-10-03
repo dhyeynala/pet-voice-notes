@@ -39,10 +39,9 @@ from petpulse.routers import insights as insights_router  # noqa: E402
 from petpulse.routers import notes as notes_router  # noqa: E402
 from petpulse.routers import pets as pets_router  # noqa: E402
 from petpulse.routers import records as records_router  # noqa: E402
+from petpulse.routers import voice as voice_router  # noqa: E402
 
-from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, db, store_to_firestore
-from transcribe import start_recording, stop_recording, get_recording_status
 
 # Lazy-loaded service instances to improve startup performance
 _intelligent_chatbot_service = None
@@ -140,12 +139,6 @@ async def load_demo_seed():
     """Load the demo seed into an empty store (SEED_ON_START=true, the default)."""
     if get_settings().seed_on_start:
         seed.seed_if_empty(get_store(), blobs=get_blobs())
-
-
-@app.post("/api/start", dependencies=BODY_PET_ACCESS)
-async def start(request: Request):
-    data = await request.json()
-    return run_main(data["uid"], data["pet"])
 
 
 @app.post("/api/upload_pdf", dependencies=BODY_PET_ACCESS)
@@ -268,111 +261,6 @@ async def add_pet_textinput(pet_id: str, request: Request):
             else f"Added {content_type.lower()} note with AI summary"
         ),
     }
-
-
-# NEW: Start recording endpoint
-@app.post("/api/start_recording", dependencies=BODY_PET_ACCESS)
-async def start_recording_endpoint(request: Request):
-    data = await request.json()
-    user_id = data.get("uid")
-    pet_id = data.get("pet")
-
-    if not user_id or not pet_id:
-        raise HTTPException(status_code=422, detail="Missing uid or pet")
-
-    result = start_recording()
-    return result
-
-
-# NEW: Stop recording endpoint
-@app.post("/api/stop_recording", dependencies=BODY_PET_ACCESS)
-async def stop_recording_endpoint(request: Request):
-    data = await request.json()
-    user_id = data.get("uid")
-    pet_id = data.get("pet")
-
-    if not user_id or not pet_id:
-        raise HTTPException(status_code=422, detail="Missing uid or pet")
-
-    try:
-        result = stop_recording()
-
-        # The legacy transcriber reports "no speech" and failures as transcript *strings*.
-        # Those must never be classified, summarized or stored as a note (review H2).
-        transcript = result.get("transcript") if result.get("status") == "stopped" else None
-        if isinstance(transcript, str) and transcript.startswith("Error:"):
-            print(f"Transcription failed: {transcript}")
-            raise HTTPException(status_code=502, detail="Transcription failed; nothing was saved")
-        if isinstance(transcript, str) and (transcript == "No speech detected" or not transcript.strip()):
-            transcript = None
-
-        # Handle the transcription result
-        if transcript:
-            # We have a transcript, try to process with AI
-            try:
-                from summarize_openai import summarize_text, classify_pet_content
-
-                # Classify the content type
-                classification = classify_pet_content(transcript)
-
-                # Generate enhanced summary (None if unavailable)
-                summary = summarize_text(transcript)
-                content_type = classification.get("classification", "UNKNOWN")
-                confidence = classification.get("confidence", 0.0)
-                needs_review = bool(classification.get("needs_review")) or summary is None
-
-            except Exception as ai_error:
-                print(f"AI processing failed: {ai_error}")
-                summary, content_type, confidence, needs_review = None, "UNKNOWN", 0.0, True
-                classification = {"keywords": []}
-
-            # Store with enhanced metadata
-            entry_data = {
-                "transcript": transcript,
-                "summary": summary,
-                "content_type": content_type,
-                "confidence": confidence,
-                "keywords": classification.get("keywords", []),
-                "needs_review": needs_review,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-
-            db.collection("pets").document(pet_id).collection("voice-notes").add(entry_data)
-
-            return {
-                "status": "success",
-                "transcript": transcript,
-                "summary": summary,
-                "content_type": content_type,
-                "confidence": confidence,
-                "needs_review": needs_review,
-                "message": (
-                    "Saved voice note; AI processing was unavailable, so it needs review"
-                    if needs_review
-                    else f"Processed {content_type.lower()} voice note"
-                ),
-            }
-
-        elif result["status"] == "stopped":
-            # Recording stopped but no transcript (no speech detected): nothing is stored
-            return {"status": "stopped", "message": "Recording stopped but no speech was detected"}
-
-        else:
-            # Recording failed or other error
-            message = result.get("message", "Recording failed")
-            raise HTTPException(status_code=409 if message == "Not recording" else 422, detail=message)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error in stop_recording_endpoint: {e}")
-        raise HTTPException(status_code=500, detail="Server error while stopping the recording") from None
-
-
-# NEW: Get recording status endpoint
-@app.get("/api/recording_status", dependencies=[Depends(current_user)])
-async def recording_status_endpoint():
-    return get_recording_status()
 
 
 # Enhanced Analytics endpoints for comprehensive pet tracking
@@ -981,6 +869,7 @@ app.include_router(analytics_router.router)
 app.include_router(notes_router.router)
 app.include_router(assistant_router.router)
 app.include_router(insights_router.router)
+app.include_router(voice_router.router)
 
 
 # Serve index last to avoid route shadowing

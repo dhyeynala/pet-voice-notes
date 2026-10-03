@@ -44,6 +44,16 @@ Service (used by Track D): `petpulse.services.notes.process_note(pet_id, uid, te
        -> {"transcription":{"status","text","confidence"},"note": Note}
        422 no_speech (nothing stored), 502 stt error (nothing stored), 415 unsupported type
 
+As implemented by Track D: success is **201**. Also **413** (over `VOICE_MAX_BYTES`, 5 MiB, or
+`VOICE_MAX_SECONDS`, 60 s, where the container header gives a duration) and **400** (both or
+neither of `audio`/`sample_id`, unknown `sample_id`, unknown `tz`). Accepted containers:
+webm, ogg, mp4, wav (sniffed from the bytes; `audio/webm;codecs=opus` etc. are fine). On `ok` the
+transcript goes to `await process_note(pet_id, uid, text, "voice", tz, store=, llm=)`, so the note
+is stored at `pets/{pet_id}/notes/{id}` like a typed note (same `urgent`/`red_flags` rules; an LLM
+failure stores an `unprocessed` note, still 201); its `ValueError` (e.g. transcript over 5000
+characters) is a **400**. Samples:
+`walk_and_dinner`, `vomiting_blood` (urgent), `heartworm_pill`, `silence` (-> 422).
+
 ## Health (exists)
 - GET /api/health -> {"mode":"demo"|"live"|"mixed", features:{notes,chat,pdf_summary,insights,voice}, store, llm, stt}
 
@@ -145,10 +155,11 @@ Test fixtures: `client` is signed in as `alice` (the default owner for `make_pet
 
 ### Legacy routes
 Still mounted, now protected: `{pet_id}` routes use `require_pet_access`; routes that name the
-pet in a body/form (`/api/upload_pdf`, `/api/start`, `/api/start_recording`,
-`/api/stop_recording`, `POST /api/markdown`) need `pet` owned by the caller and `uid` (if sent)
-equal to the caller; `GET /api/markdown?pet=` checks the pet; `/api/recording_status` needs a
-token. Removed: `/api/test`, `/api/pages/invite`, `GET|POST /api/pages/{page_id}`. Markdown is
+pet in a body/form (`/api/upload_pdf`, `POST /api/markdown`) need `pet` owned by the caller and
+`uid` (if sent) equal to the caller; `GET /api/markdown?pet=` checks the pet. Removed: `/api/test`,
+`/api/pages/invite`, `GET|POST /api/pages/{page_id}`, and (Track D, review C5) the
+server-microphone routes `/api/start`, `/api/start_recording`, `/api/stop_recording`,
+`/api/recording_status`; voice goes through `POST /api/pets/{pet_id}/voice-notes`. Markdown is
 stored on the pet only (`page` is ignored). Their bodies raise `HTTPException` (Track B
 converted the old `{"error": ...}`-with-200 bodies), so errors use the shared envelope.
 `POST /api/pets/{pet_id}/analytics/{category}` and `GET /api/pets/{pet_id}/analytics` exist both
