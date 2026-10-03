@@ -1,11 +1,10 @@
 # summarize_openai.py
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
 import time
 
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# The LLM is resolved per call (fake by default, OpenAI when OPENAI_API_KEY is set);
+# no client is created at import time.
+from petpulse.deps import get_llm
+from petpulse.providers.llm import LegacyTask
 
 
 def summarize_text(text, max_retries=3):
@@ -65,7 +64,8 @@ def summarize_text(text, max_retries=3):
 
     for attempt in range(max_retries):
         try:
-            response = client.chat.completions.create(
+            response = get_llm().legacy_chat(
+                LegacyTask.NOTE_SUMMARY,
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -132,7 +132,8 @@ def summarize_pdf_text(pdf_text, max_retries=3):
             # Truncate very long PDF text to prevent token limits
             truncated_text = pdf_text[:12000] if len(pdf_text) > 12000 else pdf_text
 
-            response = client.chat.completions.create(
+            response = get_llm().legacy_chat(
+                LegacyTask.PDF_SUMMARY,
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -205,7 +206,8 @@ def classify_pet_content(text, max_retries=3):
 
     for attempt in range(max_retries):
         try:
-            response = client.chat.completions.create(
+            response = get_llm().legacy_chat(
+                LegacyTask.NOTE_CLASSIFY,
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": classification_prompt},

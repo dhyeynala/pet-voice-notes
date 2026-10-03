@@ -1,18 +1,15 @@
 # firestore_store.py
 
-import firebase_admin
-from firebase_admin import credentials, firestore, storage
-from dotenv import load_dotenv
+# Persistence now goes through the demo ``Store`` (petpulse.store), not Firebase Admin.
+# ``db`` is a Firestore-shaped facade that resolves the configured store on every call,
+# so nothing is initialised at import time and no credentials are needed.
 from datetime import datetime
 import uuid
-import os
 
-load_dotenv()
-if not firebase_admin._apps:
-    cred = credentials.Certificate("gcloud-key.json")
-    firebase_admin.initialize_app(cred, {"storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET")})
+from petpulse.deps import legacy_db
+from petpulse.store.firestore_compat import ArrayUnion
 
-db = firestore.client()
+db = legacy_db()
 
 
 # Store voice transcript + summary
@@ -23,9 +20,9 @@ def store_to_firestore(user_id, pet_id, transcript, summary):
 
 
 # Store PDF summary
-def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url):
+def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url, blob_key=None):
     db.collection("pets").document(pet_id).collection("records").add(
-        {"summary": summary, "file_name": file_name, "file_url": file_url, "timestamp": timestamp}
+        {"summary": summary, "file_name": file_name, "file_url": file_url, "blob_key": blob_key, "timestamp": timestamp}
     )
 
 
@@ -82,14 +79,12 @@ def add_pet_to_page_and_user(user_id, pet_data, page_id):
     db.collection("pets").document(pet_id).set(pet_document)
 
     # Link pet to user and page
-    db.collection("users").document(user_id).set(
-        {"pets": firestore.ArrayUnion([pet_id]), "pages": firestore.ArrayUnion([page_id])}, merge=True
-    )
+    db.collection("users").document(user_id).set({"pets": ArrayUnion([pet_id]), "pages": ArrayUnion([page_id])}, merge=True)
 
     db.collection("pages").document(page_id).set(
         {
-            "pets": firestore.ArrayUnion([pet_id]),
-            "authorizedUsers": firestore.ArrayUnion([user_id]),
+            "pets": ArrayUnion([pet_id]),
+            "authorizedUsers": ArrayUnion([user_id]),
             "markdown": "",  # initialized only if not set yet
         },
         merge=True,
@@ -113,10 +108,10 @@ def handle_user_invite(data):
         create_user_entry(uid, email)
 
     # Add user to page
-    db.collection("pages").document(page_id).set({"authorizedUsers": firestore.ArrayUnion([uid])}, merge=True)
+    db.collection("pages").document(page_id).set({"authorizedUsers": ArrayUnion([uid])}, merge=True)
 
     # Add page to user
-    db.collection("users").document(uid).set({"pages": firestore.ArrayUnion([page_id])}, merge=True)
+    db.collection("users").document(uid).set({"pages": ArrayUnion([page_id])}, merge=True)
 
     return {"status": "success", "userId": uid}
 

@@ -1,18 +1,9 @@
 # main.py
 
-import os
 import argparse
-from dotenv import load_dotenv
-import openai
 from transcribe import transcribe_audio
 from summarize_openai import summarize_text, classify_pet_content
 from firestore_store import store_to_firestore, store_analytics_from_voice
-
-# Load env variables
-load_dotenv()
-
-# Set OpenAI key
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def main(user_id, pet_id):

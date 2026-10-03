@@ -5,7 +5,6 @@ Uses basic similarity without heavy ML dependencies to avoid NumPy conflicts
 
 import os
 import json
-import openai
 import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
@@ -17,6 +16,8 @@ print("Starting import of simple_rag_service dependencies...")
 
 try:
     from firestore_store import db, get_pet_by_id
+    from petpulse.deps import get_llm
+    from petpulse.providers.llm import LegacyTask
 
     print("firestore_store imported successfully")
 except Exception as e:
@@ -31,9 +32,7 @@ try:
 
         def __init__(self):
             print("Initializing SimplePetHealthRAGService...")
-            # OpenAI client
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-            self.client = openai.OpenAI()
+            # The LLM is resolved per call through petpulse.deps (fake unless OPENAI_API_KEY is set).
 
             # API keys for breed information
             self.dog_api_key = os.getenv("DOG_API_KEY")
@@ -659,7 +658,8 @@ Context from Pet's Health Data, Veterinary Knowledge, and Breed Information:
 Remember: You are not replacing veterinary care but providing informed insights based on the pet's data, breed characteristics, and veterinary knowledge."""
 
             try:
-                response = self.client.chat.completions.create(
+                response = get_llm().legacy_chat(
+                    LegacyTask.RAG_ANSWER,
                     model="gpt-4",
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": query}],
                     temperature=0.3,
