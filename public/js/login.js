@@ -1,6 +1,8 @@
-// public/js/login.js: demo login on index.html. Lists GET /api/demo/users, logs in with
-// POST /api/demo/login {uid}, keeps the token in sessionStorage and opens main.html.
-import { apiFetch, asList, clearSession, describeError, getToken, setSession } from "./api.js";
+// public/js/login.js: sign-in on index.html. Each method is a <section data-login-method> plus
+// an entry in LOGIN_METHODS; the page shows the methods the server enables (authModes(health)).
+// Demo: lists GET /api/demo/users, logs in with POST /api/demo/login {uid} or {name}.
+// Every method ends in completeLogin(token, user, method): token in sessionStorage, open main.html.
+import { apiFetch, asList, authModes, clearSession, describeError, getToken, setSession } from "./api.js";
 import { el, icon, replaceChildren } from "./dom.js";
 import { initBanner } from "./banner.js";
 
@@ -14,14 +16,19 @@ function setStatus(text, isError = false) {
   statusNode.hidden = !text;
 }
 
+/** Shared end of every sign-in method. */
+export function completeLogin(token, user, method) {
+  setSession(token, user, method);
+  window.location.replace("/main.html");
+}
+
 /** body is exactly one of {uid} (existing user) or {name} (creates a new demo user with no pets). */
 async function login(body, button) {
   button.disabled = true;
   setStatus("Signing in…");
   try {
     const res = await apiFetch("/api/demo/login", { json: body, auth: false });
-    setSession(res.token, res.user);
-    window.location.replace("/main.html");
+    completeLogin(res.token, res.user, "demo");
   } catch (err) {
     button.disabled = false;
     setStatus(`Login failed: ${describeError(err)}`, true);
@@ -66,9 +73,17 @@ function initNewUserForm() {
   });
 }
 
+function initDemoLogin() {
+  initNewUserForm();
+  renderUsers();
+}
+
+/** mode -> initializer. A Firebase option registers here (and adds its <section>) later. */
+const LOGIN_METHODS = { demo: initDemoLogin };
+
 async function init() {
-  initBanner();
-  if (params.get("expired")) setStatus("Your session expired. Please choose a user again.", true);
+  const health = await initBanner();
+  if (params.get("expired")) setStatus("Your session expired. Please sign in again.", true);
   if (params.get("switch") || params.get("expired")) clearSession();
 
   if (getToken()) {
@@ -81,8 +96,15 @@ async function init() {
       clearSession();
     }
   }
-  initNewUserForm();
-  renderUsers();
+  const enabled = authModes(health).filter((m) => LOGIN_METHODS[m]);
+  for (const section of document.querySelectorAll("[data-login-method]")) {
+    section.hidden = !enabled.includes(section.dataset.loginMethod);
+  }
+  if (!enabled.length) {
+    setStatus("No sign-in method supported by this page is enabled on the server.", true);
+    return;
+  }
+  enabled.forEach((m) => LOGIN_METHODS[m]());
 }
 
 init();

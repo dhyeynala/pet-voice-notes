@@ -1,6 +1,6 @@
 // public/js/auth.js: demo session on main.html (token in sessionStorage), the user menu with
 // log out, quick "switch user" and "reset demo data".
-import { apiFetch, asList, clearSession, getToken, getUser, setSession, describeError } from "./api.js";
+import { apiFetch, asList, clearSession, getAuthMethod, getToken, getUser, setSession, describeError } from "./api.js";
 import { el, icon, replaceChildren, showNotification } from "./dom.js";
 import { state } from "./state.js";
 
@@ -18,7 +18,7 @@ export function requireSession() {
 export async function refreshMe() {
   const me = await apiFetch("/api/me");
   state.user = me;
-  setSession(getToken(), me);
+  setSession(getToken(), me, getAuthMethod());
   return me;
 }
 
@@ -30,7 +30,7 @@ export function logout() {
 export async function switchUser(uid) {
   try {
     const res = await apiFetch("/api/demo/login", { json: { uid }, auth: false });
-    setSession(res.token, res.user);
+    setSession(res.token, res.user, "demo");
     window.location.replace("/main.html");
   } catch (err) {
     showNotification(`Could not switch user: ${describeError(err)}`, "error");
@@ -59,7 +59,7 @@ export async function renderUserMenu() {
     {
       class: "user-switch-btn",
       type: "button",
-      title: "Switch demo user",
+      title: "Account",
       attrs: { "aria-haspopup": "true", "aria-expanded": "false" },
       on: {
         click: (e) => {
@@ -84,6 +84,13 @@ export async function renderUserMenu() {
     el("button", { class: "logout-btn", type: "button", id: "logout-btn", on: { click: logout } }, icon("fas fa-sign-out-alt"), " Log out")
   );
 
+  if (getAuthMethod() !== "demo") {
+    // Switching users and resetting data are demo-only; other sign-in methods just log out.
+    list.appendChild(
+      el("button", { type: "button", class: "user-switch-item", attrs: { role: "menuitem" }, on: { click: logout } }, icon("fas fa-sign-out-alt"), " Log out")
+    );
+    return;
+  }
   list.appendChild(el("div", { class: "user-switch-heading", text: "Switch user" }));
   try {
     const users = await apiFetch("/api/demo/users", { auth: false });

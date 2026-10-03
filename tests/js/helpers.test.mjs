@@ -2,7 +2,7 @@
 // the DOM at import time, so they load directly in node.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { errorDetail, asList, apiPath, describeError, ApiError } from "../../public/js/api.js";
+import { errorDetail, asList, apiPath, describeError, ApiError, authModes } from "../../public/js/api.js";
 import { pickMimeType, extensionFor, voiceErrorMessage, micErrorMessage, MIME_CANDIDATES } from "../../public/js/recorder.js";
 import { parseTimestamp } from "../../public/js/dom.js";
 
@@ -81,4 +81,13 @@ test("parseTimestamp treats naive backend timestamps as UTC", () => {
   assert.equal(parseTimestamp("2026-10-03T12:00:00Z").toISOString(), "2026-10-03T12:00:00.000Z");
   assert.equal(parseTimestamp("garbage"), null);
   assert.equal(parseTimestamp(""), null);
+});
+
+test("authModes defaults to demo and reads the server's auth mode", () => {
+  assert.deepEqual(authModes(null), ["demo"]);
+  assert.deepEqual(authModes({ mode: "demo", features: {} }), ["demo"]); // current /api/health
+  assert.deepEqual(authModes({ auth: { mode: "firebase" } }), ["firebase"]);
+  assert.deepEqual(authModes({ auth: { modes: ["Demo", "firebase", "demo"] } }), ["demo", "firebase"]);
+  assert.deepEqual(authModes({ auth_mode: "demo+firebase" }), ["demo", "firebase"]);
+  assert.deepEqual(authModes({ auth: { modes: [] } }), ["demo"]);
 });

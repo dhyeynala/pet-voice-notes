@@ -191,21 +191,26 @@
     <h1>PetPulse</h1>
     <p class="subtitle">Your pet's health journey, recorded and organized with AI-powered insights</p>
 
-    <h2 style="font-size: 1rem; color: #2c3e50; margin-bottom: 14px;">Choose a demo user</h2>
-    <div id="demo-users" class="demo-users" aria-live="polite"></div>
-    <form id="new-user-form" class="new-user-form">
-      <label for="new-user-name">Or start fresh as a new demo user (no pets yet):</label>
-      <div class="new-user-row">
-        <input id="new-user-name" type="text" maxlength="40" placeholder="Display name, e.g. Sam" autocomplete="off">
-        <button type="submit" class="btn-new-user">Create</button>
-      </div>
-    </form>
-    <p id="login-status" class="login-status" role="status" hidden></p>
+    <!-- One <section data-login-method="..."> per sign-in method; js/login.js shows the ones the
+         server enables (GET /api/health -> auth). Demo is the default; a Firebase section can be
+         added next to it without changing the demo flow. -->
+    <section id="login-demo" class="login-method" data-login-method="demo" hidden>
+      <h2 style="font-size: 1rem; color: #2c3e50; margin-bottom: 14px;">Choose a demo user</h2>
+      <div id="demo-users" class="demo-users" aria-live="polite"></div>
+      <form id="new-user-form" class="new-user-form">
+        <label for="new-user-name">Or start fresh as a new demo user (no pets yet):</label>
+        <div class="new-user-row">
+          <input id="new-user-name" type="text" maxlength="40" placeholder="Display name, e.g. Sam" autocomplete="off">
+          <button type="submit" class="btn-new-user">Create</button>
+        </div>
+      </form>
 
-    <p class="login-note">
-      Demo login: no password. Each user only sees their own pets. Log in as Alice, then switch to Bob
-      to see that Alice's pets are hidden from him.
-    </p>
+      <p class="login-note">
+        Demo login: no password. Each user only sees their own pets. Log in as Alice, then switch to Bob
+        to see that Alice's pets are hidden from him.
+      </p>
+    </section>
+    <p id="login-status" class="login-status" role="status" hidden></p>
 
     <div class="features">
       <div class="feature">

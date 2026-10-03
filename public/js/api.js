@@ -5,6 +5,7 @@
 
 const TOKEN_KEY = "petpulse.token";
 const USER_KEY = "petpulse.user";
+const METHOD_KEY = "petpulse.authMethod";
 
 export class ApiError extends Error {
   constructor(status, detail, requestId, body) {
@@ -30,14 +31,34 @@ export function getUser() {
   }
 }
 
-export function setSession(token, user) {
+/** method: how this session signed in ("demo" today; e.g. "firebase" once that option exists). */
+export function setSession(token, user, method) {
   sessionStorage.setItem(TOKEN_KEY, token);
   sessionStorage.setItem(USER_KEY, JSON.stringify(user || null));
+  if (method) sessionStorage.setItem(METHOD_KEY, method);
+}
+
+export function getAuthMethod() {
+  return sessionStorage.getItem(METHOD_KEY) || "demo";
 }
 
 export function clearSession() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(METHOD_KEY);
+}
+
+/**
+ * Sign-in methods the server enables, from GET /api/health. Accepts health.auth.modes (array),
+ * health.auth.mode or health.auth_mode (string, "a+b" or "a,b"); defaults to ["demo"] when the
+ * server does not say (current backend).
+ */
+export function authModes(health) {
+  const auth = health && health.auth;
+  let raw = (auth && (auth.modes || auth.mode)) || (health && health.auth_mode) || null;
+  if (typeof raw === "string") raw = raw.split(/[+,\s]+/);
+  const modes = Array.isArray(raw) ? raw.map((m) => String(m).trim().toLowerCase()).filter(Boolean) : [];
+  return modes.length ? [...new Set(modes)] : ["demo"];
 }
 
 /** The browser's IANA time zone, sent to the backend for day bucketing. */
