@@ -110,6 +110,12 @@ function showResult(result) {
   $("output").classList.add("has-content");
 }
 
+function clearResult() {
+  $("transcript-content").textContent = "";
+  replaceChildren($("summary-content"));
+  $("output").classList.remove("has-content");
+}
+
 async function upload(form, mimeForErrors) {
   if (!state.selectedPet) {
     showNotification("Please select a pet first", "warning");
@@ -127,6 +133,7 @@ async function upload(form, mimeForErrors) {
     showNotification(urgent ? "Voice note saved: possible red flag" : "Voice note saved", urgent ? "warning" : "success");
     loadNotes({ targetId: "voice-recent-notes", limit: 5 });
   } catch (err) {
+    clearResult(); // don't leave the previous note on screen next to the error
     setStatus(voiceErrorMessage(err, mimeForErrors), "error");
   } finally {
     showOverlay(false);
