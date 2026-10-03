@@ -30,10 +30,13 @@ from petpulse.auth import (  # noqa: E402
     require_query_pet_access,
     require_self,
 )
-from petpulse.deps import get_blobs, get_settings, get_store  # noqa: E402
+from petpulse.deps import get_blobs, get_llm, get_settings, get_store  # noqa: E402
 from petpulse.routers import analytics as analytics_router  # noqa: E402
+from petpulse.routers import assistant as assistant_router  # noqa: E402
 from petpulse.routers import demo as demo_router  # noqa: E402
 from petpulse.routers import health as health_router  # noqa: E402
+from petpulse.routers import insights as insights_router  # noqa: E402
+from petpulse.routers import notes as notes_router  # noqa: E402
 from petpulse.routers import pets as pets_router  # noqa: E402
 from petpulse.routers import records as records_router  # noqa: E402
 
@@ -162,7 +165,7 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=404, detail="pet not found")
 
     data = await records_router.read_capped(file)
-    record = records_router.create_record(store, get_blobs(), pet, data, file.filename)
+    record = await records_router.create_record(store, get_blobs(), pet, data, file.filename)
     # No public URL: the original is served by the owner-checked records/{id}/file route.
     return {"message": "PDF processed", "summary": record["summary"], "url": None, "record": record}
 
@@ -854,8 +857,20 @@ async def get_cache_status(pet_id: str):
 
 
 @app.post("/api/pets/{pet_id}/chat", dependencies=PET_ACCESS)
-async def chat_with_assistant(pet_id: str, request: Request):
-    """Chat with AI Assistant using Intelligent RAG with Smart Visualization"""
+async def chat_with_assistant(
+    pet_id: str,
+    request: Request,
+    user=Depends(current_user),
+    pet=Depends(require_pet_access),
+    store=Depends(get_store),
+    llm=Depends(get_llm),
+):
+    """Chat. A contract body ``{"message", "tz"}`` goes to the grounded assistant (Track C,
+    ``petpulse.routers.assistant``); the legacy body ``{"query"}`` still reaches the legacy
+    intelligent chatbot until the cleanup PR removes this handler."""
+    payload = await request.json()
+    if isinstance(payload, dict) and "message" in payload:
+        return await assistant_router.chat_from_payload(pet_id, payload, user, pet, store, llm)
     try:
         intelligent_chatbot_service = get_intelligent_chatbot_service()
 
@@ -962,6 +977,10 @@ app.include_router(demo_router.router)
 app.include_router(pets_router.router)
 app.include_router(records_router.router)
 app.include_router(analytics_router.router)
+# Track C. Note: the legacy POST /api/pets/{pet_id}/chat above still matches first until it is removed.
+app.include_router(notes_router.router)
+app.include_router(assistant_router.router)
+app.include_router(insights_router.router)
 
 
 # Serve index last to avoid route shadowing

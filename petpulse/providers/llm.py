@@ -15,12 +15,24 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Protocol, runtime_checkable
+from typing import Any, Callable, Literal, Optional, Protocol, runtime_checkable
+
+from petpulse.llm.config import (
+    DEFAULT_TIMEOUT_SECONDS,
+    MODEL_FACTS,
+    OPENAI_PINNED_MODEL,
+    OPENAI_SDK_MAX_RETRIES,
+)
 
 FAKE_MODEL = "fake-llm-v1"
-# Model used by the live adapter's ``complete_json`` until the LLM track pins dated snapshots
-# in petpulse/llm/config.py. Legacy call sites still pass their own ``model=`` to legacy_chat.
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+# The live adapter's default is the dated snapshot pinned in petpulse/llm/config.py (never an
+# alias). Legacy call sites still pass their own ``model=`` to legacy_chat.
+DEFAULT_OPENAI_MODEL = OPENAI_PINNED_MODEL
+
+FakeMode = Literal["normal", "invalid_once", "truncate", "fail"]
+FAKE_MODES: tuple[str, ...] = ("normal", "invalid_once", "truncate", "fail")
+# The client marks a schema-repair attempt with this block; ``invalid_once`` keys off it.
+REPAIR_MARKER = "<validation_error>"
 
 
 class LLMError(RuntimeError):
@@ -29,6 +41,10 @@ class LLMError(RuntimeError):
 
 class UnsupportedTask(LLMError):
     """The fake has no deterministic behaviour for this task; callers take their fallback path."""
+
+
+class LLMRefusal(LLMError):
+    """The provider declined to answer (structured-output refusal or content filter)."""
 
 
 @dataclass
@@ -240,16 +256,28 @@ def skeleton_from_schema(schema: dict[str, Any]) -> Any:
 JsonHandler = Callable[[str, str, dict[str, Any]], Any]
 
 
+def default_json_handler(task: str) -> Optional[JsonHandler]:
+    """Rule-based handler for a versioned task (``note_extract.v1``...), imported lazily."""
+    from petpulse.llm.fake_rules import HANDLERS  # lazy: avoids an import cycle
+
+    return HANDLERS.get(task)
+
+
 @dataclass
 class FakeLLM:
     """Deterministic, offline LLM. Same input, same output. Never touches the network.
 
-    ``fail=True`` simulates an outage on every call (used by tests and, later, ``FAKE_FAIL``).
-    Every call is appended to ``calls`` so tests can assert on the exact prompt sent.
-    The LLM track registers rule-based handlers per task with ``register``.
+    ``fail=True`` simulates an outage on every call. Every call is appended to ``calls`` so
+    tests can assert on the exact prompt sent. Versioned tasks (``note_extract.v1`` ...) are
+    answered by the keyword rules in ``petpulse.llm.fake_rules``; ``register`` overrides them.
+
+    ``mode`` (``FAKE_LLM_MODE``) exercises the client's unhappy paths:
+    ``invalid_once`` returns schema-invalid JSON unless the request is a repair attempt,
+    ``truncate`` returns cut-off JSON with ``finish_reason="length"``, ``fail`` raises.
     """
 
     fail: bool = False
+    mode: FakeMode = "normal"
     name: str = "fake"
     model: str = FAKE_MODEL
     calls: list[dict[str, Any]] = field(default_factory=list)
@@ -268,24 +296,40 @@ class FakeLLM:
         temperature: float = 0.0,
         max_tokens: int = 800,
     ) -> RawCompletion:
-        self.calls.append({"api": "complete_json", "task": task, "system": system, "user": user, "schema": schema})
-        if self.fail:
+        self.calls.append(
+            {
+                "api": "complete_json",
+                "task": task,
+                "system": system,
+                "user": user,
+                "schema": schema,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+        )
+        if self.fail or self.mode == "fail":
             raise LLMError(f"simulated provider outage (task={task})")
-        handler = self._json_handlers.get(task)
+        handler = self._json_handlers.get(task) or default_json_handler(task)
         payload = handler(system, user, schema) if handler else skeleton_from_schema(schema)
+        finish_reason = "stop"
+        if self.mode == "invalid_once" and REPAIR_MARKER not in user and isinstance(payload, dict):
+            # The classic M1 failure: an off-enum label plus an invented field.
+            payload = {**payload, "kind": "Emergency!!", "confidence": 7}
         text = json.dumps(payload, sort_keys=True)
+        if self.mode == "truncate":
+            text, finish_reason = text[: max(1, len(text) // 2)], "length"
         return RawCompletion(
             text=text,
             model=self.model,
             input_tokens=_estimate_tokens(system + user),
             output_tokens=_estimate_tokens(text),
-            finish_reason="stop",
+            finish_reason=finish_reason,
         )
 
     def legacy_chat(self, task: str, **kwargs: Any) -> ChatCompletionLike:
         messages = list(kwargs.get("messages") or [])
         self.calls.append({"api": "legacy_chat", "task": task, "kwargs": kwargs, "messages": messages})
-        if self.fail:
+        if self.fail or self.mode == "fail":
             raise LLMError(f"simulated provider outage (task={task})")
         handler = _LEGACY_HANDLERS.get(task)
         if handler is None:
@@ -299,37 +343,89 @@ class FakeLLM:
         )
 
 
-class OpenAILLM:
-    """Live adapter. ``openai`` is imported on first use, never at module import.
+def schema_name(task: str) -> str:
+    """OpenAI ``json_schema.name``: letters, digits, ``_`` and ``-`` only, at most 64 chars."""
+    return re.sub(r"[^A-Za-z0-9_-]", "_", task)[:64]
 
-    Hardening (pinned dated models, strict-schema validation and repair, call records, cost)
-    is the LLM track's job; this is the wiring skeleton that auto-selection builds.
+
+class OpenAILLM:
+    """Live adapter over the OpenAI Chat Completions API. ``openai`` is imported on first use.
+
+    - strict structured output: ``response_format={"type": "json_schema", "strict": true}``
+      with the schema the client derived from the Pydantic model;
+    - a pinned, dated model id (``petpulse.llm.config.OPENAI_PINNED_MODEL`` / ``OPENAI_MODEL``);
+    - a request timeout and a bounded number of SDK transport retries;
+    - ``finish_reason`` is passed through (``length`` = truncated) and a structured-output
+      refusal or content filter raises ``LLMRefusal``; transport/API errors raise ``LLMError``.
+
+    The client (``petpulse.llm.client``) validates, repairs once, and records every attempt.
+    ``http_client`` lets contract tests inject a mocked transport; production passes nothing.
     """
 
     name = "openai"
 
-    def __init__(self, api_key: str, model: str = DEFAULT_OPENAI_MODEL, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_OPENAI_MODEL,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        *,
+        max_retries: int = OPENAI_SDK_MAX_RETRIES,
+        base_url: Optional[str] = None,
+        http_client: Any = None,
+    ) -> None:
         if not api_key:
             raise ValueError("OpenAILLM requires an API key")
         self._api_key = api_key
         self.model = model
         self.timeout = timeout
+        self.max_retries = max_retries
+        self.base_url = base_url
+        self._http_client = http_client
         self._sync: Any = None
         self._async: Any = None
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {"api_key": self._api_key, "timeout": self.timeout, "max_retries": self.max_retries}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        return kwargs
 
     def _sync_client(self) -> Any:
         if self._sync is None:
             import openai  # lazy: demo mode never imports the SDK
 
-            self._sync = openai.OpenAI(api_key=self._api_key, timeout=self.timeout, max_retries=2)
+            self._sync = openai.OpenAI(**self._client_kwargs())
         return self._sync
 
     def _async_client(self) -> Any:
         if self._async is None:
             import openai  # lazy
 
-            self._async = openai.AsyncOpenAI(api_key=self._api_key, timeout=self.timeout, max_retries=2)
+            kwargs = self._client_kwargs()
+            if self._http_client is not None:
+                kwargs["http_client"] = self._http_client
+            self._async = openai.AsyncOpenAI(**kwargs)
         return self._async
+
+    def build_request(
+        self, *, task: str, system: str, user: str, schema: dict[str, Any], temperature: float, max_tokens: int
+    ) -> dict[str, Any]:
+        """The exact ``chat.completions.create`` arguments (asserted by the contract tests)."""
+        request: dict[str, Any] = {
+            "model": self.model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "temperature": temperature,
+            "max_completion_tokens": max_tokens,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": schema_name(task), "schema": schema, "strict": True},
+            },
+        }
+        facts = MODEL_FACTS.get(self.model)
+        if facts is not None and facts.reasoning_effort is not None:
+            request["reasoning_effort"] = facts.reasoning_effort
+        return request
 
     async def complete_json(
         self,
@@ -341,25 +437,44 @@ class OpenAILLM:
         temperature: float = 0.0,
         max_tokens: int = 800,
     ) -> RawCompletion:
-        response = await self._async_client().chat.completions.create(
-            model=self.model,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": re.sub(r"[^A-Za-z0-9_-]", "_", task)[:64], "schema": schema, "strict": True},
-            },
+        request = self.build_request(
+            task=task, system=system, user=user, schema=schema, temperature=temperature, max_tokens=max_tokens
         )
+        client = self._async_client()
+        try:
+            response = await client.chat.completions.create(**request)
+        except Exception as exc:
+            api_error = _openai_error_types()
+            if api_error and isinstance(exc, api_error):
+                status = getattr(exc, "status_code", None)
+                raise LLMError(f"openai {type(exc).__name__}" + (f" (HTTP {status})" if status else "")) from exc
+            raise
+        if not response.choices:
+            raise LLMError("openai returned no choices")
         choice = response.choices[0]
+        message = choice.message
+        finish_reason = choice.finish_reason or ""
+        if getattr(message, "refusal", None):
+            raise LLMRefusal("openai refused the request (structured-output refusal)")
+        if finish_reason == "content_filter":
+            raise LLMRefusal("openai stopped the response (content_filter)")
         usage = getattr(response, "usage", None)
         return RawCompletion(
-            text=choice.message.content or "",
-            model=getattr(response, "model", self.model),
+            text=message.content or "",
+            model=getattr(response, "model", None) or self.model,
             input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
             output_tokens=getattr(usage, "completion_tokens", 0) or 0,
-            finish_reason=choice.finish_reason or "",
+            finish_reason=finish_reason,
         )
 
     def legacy_chat(self, task: str, **kwargs: Any) -> Any:
         return self._sync_client().chat.completions.create(**kwargs)
+
+
+def _openai_error_types() -> Optional[type[BaseException]]:
+    """``openai.APIError`` (base of timeout, connection and HTTP status errors), if loaded."""
+    import sys
+
+    module = sys.modules.get("openai")
+    error = getattr(module, "APIError", None) if module is not None else None
+    return error if isinstance(error, type) and issubclass(error, BaseException) else None

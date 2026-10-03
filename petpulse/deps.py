@@ -49,8 +49,8 @@ def _openai_key(settings: Settings) -> str:
 def _build_llm() -> LLMProvider:
     settings = get_settings()
     if settings.resolved_llm() == "openai":
-        return OpenAILLM(api_key=_openai_key(settings))
-    return FakeLLM()
+        return OpenAILLM(api_key=_openai_key(settings), model=settings.openai_model, timeout=settings.llm_timeout_seconds)
+    return FakeLLM(mode=settings.fake_llm_mode)
 
 
 @lru_cache(maxsize=1)

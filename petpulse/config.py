@@ -14,10 +14,13 @@ from typing import Annotated, Any, Literal, Optional
 from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from petpulse.llm.config import DEFAULT_TIMEOUT_SECONDS, OPENAI_PINNED_MODEL, is_dated_snapshot
+
 LLMChoice = Literal["auto", "fake", "openai"]
 STTChoice = Literal["auto", "fake", "openai", "google"]
 ResolvedLLM = Literal["fake", "openai"]
 ResolvedSTT = Literal["fake", "openai", "google"]
+FakeLLMMode = Literal["normal", "invalid_once", "truncate", "fail"]
 
 
 class ConfigError(RuntimeError):
@@ -33,6 +36,9 @@ class Settings(BaseSettings):
     llm_provider: LLMChoice = "auto"
     stt_provider: STTChoice = "auto"
     openai_api_key: Optional[SecretStr] = None
+    openai_model: str = OPENAI_PINNED_MODEL  # a dated snapshot; aliases are rejected by check()
+    llm_timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    fake_llm_mode: FakeLLMMode = "normal"  # failure drills for the fake provider (tests, demos)
     google_application_credentials: Optional[str] = None
     auth_secret: Optional[SecretStr] = None  # generated at startup when unset (auth track)
 
@@ -91,6 +97,10 @@ class Settings(BaseSettings):
             problems.append("STT_PROVIDER=openai requires OPENAI_API_KEY (or use STT_PROVIDER=auto|fake).")
         if stt == "google" and not self.google_application_credentials:
             problems.append("STT_PROVIDER=google requires GOOGLE_APPLICATION_CREDENTIALS (path to a service-account JSON).")
+        if self.resolved_llm() == "openai" and not is_dated_snapshot(self.openai_model):
+            problems.append(f"OPENAI_MODEL must be a dated snapshot such as {OPENAI_PINNED_MODEL}, not {self.openai_model!r}.")
+        if not 0 < self.llm_timeout_seconds <= 120:
+            problems.append("LLM_TIMEOUT_SECONDS must be in (0, 120].")
         if self.live_call_cap < 0:
             problems.append("LIVE_CALL_CAP must be >= 0.")
         if problems:
