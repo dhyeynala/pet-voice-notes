@@ -76,7 +76,7 @@ def count(
             continue
         if category is not None and not event.has_category(category):
             continue
-        if terms and not (event.kind in ("note", "record") and matches_terms(event, terms)):
+        if terms and not matches_terms(event, terms):
             continue
         if category is None and not terms:
             continue
