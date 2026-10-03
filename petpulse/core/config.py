@@ -86,6 +86,7 @@ class Settings(BaseSettings):
         return value
 
     seed_on_start: bool = True
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:8000"]
     live_call_cap: int = 6
     # Speech-to-text (voice track). The OpenAI model is a pinned dated snapshot.
@@ -110,6 +111,11 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return value.strip().lower() or "auto"
         return value
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _upper_log_level(cls, value: Any) -> Any:
+        return value.strip().upper() or "INFO" if isinstance(value, str) else value
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
