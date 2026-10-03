@@ -9,6 +9,7 @@ services:
       args:
         INSTALL_LIVE: ${INSTALL_LIVE:-false}
     image: petpulse:demo
+    command: ["uvicorn", "petpulse.app:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     env_file:

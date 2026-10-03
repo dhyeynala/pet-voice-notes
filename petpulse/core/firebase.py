@@ -1,7 +1,7 @@
 """Optional Firebase mode: the Admin SDK app and ID-token verification.
 
 ``firebase_admin`` is imported lazily, only when Firebase is actually used, so the default
-install and the Docker image do not need it (it lives in ``requirements-live.txt``).
+install and the Docker image do not need it (it lives in ``requirements/live.txt``).
 ``Settings.check()`` refuses to start when Firebase is selected but the package is missing.
 
 The backend uses the Admin SDK, which bypasses Firestore security rules: every route still goes
@@ -35,7 +35,7 @@ def _import(name: str) -> Any:
     try:
         return importlib.import_module(name)
     except ImportError as exc:  # pragma: no cover - guarded by Settings.check() at startup
-        raise ConfigError("Firebase mode needs firebase-admin: pip install -r requirements-live.txt") from exc
+        raise ConfigError("Firebase mode needs firebase-admin: pip install -r requirements/live.txt") from exc
 
 
 def get_app(settings: Settings) -> Any:

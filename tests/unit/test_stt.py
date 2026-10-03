@@ -402,7 +402,7 @@ def test_google_missing_sdk_is_an_error_not_a_crash(monkeypatch):
 
 
 def test_google_config_is_valid_for_the_real_sdk_when_installed():
-    """Runs only where ``requirements-live.txt`` is installed; builds the real proto offline."""
+    """Runs only where ``requirements/live.txt`` is installed; builds the real proto offline."""
     speech = pytest.importorskip("google.cloud.speech")
     stt = GoogleSTT()
     for audio_bytes, mime in (

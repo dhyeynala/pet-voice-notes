@@ -277,7 +277,7 @@ class GoogleSTT:
 
     def _get_client(self) -> Any:
         if self._client is None:
-            from google.cloud import speech  # lazy; optional dependency (requirements-live.txt)
+            from google.cloud import speech  # lazy; optional dependency (requirements/live.txt)
 
             if self.credentials_path:
                 self._client = speech.SpeechClient.from_service_account_file(str(Path(self.credentials_path)))

@@ -47,7 +47,7 @@ def _build_blobs() -> BlobStore:
 
 
 def _firestore_store(settings: Settings) -> Store:
-    # Lazy: firebase_admin is an optional dependency (requirements-live.txt).
+    # Lazy: firebase_admin is an optional dependency (requirements/live.txt).
     from petpulse.store.firestore import FirestoreStore
 
     settings.check()

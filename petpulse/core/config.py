@@ -298,7 +298,7 @@ class Settings(BaseSettings):
         uses_firebase = self.resolved_store() == "firestore" or self.resolved_auth() == "firebase"
         if uses_firebase and not firebase_admin_installed():
             problems.append(
-                "Firebase mode needs the optional firebase-admin package: pip install -r requirements-live.txt "
+                "Firebase mode needs the optional firebase-admin package: pip install -r requirements/live.txt "
                 "(Docker: INSTALL_LIVE=true docker compose build)."
             )
         return problems

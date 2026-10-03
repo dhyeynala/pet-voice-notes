@@ -127,7 +127,7 @@ def test_unreadable_credentials_file_is_an_error(installed, tmp_path):
 
 def test_firebase_without_the_package_fails_with_install_hint(monkeypatch):
     monkeypatch.setattr(config, "firebase_admin_installed", lambda: False)
-    with pytest.raises(ConfigError, match="requirements-live.txt"):
+    with pytest.raises(ConfigError, match="requirements/live.txt"):
         make(firebase_credentials_json=SA_JSON).check()
     make().check()  # demo mode never needs it
 

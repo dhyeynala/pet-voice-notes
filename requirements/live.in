@@ -1,5 +1,5 @@
 # Optional live-only dependencies (Google STT, Firebase). Installed with INSTALL_LIVE=true.
-#   uv pip compile requirements-live.in -c requirements.txt -o requirements-live.txt --python-version 3.11
+#   uv pip compile requirements/live.in -c requirements/base.txt -o requirements/live.txt --python-version 3.11
 google-cloud-speech
 # Optional Firebase mode (STORE_BACKEND / AUTH_PROVIDER = firebase; see docs/firebase.md). Imported lazily.
 firebase-admin==7.7.0
