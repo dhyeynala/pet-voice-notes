@@ -1,8 +1,9 @@
 """Cached factories for settings, storage and providers.
 
 Routes take these as FastAPI dependencies (``Depends(get_store)``), so tests can use
-``app.dependency_overrides``. Legacy modules that are not dependency-injected call the same
-functions directly; ``override()`` swaps the instances for both paths at once.
+``app.dependency_overrides``. Code that is not dependency-injected (the seed, services called
+outside a request) calls the same functions directly; ``override()`` swaps the instances for
+both paths at once.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ from petpulse.providers.llm import FakeLLM, LLMProvider, OpenAILLM
 from petpulse.providers.stt import FakeSTT, GoogleSTT, OpenAISTT, STTProvider
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore, LocalBlobStore
-from petpulse.store.firestore_compat import CompatClient
 from petpulse.store.memory import JsonFileStore, MemoryStore
 
 _overrides: dict[str, Any] = {}
@@ -111,11 +111,6 @@ def get_llm() -> LLMProvider:
 
 def get_stt() -> STTProvider:
     return _overrides["stt"] if "stt" in _overrides else _build_stt()
-
-
-def legacy_db() -> CompatClient:
-    """Firestore-shaped client for the legacy modules; resolves the store on every call."""
-    return CompatClient(get_store)
 
 
 def override(**instances: Any) -> None:

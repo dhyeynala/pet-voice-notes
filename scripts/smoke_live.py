@@ -105,12 +105,6 @@ class BudgetedLLM:
         kwargs["max_tokens"] = min(int(kwargs.get("max_tokens", self._max_tokens)), self._max_tokens)
         return await self._inner.complete_json(**kwargs)
 
-    def legacy_chat(self, task: str, **kwargs: Any) -> Any:
-        self._budget.spend(f"llm.legacy_chat:{task}")
-        if "max_tokens" in kwargs:
-            kwargs["max_tokens"] = min(int(kwargs["max_tokens"]), self._max_tokens)
-        return self._inner.legacy_chat(task, **kwargs)
-
     def __getattr__(self, item: str) -> Any:  # register(), calls, fail ... (fakes)
         return getattr(self._inner, item)
 

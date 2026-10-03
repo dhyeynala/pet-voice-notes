@@ -33,8 +33,6 @@ def test_app_structure():
     assert os.path.exists("requirements.txt")
     assert os.path.exists("README.md")
     assert os.path.exists("public/index.html")
-    assert os.path.exists("summarize_openai.py")
-    assert os.path.exists("firestore_store.py")
 
 
 def test_requirements_file():
@@ -134,23 +132,23 @@ class TestBasicFunctionality:
         assert not os.path.exists("public/firebase-config.template.js")
 
 
-# Simple smoke tests that test module structure without importing
-def test_module_files_exist():
-    """Test that all expected Python modules exist."""
-    modules = [
-        "api_server.py",
-        "summarize_openai.py",
-        "firestore_store.py",
-        "pdf_parser.py",
-        "setup.py",
-        "ai_analytics.py",
-        "intelligent_chatbot_service.py",
-        "simple_rag_service.py",
-        "visualization_service.py",
-    ]
+LEGACY_MODULES = (
+    "firestore_store.py",
+    "summarize_openai.py",
+    "intelligent_chatbot_service.py",
+    "simple_rag_service.py",
+    "pdf_parser.py",
+    "ai_analytics.py",
+    "visualization_service.py",
+    "setup.py",
+    "petpulse/store/firestore_compat.py",
+)
 
-    for module in modules:
-        assert os.path.exists(module), f"Missing module: {module}"
+
+def test_legacy_modules_are_gone():
+    """Replaced by petpulse/services and petpulse/llm (Track F)."""
+    for module in LEGACY_MODULES:
+        assert not os.path.exists(module), f"{module} should be deleted"
 
 
 def test_server_microphone_path_is_gone():

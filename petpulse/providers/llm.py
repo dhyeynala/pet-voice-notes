@@ -1,13 +1,7 @@
 """LLM provider interface, the deterministic ``FakeLLM`` and the lazily imported ``OpenAILLM``.
 
-Two entry points exist on purpose:
-
-- ``complete_json`` is the target interface (structured output, one call per task). The
-  LLM track builds the prompt registry, schemas and validating adapter on top of it.
-- ``legacy_chat`` is a *transitional* OpenAI-shaped ``chat.completions.create`` passthrough
-  so the legacy modules keep working on either provider with minimal change. It is removed
-  once ``summarize_openai``, ``pdf_parser``, ``ai_analytics``, ``simple_rag_service`` and
-  ``intelligent_chatbot_service`` are replaced (LLM track).
+The one entry point is ``complete_json`` (structured output, one call per task). The prompt
+registry, schemas and the validating client in ``petpulse.llm`` are built on top of it.
 """
 
 from __future__ import annotations
@@ -26,7 +20,7 @@ from petpulse.llm.config import (
 
 FAKE_MODEL = "fake-llm-v1"
 # The live adapter's default is the dated snapshot pinned in petpulse/llm/config.py (never an
-# alias). Legacy call sites still pass their own ``model=`` to legacy_chat.
+# alias).
 DEFAULT_OPENAI_MODEL = OPENAI_PINNED_MODEL
 
 FakeMode = Literal["normal", "invalid_once", "truncate", "fail"]
@@ -37,10 +31,6 @@ REPAIR_MARKER = "<validation_error>"
 
 class LLMError(RuntimeError):
     """A provider-level failure: outage, timeout, simulated failure."""
-
-
-class UnsupportedTask(LLMError):
-    """The fake has no deterministic behaviour for this task; callers take their fallback path."""
 
 
 class LLMRefusal(LLMError):
@@ -72,160 +62,9 @@ class LLMProvider(Protocol):
         max_tokens: int = 800,
     ) -> RawCompletion: ...
 
-    def legacy_chat(self, task: str, **kwargs: Any) -> Any: ...
-
-
-class LegacyTask:
-    """Task names used by the legacy call sites (one per prompt)."""
-
-    NOTE_SUMMARY = "legacy.note_summary"
-    NOTE_CLASSIFY = "legacy.note_classify"
-    PDF_SUMMARY = "legacy.pdf_summary"
-    DAILY_HEADLINES = "legacy.daily_headlines"
-    HEALTH_INSIGHTS = "legacy.health_insights"
-    RAG_ANSWER = "legacy.rag_answer"
-    CHAT_ASSISTANT = "legacy.chat_assistant"
-
-
-# ---------------------------------------------------------------------------- OpenAI-shaped
-@dataclass
-class _Message:
-    content: Optional[str]
-    role: str = "assistant"
-    tool_calls: Optional[list[Any]] = None
-
-
-@dataclass
-class _Choice:
-    message: _Message
-    finish_reason: str = "stop"
-    index: int = 0
-
-
-@dataclass
-class _Usage:
-    prompt_tokens: int
-    completion_tokens: int
-
-    @property
-    def total_tokens(self) -> int:
-        return self.prompt_tokens + self.completion_tokens
-
-
-@dataclass
-class ChatCompletionLike:
-    """The subset of ``openai.types.chat.ChatCompletion`` the legacy code reads."""
-
-    choices: list[_Choice]
-    model: str
-    usage: _Usage
-
 
 def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
-
-
-def _messages_text(messages: list[dict[str, Any]], role: str) -> str:
-    return "\n".join(str(m.get("content") or "") for m in messages if m.get("role") == role)
-
-
-def _after_marker(text: str, marker: str) -> str:
-    idx = text.find(marker)
-    return text[idx + len(marker) :] if idx >= 0 else ""
-
-
-def _note_body(messages: list[dict[str, Any]]) -> str:
-    """Legacy user prompts are ``"<instruction>:\\n\\n<note text>"``."""
-    user = _messages_text(messages, "user")
-    return user.split("\n\n", 1)[1] if "\n\n" in user else user
-
-
-def _first_sentence(text: str, limit: int = 200) -> str:
-    text = " ".join(text.split())
-    match = re.match(r"(.+?[.!?])(\s|$)", text)
-    sentence = match.group(1) if match else text
-    return sentence[:limit]
-
-
-_MEDICAL_WORDS = re.compile(
-    r"\b(vomit\w*|blood\w*|diarrh\w*|limp\w*|vet|medication|pill|sick|pain\w*|injur\w*|collaps\w*|seizure\w*|"
-    r"letharg\w*|cough\w*|fever|swollen|bleed\w*)\b",
-    re.IGNORECASE,
-)
-_DAILY_WORDS = re.compile(
-    r"\b(walk\w*|play\w*|ate|eat\w*|meal|dinner|breakfast|slept|sleep\w*|nap\w*|groom\w*|bath|park|fetch|"
-    r"train\w*|treat\w*|happy|energetic)\b",
-    re.IGNORECASE,
-)
-
-
-def _fake_note_summary(messages: list[dict[str, Any]]) -> str:
-    body = _note_body(messages).strip()
-    if not body:
-        return "[Simulated summary] (empty note)"
-    return f"[Simulated summary] {_first_sentence(body)}"
-
-
-def _fake_note_classify(messages: list[dict[str, Any]]) -> str:
-    body = _note_body(messages)
-    medical = sorted({m.lower() for m in _MEDICAL_WORDS.findall(body)})
-    daily = sorted({m.lower() for m in _DAILY_WORDS.findall(body)})
-    if medical and daily:
-        label = "MIXED"
-    elif medical:
-        label = "MEDICAL"
-    elif daily:
-        label = "DAILY_ACTIVITY"
-    else:
-        label = "OTHER"
-    result = {
-        "classification": label,
-        "confidence": 0.5,
-        "keywords": (medical + daily)[:5],
-        "reasoning": "Simulated keyword classification (fake provider)",
-        "primary_activities": daily[:3],
-    }
-    return json.dumps(result, sort_keys=True)
-
-
-_PDF_LINE = re.compile(r"mg\b|diagnos|vaccin|follow.?up|recheck", re.IGNORECASE)
-
-
-def _fake_pdf_summary(messages: list[dict[str, Any]]) -> str:
-    body = _messages_text(messages, "user")
-    lines = [" ".join(line.split()) for line in body.splitlines()]
-    hits = [line for line in lines if line and _PDF_LINE.search(line)][:8]
-    if not hits:
-        return "[Simulated summary] No medications, diagnoses or follow-ups found in the document text."
-    return "[Simulated summary] Key lines from the document:\n" + "\n".join(f"- {line}" for line in hits)
-
-
-def _context_answer(messages: list[dict[str, Any]], marker: str) -> str:
-    context = _after_marker(_messages_text(messages, "system"), marker).strip()
-    question = _messages_text(messages, "user").strip()
-    lines = [line.strip() for line in context.splitlines() if line.strip()][:3]
-    if not lines:
-        return f"[Simulated answer] I found no records to answer: {question[:120]}"
-    return "[Simulated answer] From the provided context:\n" + "\n".join(f"- {line[:200]}" for line in lines)
-
-
-def _fake_rag_answer(messages: list[dict[str, Any]]) -> str:
-    return _context_answer(messages, "Context from Pet's Health Data, Veterinary Knowledge, and Breed Information:")
-
-
-def _fake_chat_assistant(messages: list[dict[str, Any]]) -> str:
-    return _context_answer(messages, "Context from Pet's Health Data:")
-
-
-_LEGACY_HANDLERS: dict[str, Callable[[list[dict[str, Any]]], str]] = {
-    LegacyTask.NOTE_SUMMARY: _fake_note_summary,
-    LegacyTask.NOTE_CLASSIFY: _fake_note_classify,
-    LegacyTask.PDF_SUMMARY: _fake_pdf_summary,
-    LegacyTask.RAG_ANSWER: _fake_rag_answer,
-    LegacyTask.CHAT_ASSISTANT: _fake_chat_assistant,
-    # DAILY_HEADLINES and HEALTH_INSIGHTS are deliberately absent: the legacy code then takes
-    # its rule-based fallback. The LLM track replaces both with code-computed insights.
-}
 
 
 def skeleton_from_schema(schema: dict[str, Any]) -> Any:
@@ -326,22 +165,6 @@ class FakeLLM:
             finish_reason=finish_reason,
         )
 
-    def legacy_chat(self, task: str, **kwargs: Any) -> ChatCompletionLike:
-        messages = list(kwargs.get("messages") or [])
-        self.calls.append({"api": "legacy_chat", "task": task, "kwargs": kwargs, "messages": messages})
-        if self.fail or self.mode == "fail":
-            raise LLMError(f"simulated provider outage (task={task})")
-        handler = _LEGACY_HANDLERS.get(task)
-        if handler is None:
-            raise UnsupportedTask(f"FakeLLM has no deterministic behaviour for {task!r}")
-        content = handler(messages)
-        prompt = "\n".join(str(m.get("content") or "") for m in messages)
-        return ChatCompletionLike(
-            choices=[_Choice(message=_Message(content=content))],
-            model=self.model,
-            usage=_Usage(prompt_tokens=_estimate_tokens(prompt), completion_tokens=_estimate_tokens(content)),
-        )
-
 
 def schema_name(task: str) -> str:
     """OpenAI ``json_schema.name``: letters, digits, ``_`` and ``-`` only, at most 64 chars."""
@@ -382,7 +205,6 @@ class OpenAILLM:
         self.max_retries = max_retries
         self.base_url = base_url
         self._http_client = http_client
-        self._sync: Any = None
         self._async: Any = None
 
     def _client_kwargs(self) -> dict[str, Any]:
@@ -390,13 +212,6 @@ class OpenAILLM:
         if self.base_url:
             kwargs["base_url"] = self.base_url
         return kwargs
-
-    def _sync_client(self) -> Any:
-        if self._sync is None:
-            import openai  # lazy: demo mode never imports the SDK
-
-            self._sync = openai.OpenAI(**self._client_kwargs())
-        return self._sync
 
     def _async_client(self) -> Any:
         if self._async is None:
@@ -466,9 +281,6 @@ class OpenAILLM:
             output_tokens=getattr(usage, "completion_tokens", 0) or 0,
             finish_reason=finish_reason,
         )
-
-    def legacy_chat(self, task: str, **kwargs: Any) -> Any:
-        return self._sync_client().chat.completions.create(**kwargs)
 
 
 def _openai_error_types() -> Optional[type[BaseException]]:

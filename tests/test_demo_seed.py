@@ -100,13 +100,15 @@ def test_bob_cannot_see_alices_max(seeded):
     assert alice.get(f"/api/pets/{ALICE_MAX_ID}").json()["breed"] == "Golden Retriever"
 
 
-def test_seeded_max_drives_the_legacy_dashboard(seeded):
+def test_seeded_max_drives_the_dashboard(seeded):
     alice = seeded("alice")
     data = alice.get(f"/api/pets/{ALICE_MAX_ID}/analytics?days=30").json()
-    assert {d["category"] for d in data} >= set(demo_data.CATEGORIES)
-    viz = alice.get(f"/api/pets/{ALICE_MAX_ID}/visualizations?days=30")
-    assert viz.status_code == 200 and viz.json()["data_points"] > 200
-    assert alice.get(f"/api/pets/{ALICE_MAX_ID}/analytics/summary").status_code == 200
+    assert {d["category"] for d in data} >= set(demo_data.CATEGORIES) and len(data) > 200
+    insights = alice.get(f"/api/pets/{ALICE_MAX_ID}/insights?tz=UTC")
+    assert insights.status_code == 200
+    assert "urgent_note" in {a["id"] for a in insights.json()["alerts"]}
+    notes = alice.get(f"/api/pets/{ALICE_MAX_ID}/notes").json()
+    assert len(notes) == 8 and notes[0]["urgent"] is True
 
 
 def test_seed_is_idempotent_across_restarts(seeded, store):
@@ -202,9 +204,8 @@ def test_seed_notes():
         if doc["urgent"]
     ]
     assert len(all_urgent) == 1
-    # Mirrored for the legacy UI, one legacy row per note.
-    legacy = store.query(f"pets/{ALICE_MAX_ID}/textinput") + store.query(f"pets/{ALICE_MAX_ID}/voice-notes")
-    assert len(legacy) == 8 and all(doc["note_id"] for _, doc in legacy)
+    # Notes live in one place only: no legacy textinput / voice-notes mirror any more.
+    assert store.query(f"pets/{ALICE_MAX_ID}/textinput") == [] and store.query(f"pets/{ALICE_MAX_ID}/voice-notes") == []
 
 
 def test_seed_is_deterministic_for_a_given_now():
@@ -213,12 +214,8 @@ def test_seed_is_deterministic_for_a_given_now():
     seed.seed_demo_data(b, now=NOW)
 
     def content(store: MemoryStore) -> list[str]:
-        # Document ids from store.add() are random; the content is not (note_id links to one).
-        return sorted(
-            json.dumps({k: v for k, v in doc.items() if k != "note_id"}, sort_keys=True)
-            for docs in store.snapshot().values()
-            for doc in docs.values()
-        )
+        # Document ids from store.add() are random; the content is not.
+        return sorted(json.dumps(doc, sort_keys=True) for docs in store.snapshot().values() for doc in docs.values())
 
     assert content(a) == content(b)
 

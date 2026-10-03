@@ -9,8 +9,8 @@ import types
 
 import pytest
 
-from petpulse.providers import FakeLLM, FakeSTT, LLMError, LLMProvider, OpenAILLM, OpenAISTT, STTProvider, UnsupportedTask
-from petpulse.providers.llm import LegacyTask, skeleton_from_schema
+from petpulse.providers import FakeLLM, FakeSTT, LLMError, LLMProvider, OpenAILLM, OpenAISTT, STTProvider
+from petpulse.providers.llm import skeleton_from_schema
 
 SCHEMA = {
     "type": "object",
@@ -54,8 +54,6 @@ def test_fail_mode_raises():
     llm = FakeLLM(fail=True)
     with pytest.raises(LLMError):
         asyncio.run(llm.complete_json(task="t", system="s", user="u", schema={}))
-    with pytest.raises(LLMError):
-        llm.legacy_chat(LegacyTask.NOTE_SUMMARY, messages=[])
 
 
 def test_skeleton_prefers_unknown_and_handles_const():
@@ -63,49 +61,6 @@ def test_skeleton_prefers_unknown_and_handles_const():
     assert skeleton_from_schema({"enum": ["A", "B"]}) == "A"
     assert skeleton_from_schema({"const": 3}) == 3
     assert skeleton_from_schema({"type": "integer"}) == 0
-
-
-def _chat(llm, task, system, user):
-    resp = llm.legacy_chat(
-        task, model="gpt-4o", messages=[{"role": "system", "content": system}, {"role": "user", "content": user}]
-    )
-    return resp.choices[0].message.content
-
-
-def test_legacy_classify_is_keyword_based_json():
-    llm = FakeLLM()
-    out = json.loads(
-        _chat(llm, LegacyTask.NOTE_CLASSIFY, "classify", "Classify this pet content:\n\nMax vomited after his walk")
-    )
-    assert out["classification"] == "MIXED"
-    assert (
-        json.loads(_chat(llm, LegacyTask.NOTE_CLASSIFY, "c", "x:\n\nMax had a long walk"))["classification"]
-        == "DAILY_ACTIVITY"
-    )
-    assert json.loads(_chat(llm, LegacyTask.NOTE_CLASSIFY, "c", "x:\n\nMax is limping"))["classification"] == "MEDICAL"
-    assert json.loads(_chat(llm, LegacyTask.NOTE_CLASSIFY, "c", "x:\n\nthe weather is nice"))["classification"] == "OTHER"
-
-
-def test_legacy_summary_and_pdf_are_labelled_simulated():
-    llm = FakeLLM()
-    summary = _chat(llm, LegacyTask.NOTE_SUMMARY, "s", "Summarize:\n\nMax walked 30 minutes. Then he slept.")
-    assert summary == "[Simulated summary] Max walked 30 minutes."
-    pdf = _chat(llm, LegacyTask.PDF_SUMMARY, "s", "Exam notes\nApoquel 16 mg daily\nRecheck in 2 weeks\nWeight 30kg")
-    assert pdf.startswith("[Simulated summary]")
-    assert "Apoquel 16 mg daily" in pdf and "Recheck in 2 weeks" in pdf and "Weight" not in pdf
-
-
-def test_legacy_chat_answers_only_from_given_context():
-    llm = FakeLLM()
-    with_ctx = _chat(llm, LegacyTask.CHAT_ASSISTANT, "Prompt\nContext from Pet's Health Data:\nMax limped on Tuesday", "When?")
-    assert "Max limped on Tuesday" in with_ctx
-    without = _chat(llm, LegacyTask.CHAT_ASSISTANT, "Prompt with no context block", "When did Max limp?")
-    assert "no records" in without
-
-
-def test_legacy_unsupported_task_raises_so_callers_fall_back():
-    with pytest.raises(UnsupportedTask):
-        FakeLLM().legacy_chat(LegacyTask.HEALTH_INSIGHTS, messages=[])
 
 
 def test_fake_stt_contract():
@@ -185,9 +140,7 @@ def test_openai_adapters_wire_through_sdk(monkeypatch):
     assert sent["response_format"]["json_schema"]["name"] == "note_extract_v1"
     assert sent["response_format"]["json_schema"]["strict"] is True
 
-    legacy = llm.legacy_chat(LegacyTask.NOTE_SUMMARY, model="gpt-4o", messages=[{"role": "user", "content": "x"}])
-    assert legacy.choices[0].message.content == '{"ok": true}'
-    assert fake_sdk.created[-1]["model"] == "gpt-4o"
+    assert not hasattr(llm, "legacy_chat")  # the transitional passthrough is gone
 
     stt = OpenAISTT(api_key=FAKE_KEY)
     result = stt.transcribe(b"audio-bytes", "audio/webm;codecs=opus")

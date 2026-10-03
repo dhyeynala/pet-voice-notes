@@ -10,8 +10,10 @@ raises=AssertionError)``:
   update the test to the new API in the PR that changes it.
 
 Finding IDs refer to the review (pet-voice-notes-review.md). Every proof below is fixed now
-(C1, C2, CORS by the auth/data track; C3, C4, H2, M2-M4 by the bug-fix track), so none carries
-the marker; they stay as regression tests. ``known_bug`` is kept for the next finding.
+(C1, C2, CORS by the auth/data track; C3, C4, H2, M2-M4 by the bug-fix and LLM tracks), so none
+carries the marker; they stay as regression tests. C4, H2 and M2-M4 originally drove the legacy
+modules; since those are deleted they now prove the same property through the contract routes
+and services that replaced them. ``known_bug`` is kept for the next finding.
 
 The ``client`` fixture is signed in as alice, who owns the pets ``make_pet()`` creates.
 """
@@ -19,7 +21,7 @@ The ``client`` fixture is signed in as alice, who owns the pets ``make_pet()`` c
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -90,66 +92,73 @@ def test_c3_upload_filename_cannot_choose_write_location(client_as, store, make_
 
 
 def test_c4_chat_prompt_contains_the_retrieved_note(client, store, fake_llm, make_pet):
-    from petpulse.providers.llm import LegacyTask
-
+    """Fixed (C4): the retrieved note reaches the model, and the answer cites it."""
     pet_id = make_pet("alice", "Max")
-    store.add(
-        f"pets/{pet_id}/voice-notes",
-        {
-            "transcript": "Max started limping on his left hind leg on Tuesday",
-            "summary": "Limping",
-            "timestamp": datetime.utcnow().isoformat(),
-        },
-    )
-    response = client.post(f"/api/pets/{pet_id}/chat", json={"query": "When did Max start limping?"})
+    note = client.post(
+        f"/api/pets/{pet_id}/notes", json={"text": "Max started limping on his left hind leg on Tuesday"}
+    ).json()
+    fake_llm.calls.clear()
+    response = client.post(f"/api/pets/{pet_id}/chat", json={"message": "Why is Max limping?"})
     assert response.status_code == 200
-
-    final_calls = [c for c in fake_llm.calls if c["task"] == LegacyTask.CHAT_ASSISTANT]
-    assert final_calls, "the chat route made no final assistant call"
-    prompt = "\n".join(str(m.get("content")) for m in final_calls[-1]["messages"])
-    assert "limping on his left hind leg" in prompt
+    [call] = [c for c in fake_llm.calls if c["task"] == "chat_answer.v1"]
+    assert "limping on his left hind leg" in call["user"]
+    assert [c["id"] for c in response.json()["citations"]] == [note["id"]]
 
 
-def test_h2_outage_does_not_classify_emergency_as_daily_activity(client, fake_llm, make_pet, no_retry_sleep):
+def test_h2_outage_does_not_classify_emergency_as_daily_activity(client, fake_llm, make_pet):
+    """Fixed (H2): a provider outage stores an unprocessed note for review, never DAILY_ACTIVITY."""
     pet_id = make_pet("alice", "Max")
     fake_llm.fail = True
-    response = client.post(
-        f"/api/pets/{pet_id}/textinput", json={"input": "Max collapsed and is vomiting blood, gums are pale"}
-    )
-    assert response.json().get("content_type") != "DAILY_ACTIVITY"
+    response = client.post(f"/api/pets/{pet_id}/notes", json={"text": "Max collapsed and is vomiting blood, gums are pale"})
+    assert response.status_code == 201
+    note = response.json()
+    assert note["kind"] != "DAILY_ACTIVITY" and note["needs_review"] is True and note["summary"] is None
 
 
-def test_h2_health_insights_never_invent_a_score(client, make_pet):
+def test_h2_health_insights_never_invent_a_score(client, store, make_pet):
+    """Fixed (H2): insights are facts with evidence; no score, nothing filled in without data."""
     pet_id = make_pet("alice", "Max")
-    response = client.get(f"/api/pets/{pet_id}/health_insights")
-    insights = response.json().get("insights") or {}
-    assert insights.get("overall_health_score") is None
+    body = client.get(f"/api/pets/{pet_id}/insights").json()
+    assert "overall_health_score" not in body and body["alerts"] == []
+    facts = {f["id"]: f for f in body["facts"]}
+    assert facts["avg_energy_7d"]["value"] is None and facts["exercise_minutes_7d"]["value"] is None
 
 
-def test_m2_trend_reports_decreasing_activity():
-    from visualization_service import PetVisualizationService
+def _analytics(store, pet_id, category, at, **fields):
+    store.add(f"pets/{pet_id}/analytics", {"category": category, "timestamp": at.replace(tzinfo=None).isoformat(), **fields})
 
-    now = datetime.utcnow()
-    early = [{"timestamp": (now - timedelta(days=25, hours=i)).isoformat()} for i in range(6)]
-    late = [{"timestamp": now.isoformat()}]
-    assert PetVisualizationService()._calculate_trend(early + late, 30) == "decreasing"
+
+def test_m2_trend_reports_decreasing_activity(client, store, make_pet):
+    """Fixed (M2): the week-over-week exercise facts show the drop (old trend said 'increasing')."""
+    pet_id = make_pet("alice", "Max")
+    now = datetime.now(timezone.utc)
+    for i in range(6):
+        _analytics(store, pet_id, "exercise", now - timedelta(days=9, hours=i), duration=30)
+    _analytics(store, pet_id, "exercise", now - timedelta(hours=1), duration=30)
+    facts = {f["id"]: f["value"] for f in client.get(f"/api/pets/{pet_id}/insights").json()["facts"]}
+    assert facts["exercise_minutes_prior_7d"] == 180 and facts["exercise_minutes_7d"] == 30
 
 
 def test_m3_missing_timestamp_does_not_break_summary(client_noraise, store, make_pet):
+    """Fixed (M3): a row without a timestamp is skipped and counted, not a 500."""
     pet_id = make_pet("alice", "Max")
     store.add(f"pets/{pet_id}/analytics", {"category": "diet"})
-    response = client_noraise.get(f"/api/pets/{pet_id}/analytics/summary")
+    response = client_noraise.get(f"/api/pets/{pet_id}/insights")
     assert response.status_code == 200
+    facts = {f["id"]: f["value"] for f in response.json()["facts"]}
+    assert facts["unreadable_rows"] == 1
 
 
 def test_m4_dynamic_chart_average_ignores_entries_without_the_metric():
-    from visualization_service import PetVisualizationService
+    """Fixed (M4): days without an energy level are gaps (None), not 0, in the chart average."""
+    from petpulse.services.charts import build_chart
+    from petpulse.services.events import Event
 
-    ts = datetime.now().replace(microsecond=0).isoformat()
-    data = [
-        {"category": "energy_levels", "level": 4, "timestamp": ts},
-        {"category": "diet", "timestamp": ts},
-        {"category": "diet", "timestamp": ts},
+    now = datetime(2026, 10, 3, 12, tzinfo=timezone.utc)
+    events = [
+        Event("e1", "analytics", "analytics", now, "energy", "energy_levels", (), {"level": 4}),
+        Event("e2", "analytics", "analytics", now - timedelta(days=1), "diet", "diet", (), {}),
+        Event("e3", "analytics", "analytics", now - timedelta(days=1), "energy", "energy_levels", (), {}),
     ]
-    cfg = PetVisualizationService().generate_dynamic_chart(data, "line", "date", "level", None, "average", 30, None)
-    assert cfg["data"]["datasets"][0]["data"] == [4.0]
+    chart = build_chart("energy_trend", events, tz="UTC", now=now, days=2)
+    assert chart is not None and chart["data"]["datasets"][0]["data"] == [None, 4.0]

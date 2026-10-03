@@ -37,7 +37,7 @@ def pets(make_pet):
 
 @pytest.fixture
 def chat_app(app, store, fake_llm):
-    """The contract chat route on its own: in ``api_server`` the legacy handler still matches first."""
+    """The contract chat router mounted on its own (no other routes, no static files)."""
     from petpulse import deps
     from petpulse.routers import assistant
 
@@ -159,9 +159,8 @@ def test_chat_outage_is_503(chat_app, pets, store, fake_llm):
     assert response.status_code == 503
 
 
-def test_app_chat_dispatches_contract_and_legacy_bodies(client, anon_client, client_as, pets, store):
-    """The legacy handler still owns ``POST .../chat``: ``{"message"}`` (the contract, used by the
-    new UI) goes to the grounded assistant; ``{"query"}`` still reaches the legacy chatbot."""
+def test_app_chat_is_the_contract_route_only(client, anon_client, client_as, pets, store):
+    """The contract router owns ``POST .../chat``; the legacy ``{"query"}`` body is a 422 now."""
     alice_pet, _ = pets
     url = f"/api/pets/{alice_pet}/chat"
     contract = client.post(url, json={"message": "Has he had a seizure?", "tz": "America/New_York"})
@@ -170,7 +169,8 @@ def test_app_chat_dispatches_contract_and_legacy_bodies(client, anon_client, cli
     assert client.post(url, json={"message": "hi", "extra": 1}).status_code == 422
     assert anon_client.post(url, json={"message": "hi"}).status_code == 401
     assert client_as("bob").post(url, json={"message": "hi"}).status_code == 404
-    assert "citations" not in client.post(url, json={"query": "How is Max?"}).json()
+    legacy = client.post(url, json={"query": "How is Max?"})
+    assert legacy.status_code == 422 and "citations" not in legacy.json()
 
 
 def test_chat_dosing_question_with_no_matching_records_is_out_of_scope(client, pets, fake_llm):

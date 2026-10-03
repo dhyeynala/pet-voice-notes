@@ -28,11 +28,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from starlette.datastructures import UploadFile  # fastapi.UploadFile subclasses this
 
-from pdf_parser import PDF_MAGIC, PdfError, extract_pdf_text
 from petpulse.auth import current_user, require_pet_access
 from petpulse.deps import get_blobs, get_llm, get_store
 from petpulse.providers.llm import LLMProvider
 from petpulse.services.pdf import summarize_pdf
+from petpulse.services.pdf_text import PDF_MAGIC, PdfError, extract_pdf_text
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore, new_key
 

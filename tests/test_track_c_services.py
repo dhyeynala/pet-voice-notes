@@ -89,17 +89,18 @@ def test_invalid_time_zones_are_rejected(tz):
 
 
 # ------------------------------------------------------------------ events
-def test_events_count_unreadable_rows_and_skip_legacy_mirrors():
+def test_events_count_unreadable_rows_and_ignore_the_removed_legacy_collections():
     store = MemoryStore()
-    note_id = note_doc(store, "Walked in the park.", 1)
-    store.add(f"pets/{PET}/textinput", {"input": "Walked in the park.", "timestamp": naive(1), "note_id": note_id})
-    store.add(f"pets/{PET}/textinput", {"input": "An older legacy note.", "timestamp": naive(5)})
+    note_doc(store, "An older note.", 5)
+    note_doc(store, "Walked in the park.", 1)
+    store.add(f"pets/{PET}/textinput", {"input": "A pre-contract legacy row.", "timestamp": naive(1)})
+    store.add(f"pets/{PET}/voice-notes", {"transcript": "A pre-contract voice row.", "timestamp": naive(1)})
     add(store, "exercise", 2, duration=30)
     store.add(f"pets/{PET}/analytics", {"category": "diet", "timestamp": "not a date"})
     store.add(f"pets/{PET}/analytics", {"category": "diet"})
     store.add(f"pets/{PET}/analytics", {"timestamp": naive(1)})
     load = load_events(store, PET)
-    assert [e.text for e in load.events if e.kind == "note"] == ["An older legacy note.", "Walked in the park."]
+    assert [e.text for e in load.events if e.kind == "note"] == ["An older note.", "Walked in the park."]
     assert load.skipped == 3 and load.skipped_by_reason == {"bad_timestamp": 2, "no_content": 1}
     assert [e.at for e in load.events] == sorted(e.at for e in load.events)
 

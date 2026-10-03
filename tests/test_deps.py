@@ -60,14 +60,3 @@ def test_override_and_reset():
         deps.override(database=object())
     deps.reset()
     assert deps.get_llm() is not llm
-
-
-def test_legacy_db_follows_overrides():
-    db = deps.legacy_db()
-    first = MemoryStore()
-    deps.override(store=first)
-    db.collection("pets").document("p1").set({"name": "Max"})
-    second = MemoryStore()
-    deps.override(store=second)
-    assert not db.collection("pets").document("p1").get().exists
-    assert first.get("pets/p1") == {"name": "Max"}

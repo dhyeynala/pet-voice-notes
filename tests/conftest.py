@@ -5,8 +5,8 @@ Every test runs with:
 - a fresh ``MemoryStore`` / ``FakeLLM`` / ``FakeSTT`` / ``LocalBlobStore`` (under ``tmp_path``),
 - outbound network blocked.
 
-The same instances are visible to new-style routes (via ``app.dependency_overrides``) and to
-legacy modules (via ``petpulse.deps.override``).
+The same instances are visible to routes (via ``app.dependency_overrides``) and to code that
+calls ``petpulse.deps`` directly (via ``petpulse.deps.override``).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-os.chdir(ROOT)  # legacy tests use repo-relative paths
+os.chdir(ROOT)  # repo-layout tests use repo-relative paths
 
 DEMO_ENV = {
     "DEMO_MODE": "true",
@@ -117,9 +117,6 @@ def app(store, blobs, fake_llm, fake_stt):
             deps.get_stt: lambda: fake_stt,
         }
     )
-    # Legacy service singletons hold caches (chat data cache, breed cache); start clean.
-    for name in ("_intelligent_chatbot_service", "_simple_rag_service", "_visualization_service", "_pet_ai"):
-        setattr(api_server, name, None)
     yield api_server.app
     api_server.app.dependency_overrides.clear()
 
@@ -179,14 +176,6 @@ def client_as(app) -> Iterator[Callable[[str], Any]]:
     yield make
     for c in clients:
         c.__exit__(None, None, None)
-
-
-@pytest.fixture
-def no_retry_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Skip the legacy exponential-backoff sleeps in summarize_openai."""
-    import summarize_openai
-
-    monkeypatch.setattr(summarize_openai.time, "sleep", lambda _s: None)
 
 
 def now_iso() -> str:

@@ -115,6 +115,29 @@ def test_inventory_is_not_empty_and_public_routes_exist():
     assert len(PROTECTED) >= 20
     assert ("GET", "/api/test") not in routes
     assert not any(path.startswith("/api/pages") for _, path in routes)
+    assert not routes & REMOVED_ROUTES
+
+
+# Removed with the legacy modules (Track F); the contract routes in docs/api-contract.md replace them.
+REMOVED_ROUTES = {
+    ("POST", "/api/pets/{pet_id}/textinput"),
+    ("POST", "/api/pets/{pet_id}/knowledge_search"),
+    ("GET", "/api/pets/{pet_id}/assistant_summary"),
+    ("GET", "/api/pets/{pet_id}/health_insights"),
+    ("POST", "/api/pets/{pet_id}/daily_routine"),
+    ("POST", "/api/pets/{pet_id}/preload"),
+    ("POST", "/api/pets/{pet_id}/cache/clear"),
+    ("GET", "/api/pets/{pet_id}/cache/status"),
+    ("GET", "/api/pets/{pet_id}/analytics/summary"),
+    ("GET", "/api/pets/{pet_id}/visualizations"),
+}
+
+
+@pytest.mark.parametrize("method, path", sorted(REMOVED_ROUTES), ids=[f"{m} {p}" for m, p in sorted(REMOVED_ROUTES)])
+def test_removed_legacy_routes_are_gone(client, make_pet, method, path):
+    response = client.request(method, _fill(path, make_pet("alice")), json={"query": "x", "input": "x"})
+    assert response.status_code in (404, 405), response.text
+    assert response.json().get("detail") != "pet not found"
 
 
 @pytest.mark.parametrize("method, path", PROTECTED, ids=[f"{m} {p}" for m, p in PROTECTED])
@@ -143,9 +166,9 @@ def test_another_users_pet_is_404_and_the_owner_gets_through(client, client_as, 
     as_bob = client_as("bob").request(method, url, json={})
     assert as_bob.status_code == 404, as_bob.text
     assert as_bob.json()["detail"] == "pet not found"
-    # The owner passes the auth/ownership layer (some legacy bodies still 4xx on an empty body).
+    # The owner passes the auth/ownership layer (some bodies still 4xx on a generic body).
     # Other placeholders (e.g. {record_id}) don't exist, so a 404 for *that* is fine; "pet not found" is not.
-    as_alice = client.request(method, url, json={"query": "How is Max?", "input": "Max ate", "days": 7})
+    as_alice = client.request(method, url, json={"message": "How is Max?", "text": "Max ate"})
     assert as_alice.status_code not in (401, 403), as_alice.text
     assert not (as_alice.status_code == 404 and as_alice.json()["detail"] == "pet not found"), as_alice.text
 
@@ -160,10 +183,11 @@ def test_unknown_pet_is_404_like_someone_elses(client):
     [
         ("GET", "/api/pets/{pet}/analytics", None),
         ("GET", "/api/pets/{pet}/records", None),
-        ("GET", "/api/pets/{pet}/analytics/summary", None),
-        ("GET", "/api/pets/{pet}/visualizations", None),
+        ("GET", "/api/pets/{pet}/insights", None),
+        ("GET", "/api/pets/{pet}/notes", None),
         ("POST", "/api/pets/{pet}/analytics/diet", {"food": "kibble"}),
-        ("POST", "/api/pets/{pet}/textinput", {"input": "Max had a walk"}),
+        ("POST", "/api/pets/{pet}/notes", {"text": "Max had a walk"}),
+        ("POST", "/api/pets/{pet}/chat", {"message": "Did Max walk?"}),
         ("GET", "/api/pets/{pet}", None),
     ],
 )

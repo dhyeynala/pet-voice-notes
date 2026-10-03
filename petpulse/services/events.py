@@ -1,7 +1,6 @@
 """One read model over everything recorded about a pet (review M3, M5).
 
-Notes (new pipeline and the legacy ``voice-notes`` / ``textinput`` collections), analytics
-entries and PDF records all become ``Event``s with an aware UTC timestamp. Rows that cannot
+Notes, analytics entries and PDF records all become ``Event``s with an aware UTC timestamp. Rows that cannot
 be read (missing or bad timestamp, no text, not a dict) are skipped and counted, never a 500.
 Retrieval, the query tools, charts and insights all read this one model.
 """
@@ -21,8 +20,6 @@ EventKind = Literal["note", "analytics", "record"]
 EventSource = Literal["text", "voice", "pdf", "analytics"]
 
 NOTES = "notes"
-LEGACY_VOICE = "voice-notes"
-LEGACY_TEXT = "textinput"
 ANALYTICS = "analytics"
 RECORDS = "records"
 
@@ -78,14 +75,6 @@ def _note_event(doc_id: str, doc: dict[str, Any], at: datetime, ref: str) -> Opt
     return Event(doc_id, "note", source, at, text, None, categories, fields, ref)
 
 
-def _legacy_note_event(doc_id: str, doc: dict[str, Any], at: datetime, ref: str, source: EventSource) -> Optional[Event]:
-    text = _clean(doc.get("transcript") if source == "voice" else doc.get("input"))
-    if not text:
-        return None
-    fields = {"summary": doc.get("summary"), "kind": doc.get("content_type")}
-    return Event(doc_id, "note", source, at, text, None, (), fields, ref)
-
-
 def _analytics_text(category: str, doc: dict[str, Any]) -> str:
     parts = [f"{key} {value}" for key, value in sorted(doc.items()) if key not in _META_FIELDS and _clean(value)]
     note = _clean(doc.get("notes"))
@@ -116,8 +105,6 @@ def _record_event(doc_id: str, doc: dict[str, Any], at: datetime, ref: str) -> O
 _Builder = Callable[[str, dict[str, Any], datetime, str], Optional[Event]]
 _BUILDERS: dict[str, _Builder] = {
     NOTES: _note_event,
-    LEGACY_VOICE: lambda doc_id, doc, at, ref: _legacy_note_event(doc_id, doc, at, ref, "voice"),
-    LEGACY_TEXT: lambda doc_id, doc, at, ref: _legacy_note_event(doc_id, doc, at, ref, "text"),
     ANALYTICS: _analytics_event,
     RECORDS: _record_event,
 }
@@ -127,18 +114,12 @@ def load_events(store: Store, pet_id: str) -> EventLoad:
     """All readable events for ``pet_id``, sorted by time then id; unreadable rows counted."""
     events: list[Event] = []
     skipped: Counter[str] = Counter()
-    note_ids: set[str] = set()
-    sources = (NOTES, LEGACY_VOICE, LEGACY_TEXT, ANALYTICS, RECORDS)
-    for collection in sources:
+    for collection in (NOTES, ANALYTICS, RECORDS):
         path = f"pets/{pet_id}/{collection}"
         for doc_id, doc in store.query(path):
             if not isinstance(doc, dict):
                 skipped["not_a_document"] += 1
                 continue
-            if collection == NOTES:
-                note_ids.add(doc_id)
-            elif collection in (LEGACY_VOICE, LEGACY_TEXT) and doc.get("note_id") in note_ids:
-                continue  # legacy mirror of a pipeline note (seed / transition), not a second event
             at = _timestamp(doc)
             if at is None:
                 skipped["bad_timestamp"] += 1
