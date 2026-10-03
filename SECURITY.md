@@ -7,20 +7,20 @@ This project uses sensitive API keys and credentials that must be protected.
 ### API Keys Used
 
 #### OpenAI API Key
-- **Purpose**: Text summarization, AI analytics, voice note processing
-- **Used in**: `main.py`, `ai_analytics.py`, `summarize_openai.py`
+- **Purpose**: Note extraction, chat answers, PDF summaries, voice note transcription
+- **Used in**: `petpulse/providers/llm.py` (via `petpulse/llm/client.py`), `petpulse/providers/stt.py` (`OpenAISTT`)
 - **Environment Variable**: `OPENAI_API_KEY`
 
 #### Google Cloud Credentials
-- **Purpose**: Speech-to-Text, Firestore database, Cloud Storage
-- **Used in**: `transcribe.py`, `firestore_store.py`, `gcloud_auth.py`
+- **Purpose**: Speech-to-Text (optional, `STT_PROVIDER=google`); optional Firebase mode (Firestore, Cloud Storage, sign-in)
+- **Used in**: `petpulse/providers/stt.py` (`GoogleSTT`, via `GOOGLE_APPLICATION_CREDENTIALS`), `petpulse/core/firebase.py` and `petpulse/store/firestore.py` (via `FIREBASE_CREDENTIALS_JSON`, see [docs/firebase.md](docs/firebase.md))
 - **Files**: `gcloud-key.json`, environment variables
 
 ### Security Measures Implemented
 
 1. **Environment Variables**: All sensitive keys are stored in `.env` file
 2. **Git Ignore**: `.env` and `gcloud-key.json` are excluded from version control
-3. **Template File**: `.env.template` provides setup instructions without exposing keys
+3. **Template File**: `.env.example` provides setup instructions without exposing keys
 4. **Documentation**: This file documents security practices
 
 ### Key Rotation Recommendations

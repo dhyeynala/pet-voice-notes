@@ -1,0 +1,160 @@
+/* public/css/app.css: styles for the demo build (banner, mode badges, user menu, notes,
+   records, chat citations). The original page styles stay inline in main.html/index.html. */
+
+.demo-banner {
+  position: relative;
+  z-index: 200;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937;
+  background: #fef3c7;
+  border-bottom: 1px solid #f59e0b;
+}
+.demo-banner.mode-live { background: #fee2e2; border-bottom-color: #ef4444; color: #7f1d1d; }
+.demo-banner.mode-mixed { background: #ffedd5; border-bottom-color: #f97316; color: #7c2d12; }
+body.login-page .demo-banner { position: fixed; top: 0; left: 0; right: 0; }
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  -webkit-text-fill-color: initial;
+}
+.mode-badge.demo { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.mode-badge.live { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.mode-badge[hidden] { display: none; }
+
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.pill-warning { background: #fef3c7; color: #92400e; }
+.pill-muted { background: #e5e7eb; color: #374151; }
+.pill-review { background: #ede9fe; color: #5b21b6; }
+.pill-status { background: #fee2e2; color: #991b1b; }
+
+.muted { color: #7f8c8d; }
+.btn-small { padding: 6px 12px !important; font-size: 0.85rem !important; }
+
+/* User menu */
+.user-menu { display: flex; align-items: center; gap: 8px; margin-left: 20px; }
+.user-menu .logout-btn { margin-left: 0; }
+.user-switch { position: relative; }
+.user-switch-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 10px 14px; font-weight: 600; color: #2c3e50; cursor: pointer;
+}
+.user-switch-btn:hover { border-color: #667eea; }
+.user-switch-list {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px;
+  background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15); padding: 6px; z-index: 300;
+}
+.user-switch-list[hidden] { display: none; }
+.user-switch-heading { padding: 6px 10px; font-size: 0.75rem; color: #7f8c8d; text-transform: uppercase; font-weight: 700; }
+.user-switch-item {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; color: #2c3e50;
+}
+.user-switch-item:hover:not(:disabled) { background: #eef2ff; }
+.user-switch-item.current { color: #667eea; font-weight: 700; cursor: default; }
+.user-switch-list hr { border: none; border-top: 1px solid #e2e8f0; margin: 6px 0; }
+
+/* Notes */
+.notes-list, .records-list { display: flex; flex-direction: column; gap: 12px; }
+.note-card, .record-card {
+  background: white; border: 1px solid #e1e8ed; border-left: 4px solid #667eea;
+  border-radius: 10px; padding: 14px 16px; line-height: 1.5;
+}
+.note-card.urgent { border-left-color: #e53e3e; }
+.note-card-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.note-source { font-size: 0.8rem; color: #64748b; text-transform: capitalize; }
+.note-date { margin-left: auto; font-size: 0.8rem; color: #94a3b8; }
+.note-text { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #cbd5e1; color: #475569; white-space: pre-wrap; }
+.note-summary { margin: 6px 0; white-space: pre-wrap; }
+.note-flags { margin: 6px 0 0 18px; font-size: 0.9rem; }
+.note-flags .flag-present { color: #c53030; font-weight: 600; }
+.note-flags .flag-denied { color: #64748b; text-decoration: line-through; }
+.note-flags .flag-ambiguous { color: #b7791f; }
+.note-observations { margin-top: 6px; font-size: 0.9rem; color: #475569; }
+.note-warning { background: #fffbeb; color: #92400e; border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 0.9rem; }
+.urgent-banner {
+  background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; border-radius: 8px;
+  padding: 8px 12px; margin: 6px 0; font-weight: 700;
+}
+.badge-unknown { background: #e2e8f0; color: #475569; }
+
+/* Records */
+.record-card { border-left-color: #4ecdc4; }
+.record-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.record-card-header h4 { margin: 0; color: #2c3e50; word-break: break-word; }
+.record-meta { font-size: 0.85rem; color: #64748b; margin: 4px 0 8px; }
+.record-summary { white-space: pre-wrap; font-size: 0.95rem; }
+.result-box { font-family: inherit; white-space: normal; }
+.upload-ok { color: #38a169; margin-bottom: 10px; font-weight: 600; }
+.file-upload.dragover { border-color: #667eea; background: #eef2ff; }
+
+/* Voice sample picker */
+.sample-picker { margin: 0 0 20px; padding: 14px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; }
+.sample-picker label { display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
+.sample-picker-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.sample-picker-row select { flex: 1; min-width: 200px; }
+
+/* Chat */
+.chat-row { display: flex; align-items: flex-start; gap: 12px; }
+.chat-row.user { justify-content: flex-end; }
+.chat-avatar {
+  width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 18px; flex-shrink: 0;
+}
+.chat-bubble { padding: 15px; border-radius: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.chat-bubble.user { background: linear-gradient(135deg, #667eea, #764ba2); color: white; max-width: 70%; white-space: pre-wrap; }
+.chat-bubble.assistant { background: white; border: 1px solid #e1e8ed; flex: 1; }
+.chat-bubble.loading { opacity: 0.7; }
+.chat-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.chat-citations { margin-top: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid #e1e8ed; border-radius: 8px; font-size: 0.85rem; }
+.chat-citations-title { font-weight: 700; color: #475569; margin-bottom: 4px; }
+.chat-citations ol { margin: 0 0 0 18px; }
+.citation-meta { font-weight: 600; color: #334155; }
+.citation-snippet { color: #475569; }
+.chat-chart { margin-top: 12px; background: #f8fafc; border: 1px solid #e1e8ed; border-radius: 8px; padding: 10px; }
+
+/* Insights */
+.insights-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+.insights-alerts, .insights-facts { margin: 6px 0 0 20px; line-height: 1.6; }
+.insights-alerts li { font-weight: 600; }
+.insights-empty { opacity: 0.9; }
+
+/* Knowledge */
+.knowledge-result { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+.knowledge-result h4 { margin-bottom: 8px; color: #2c3e50; }
+.knowledge-result p { color: #666; line-height: 1.6; }
+.knowledge-meta { margin-top: 8px; font-size: 0.85rem; color: #7f8c8d; }
+.knowledge-symptoms { margin-top: 8px; font-size: 0.85rem; color: #667eea; }
+
+.chart-loading {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; color: #7f8c8d; z-index: 10; font-size: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.contextual-help { border: none; }
+
+/* Login */
+.demo-users { display: flex; flex-direction: column; gap: 12px; }
+.login-status { margin-top: 16px; font-size: 0.95rem; color: #475569; }
+.login-status.error { color: #c53030; }
+.login-loading { color: #7f8c8d; }
+.login-note { margin-top: 24px; font-size: 0.85rem; color: #7f8c8d; line-height: 1.5; }
+.new-user-form { margin-top: 20px; text-align: left; }
+.new-user-form label { display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px; }
+.new-user-row { display: flex; gap: 8px; }
+.new-user-row input { flex: 1; padding: 10px 12px; border: 2px solid #e1e8ed; border-radius: 10px; font-size: 0.95rem; }
+.btn-new-user { padding: 10px 16px; border: none; border-radius: 10px; background: #667eea; color: white; font-weight: 600; cursor: pointer; }
+.btn-new-user:disabled { opacity: 0.6; }
+.firebase-row { margin-top: 8px; }
+.btn-new-user.btn-secondary { background: #e2e8f0; color: #2c3e50; }

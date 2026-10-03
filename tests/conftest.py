@@ -1,0 +1,188 @@
+"""Shared fixtures: a hermetic demo app on ``MemoryStore`` with the deterministic fakes.
+
+Every test runs with:
+- no OpenAI/Google credentials (providers on ``auto`` resolve to the fakes),
+- a fresh ``MemoryStore`` / ``FakeLLM`` / ``FakeSTT`` / ``LocalBlobStore`` (under ``tmp_path``),
+- outbound network blocked.
+
+The same instances are visible to routes (via ``app.dependency_overrides``) and to code that
+calls ``petpulse.core.deps`` directly (via ``petpulse.core.deps.override``).
+"""
+
+from __future__ import annotations
+
+import os
+import socket
+import sys
+from pathlib import Path
+from typing import Any, Callable, Iterator
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+os.chdir(ROOT)  # repo-layout tests use repo-relative paths
+
+DEMO_ENV = {
+    "DEMO_MODE": "true",
+    "STORE": "memory",
+    "LLM_PROVIDER": "auto",
+    "STT_PROVIDER": "auto",
+    "OPENAI_API_KEY": "",
+    "GOOGLE_APPLICATION_CREDENTIALS": "",
+    "AUTH_SECRET": "",
+    "SEED_ON_START": "false",
+    # Firebase mode off: no credentials, so STORE_BACKEND/AUTH_PROVIDER=auto resolve to local/demo.
+    "STORE_BACKEND": "auto",
+    "AUTH_PROVIDER": "auto",
+    "FIREBASE_PROJECT_ID": "",
+    "FIREBASE_CREDENTIALS_JSON": "",
+    "FIREBASE_STORAGE_BUCKET": "",
+    "FIREBASE_WEB_API_KEY": "",
+    "FIREBASE_AUTH_DOMAIN": "",
+    "FIREBASE_AUTH_EMULATOR_HOST": "",
+}
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    from petpulse.core import deps
+
+    for key, value in DEMO_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    deps.reset()
+    yield
+    deps.reset()
+
+
+@pytest.fixture(autouse=True)
+def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail loudly on any outbound TCP/UDP connection (AF_UNIX stays allowed)."""
+    real_connect = socket.socket.connect
+
+    def guarded_connect(self: socket.socket, address: Any) -> Any:
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            host = address[0] if isinstance(address, tuple) else address
+            if host not in ("127.0.0.1", "::1", "localhost"):
+                raise RuntimeError(f"network access blocked in tests: {address!r}")
+        return real_connect(self, address)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+
+
+@pytest.fixture
+def store():
+    from petpulse.store.memory import MemoryStore
+
+    return MemoryStore()
+
+
+@pytest.fixture
+def blobs(tmp_path: Path):
+    from petpulse.store.blobs import LocalBlobStore
+
+    return LocalBlobStore(tmp_path / "blobs")
+
+
+@pytest.fixture
+def fake_llm():
+    from petpulse.providers.llm import FakeLLM
+
+    return FakeLLM()
+
+
+@pytest.fixture
+def fake_stt():
+    from petpulse.providers.stt import FakeSTT
+
+    return FakeSTT()
+
+
+@pytest.fixture
+def app(store, blobs, fake_llm, fake_stt):
+    import petpulse.app as app_module
+    from petpulse.core import deps
+
+    deps.override(store=store, blobs=blobs, llm=fake_llm, stt=fake_stt)
+    app_module.app.dependency_overrides.update(
+        {
+            deps.get_store: lambda: store,
+            deps.get_blobs: lambda: blobs,
+            deps.get_llm: lambda: fake_llm,
+            deps.get_stt: lambda: fake_stt,
+        }
+    )
+    yield app_module.app
+    app_module.app.dependency_overrides.clear()
+
+
+def _auth_headers(uid: str) -> dict[str, str]:
+    """Headers that authenticate as ``uid`` (a demo token signed by the app's secret)."""
+    from petpulse.core.auth import issue_token
+
+    return {"Authorization": f"Bearer {issue_token(uid)}"}
+
+
+@pytest.fixture
+def client(app):
+    """A TestClient signed in as ``alice`` (the default owner used by ``make_pet``).
+
+    Every /api route except health and demo login needs a token, so the everyday client is
+    authenticated. Use ``anon_client`` for unauthenticated requests and ``client_as(uid)`` for
+    other users.
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(app, headers=_auth_headers("alice")) as c:
+        yield c
+
+
+@pytest.fixture
+def anon_client(app):
+    """A TestClient with no credentials."""
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as c:
+        yield c
+
+
+@pytest.fixture
+def client_noraise(app):
+    """Like ``client`` (signed in as alice) but returns 500 responses instead of re-raising."""
+    from fastapi.testclient import TestClient
+
+    with TestClient(app, raise_server_exceptions=False, headers=_auth_headers("alice")) as c:
+        yield c
+
+
+@pytest.fixture
+def client_as(app) -> Iterator[Callable[[str], Any]]:
+    """``client_as("alice")`` -> a TestClient that sends alice's auth headers."""
+    from fastapi.testclient import TestClient
+
+    clients: list[TestClient] = []
+
+    def make(uid: str) -> TestClient:
+        c = TestClient(app, headers=_auth_headers(uid))
+        c.__enter__()
+        clients.append(c)
+        return c
+
+    yield make
+    for c in clients:
+        c.__exit__(None, None, None)
+
+
+@pytest.fixture
+def make_pet(app) -> Callable[..., str]:
+    """Create a pet owned by ``uid`` (uuid4 id, ``owners=[uid]``); returns its id."""
+    from petpulse.core import deps
+    from petpulse.services.pets import create_pet
+
+    def make(uid: str = "alice", name: str = "Max", animal_type: str = "dog", **extra: Any) -> str:
+        pet = create_pet(deps.get_store(), uid, {"name": name, "animal_type": animal_type, **extra})
+        return str(pet["id"])
+
+    return make

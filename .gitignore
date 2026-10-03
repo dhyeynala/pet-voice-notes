@@ -6,6 +6,14 @@
 
 # Google Cloud service account key
 gcloud-key.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+
+# Firebase CLI / emulators
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # Python
 __pycache__/
@@ -72,3 +80,13 @@ screenshot*.png
 
 # Firebase configuration (users should create their own)
 public/firebase-config.js
+# Demo store and local blobs (JSON store, PDF uploads)
+data/
+reports/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/

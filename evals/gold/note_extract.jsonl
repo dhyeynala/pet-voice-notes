@@ -1,0 +1,34 @@
+{"id": "r01", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r02", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r03", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r04", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r05", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r06", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r07", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "r08", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m01", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m02", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m03", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m04", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m05", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "m06", "kind": "MEDICAL", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "x01", "kind": "MIXED", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "x02", "kind": "MIXED", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "x03", "kind": "MIXED", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "x04", "kind": "MIXED", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "f01", "kind": "MEDICAL", "red_flags": {"blood": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "f02", "kind": "MEDICAL", "red_flags": {"collapse": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "f03", "kind": "MEDICAL", "red_flags": {"seizure": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "f04", "kind": "MEDICAL", "red_flags": {"toxin_ingestion": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "f05", "kind": "MEDICAL", "red_flags": {"pale_or_blue_gums": "present", "breathing_difficulty": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "n01", "kind": "DAILY_ACTIVITY", "red_flags": {"repeated_vomiting": "denied"}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "n02", "kind": "DAILY_ACTIVITY", "red_flags": {"blood": "denied"}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "n03", "kind": "MEDICAL", "red_flags": {"seizure": "denied"}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "a01", "kind": "MEDICAL", "red_flags": {"blood": "ambiguous"}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "a02", "kind": "MEDICAL", "red_flags": {"toxin_ingestion": "ambiguous"}, "urgent": false, "needs_review": true, "addressed_to_model": false}
+{"id": "i01", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": true}
+{"id": "i02", "kind": "DAILY_ACTIVITY", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": true}
+{"id": "h01", "kind": "MEDICAL", "red_flags": {"repeated_vomiting": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "h02", "kind": "MEDICAL", "red_flags": {"blood": "present", "repeated_vomiting": "present"}, "urgent": true, "needs_review": true, "addressed_to_model": false}
+{"id": "h03", "kind": "OTHER", "red_flags": {}, "urgent": false, "needs_review": false, "addressed_to_model": false}
+{"id": "s01", "kind": "UNKNOWN", "red_flags": {}, "urgent": false, "needs_review": true, "addressed_to_model": false}

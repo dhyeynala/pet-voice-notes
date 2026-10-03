@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// PetPulse Firestore rules (optional Firebase mode, docs/firebase.md).
+//
+// The backend uses the Admin SDK, which bypasses these rules; it enforces ownership itself
+// (petpulse/core/auth.py: require_pet_access). These rules only govern direct client access and
+// restrict every signed-in user to their own user document and the pets they own.
+// Everything not matched below (llm_calls, meta, ...) is server-only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsPet(petId) {
+      let pet = get(/databases/$(database)/documents/pets/$(petId));
+      return signedIn() && pet != null && request.auth.uid in pet.data.owners;
+    }
+
+    match /users/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.get('demo', false) == false;
+    }
+
+    match /pets/{petId} {
+      allow read, delete: if signedIn() && request.auth.uid in resource.data.owners;
+      // New pets must be owned by (only) their creator.
+      allow create: if signedIn()
+        && request.resource.data.owners == [request.auth.uid]
+        && request.resource.data.created_by == request.auth.uid;
+      // Owners may edit a pet but not its ownership.
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.owners
+        && request.resource.data.owners == resource.data.owners
+        && request.resource.data.created_by == resource.data.created_by;
+
+      // notes, analytics, records, ...: owners only.
+      match /{subcollection}/{docId} {
+        allow read, write: if ownsPet(petId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Dev/test/lint tools, constrained to the runtime pins.
+#   uv pip compile requirements/dev.in -c requirements/base.txt -o requirements/dev.txt --python-version 3.11
+-c base.txt
+httpx
+pytest
+pytest-cov
+flake8
+black
+mypy
+bandit
+detect-secrets
