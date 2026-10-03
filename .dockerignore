@@ -1,0 +1,25 @@
+# Never send secrets, local state or VCS data to the build context.
+.git
+.github
+.env
+.env.*
+!.env.example
+gcloud-key.json
+*-key.json
+*service-account*.json
+*credentials*.json
+public/firebase-config.js
+data/
+reports/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+# Docs-only screenshots (README); not used by the app.
+assets/
+tests/

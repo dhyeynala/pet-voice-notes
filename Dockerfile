@@ -1,44 +1,36 @@
-# PetPulse Dockerfile
-# Multi-stage build for optimized production image
+# PetPulse demo image: starts with zero secrets (fake AI providers, local JSON store).
+#   docker compose up                                  # demo
+#   INSTALL_LIVE=true docker compose build             # adds optional Google STT deps
+FROM python:3.11-slim
 
-FROM python:3.11-slim as base
+ARG INSTALL_LIVE=false
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DATA_DIR=/app/data
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    portaudio19-dev \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set work directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Pinned, wheel-only dependencies: no compilers, no portaudio.
+COPY requirements.txt requirements-live.txt ./
+RUN pip install --only-binary=:all: -r requirements.txt \
+    && if [ "$INSTALL_LIVE" = "true" ]; then pip install --only-binary=:all: -r requirements-live.txt -c requirements.txt; fi
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Non-root user. Code stays root-owned (read-only for the app); only data/ is writable.
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app \
+    && mkdir -p /app/data \
+    && chown app:app /app/data
 
-# Copy application code
-COPY . .
+COPY --chown=root:root . .
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
 USER app
 
-# Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+# curl is not in the slim image; use Python.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
 
-# Run the application
-CMD ["python", "api_server.py"] 
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]
