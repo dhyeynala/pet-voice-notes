@@ -55,6 +55,10 @@ jobs:
           done
       - name: pytest (known bugs are strict xfails; coverage floor in pyproject.toml)
         run: pytest --cov --cov-report=term --cov-report=xml
+      - name: Live smoke script against the fakes (no keys, no live calls)
+        run: |
+          python scripts/smoke_live.py --dry-run
+          python scripts/smoke_live.py --allow-fake --report-dir "$RUNNER_TEMP/smoke"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -118,6 +122,8 @@ jobs:
           done
           docker logs petpulse
           exit 1
+      - name: Smoke script runs in the image (fakes)
+        run: docker run --rm petpulse:ci python scripts/smoke_live.py --allow-fake --report-dir /tmp/smoke
       - name: Stop
         if: always()
         run: if docker inspect petpulse >/dev/null 2>&1; then docker rm -f petpulse; fi
