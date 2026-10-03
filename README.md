@@ -184,43 +184,30 @@ Each voice note gets processed by AI to extract health information and categoriz
 
 ## Getting Started
 
-**Requirements:**
-- Python 3.8+
-- OpenAI API key
-- Firebase project with Firestore and Auth
-- Google Cloud credentials for Speech-to-Text
-
-**Quick setup:**
+**Demo (no keys, no accounts):** Docker Compose v2.24+.
 ```bash
 git clone https://github.com/dhyeynala/pet-voice-notes.git
 cd pet-voice-notes
-
-# Environment setup
-pip install -r requirements.txt
-cp .env.template .env
-# Edit .env with your API keys
-
-# Run with Docker (recommended)
-docker-compose up --build
-
-# Or run manually
-python api_server.py
+docker compose up --build        # http://localhost:8000 ; health: /api/health
+docker compose down -v           # reset demo data
 ```
+With no `.env` the app runs in **demo mode**: deterministic fake AI providers, a local JSON
+store under `data/`, and no network calls to OpenAI, Google or Firebase. `/api/health` reports
+the mode of every AI feature.
 
-**Firebase Configuration:**
-1. Create Firebase project with Firestore and Authentication
-2. Enable Google Sign-In provider
-3. Download service account key as `gcloud-key.json`
-4. Update `.env` with your project details
+**Live AI (optional):** `cp .env.example .env` and set `OPENAI_API_KEY`. Providers default to
+`auto`, so they switch to OpenAI when the key is present (calls are billed). See
+[.env.example](.env.example) for every setting.
 
-**Environment Variables:**
+**Run without Docker:**
 ```bash
-OPENAI_API_KEY=your_openai_key
-FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
+pip install -r requirements.txt -r requirements-dev.txt
+uvicorn api_server:app --reload
+pytest
 ```
 
-Access the application at `http://localhost:8000`
+> The demo UI login (replacing Firebase Google sign-in) arrives with the auth/data track; until
+> then the API is usable directly. See [CONTRIBUTING.md](CONTRIBUTING.md) for the demo build plan.
 
 ## API Reference
 

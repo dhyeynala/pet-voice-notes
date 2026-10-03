@@ -2,6 +2,65 @@
 
 Thank you for your interest in contributing to PetPulse! This document provides guidelines and information for contributors to this AI-powered pet health management platform.
 
+## Demo build: branches, tracks and file ownership
+
+The demo plan is being implemented in parallel tracks on top of the Phase 0 foundation
+(`petpulse/` package, `Store`, provider fakes, gating CI). These rules keep the tracks from
+stepping on each other.
+
+### Branching
+- `main` is not touched while the demo is built. Never push to it.
+- `demo/integration` is the integration branch. After every merge it must be green in CI and
+  start with `docker compose up` and **zero secrets**.
+- Each track works on short-lived branches named `demo/<track>-<topic>` (for example
+  `demo/auth-demo-login`), cut from the latest `demo/integration`, and opens its PR **into
+  `demo/integration`** (never into `main`). Keep PRs small (see the plan's PR list).
+- Rebase before merge: `git fetch origin && git rebase origin/demo/integration`, re-run
+  `pytest`, `flake8 .`, `black --check .`, `mypy`. Only ever force-push your own track branch,
+  and only with `--force-with-lease`. Never force-push `demo/integration` or `main`.
+- Merge with "Squash and merge" or "Rebase and merge" (no merge commits), using a
+  conventional-commit title (`feat(auth): ...`, `fix(charts): ...`, `test: ...`, `ci: ...`).
+
+### Track ownership
+
+| Track | Plan items | Owns (creates / edits / deletes) |
+|---|---|---|
+| **A. auth/data** | D1-1 backend, D1-2, D1-3, D1-4 backend | `petpulse/auth.py`, `petpulse/seed.py`, `seed/`, `petpulse/routers/{demo,pets}.py`, `petpulse/schemas/pets.py`, `firestore_store.py`, the CORS block in `api_server.py`, `_auth_headers` in `tests/conftest.py` |
+| **B. bug fixes** | D2-1, D2-2, D2-3, D2-5, D2-6 | `visualization_service.py`, `pdf_parser.py`, `petpulse/routers/records.py`, `petpulse/schemas/analytics.py`, `petpulse/store/blobs.py`, the H2 fallback lines in `summarize_openai.py` / `ai_analytics.py` / `api_server.py` (`health_insights`), the C4 hotfix lines in `simple_rag_service.py` / `intelligent_chatbot_service.py` |
+| **C. LLM layer** | D4-*, D5-*, D7-1 (LLM part) | `petpulse/llm/**`, `petpulse/schemas/llm.py`, `petpulse/services/**`, `petpulse/timeutil.py`, `petpulse/providers/llm.py`, `evals/**`; deletes `summarize_openai.py`, `ai_analytics.py`, `simple_rag_service.py`, `intelligent_chatbot_service.py` once replaced (and `LLMProvider.legacy_chat` with them) |
+| **D. voice** | D3-2, D3-3, D7-1 (STT part) | `petpulse/providers/stt.py`, `petpulse/routers/voice.py`, `samples/audio/**`; deletes `transcribe.py`, `main.py`, `gcloud_auth.py` and the `/api/start*`, `/api/stop_recording`, `/api/recording_status` routes |
+| **E. frontend** | every `public/**` change: D1-1 login UI, D1-4 banner, D2-4 XSS, D3-1 recorder, D4/D5 UI, D6-3 JS split | `public/**` (`main.html`, `index.html`, `js/`, `vendor/`). **Only this track edits `public/main.html`.** |
+
+Docs/evals (Phase 6) and the live smoke test (Phase 7) come after the tracks above.
+
+### Shared files (edit additively)
+- **`api_server.py`**: put new routes in `petpulse/routers/<module>.py` and register them with
+  one `app.include_router(...)` line in the "New-style routers" block. Only the owning track
+  deletes a legacy route.
+- **`petpulse/config.py`**: append new fields with a demo-safe default and add the key to
+  `.env.example` (a test fails if a setting is missing there).
+- **`petpulse/deps.py`**: add factories; don't change existing signatures. Tests use
+  `deps.override(...)` / `app.dependency_overrides`.
+- **`requirements.in` → `requirements.txt`**: never hand-merge the lock. On conflict take
+  either side and recompile: `uv pip compile requirements.in -o requirements.txt --python-version 3.11`
+  (same for `requirements-dev.in`, `requirements-live.in`).
+- **`tests/conftest.py`**: add fixtures, don't change existing ones without telling the other tracks.
+- **`tests/test_known_bugs.py`**: each known bug is a strict xfail. The PR that fixes it gets a
+  failing CI run until it removes that marker, which is the point. If your PR changes a route a
+  proof uses, update the proof in the same PR.
+- **`.flake8`**: remove a legacy file's `per-file-ignores` entry when you rewrite or delete
+  it. Never add codes.
+
+### API changes that need the frontend
+Backend tracks keep the old route working until the frontend PR that switches to the new one
+has merged (add the new route, then the frontend switches, then a small cleanup PR removes
+the old route). That keeps `demo/integration` usable at every step.
+
+### Definition of done (every PR)
+CI green (flake8, black, mypy, pytest with strict xfails, bandit, detect-secrets, docker
+smoke); `docker compose up` works with no `.env`; no keys added to CI; `/api/health` still
+reports every feature's mode.
+
 ## Quick Start
 
 1. **Fork** the repository
@@ -32,7 +91,7 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt  # Development dependencies
 
 # Setup environment
-cp .env.template .env
+cp .env.example .env
 # Edit .env with your API keys
 
 # Setup Firebase
@@ -40,16 +99,16 @@ cp public/firebase-config.template.js public/firebase-config.js
 # Edit firebase-config.js with your Firebase details
 
 # Run development server
-python api_server.py
+uvicorn api_server:app --reload
 ```
 
 ### Docker Development
 ```bash
 # Build and run with Docker Compose
-docker-compose up --build
+docker compose up --build
 
 # Run specific services
-docker-compose up petpulse
+docker compose up app
 ```
 
 ## Testing
@@ -101,30 +160,14 @@ def test_ai_chat_handles_openai_error(mock_openai):
 ## Code Quality
 
 ### Linting and Formatting
+These are the exact gates CI runs (tool versions are pinned in `requirements-dev.txt`):
 ```bash
-# Run flake8 (linting)
-flake8 .
-
-# Run black (code formatting)
-black .
-
-# Run isort (import sorting)
-isort .
-
-# Run mypy (type checking)
-mypy .
-```
-
-### Pre-commit Hooks
-```bash
-# Install pre-commit
-pip install pre-commit
-
-# Install hooks
-pre-commit install
-
-# Run hooks manually
-pre-commit run --all-files
+flake8 .                 # config in .flake8
+black --check .          # config in pyproject.toml
+mypy                     # strict, on petpulse/
+pytest --cov             # coverage floor in pyproject.toml
+bandit -ll -r petpulse
+git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 ```
 
 ## Code Style Guidelines
