@@ -3,10 +3,8 @@
 All JSON. Errors: non-2xx with {"detail": str, "request_id": str}. No more {"error": ...} with 200.
 Auth: every /api route except /api/health, /api/demo/users, /api/demo/login requires
 `Authorization: Bearer <token>` (401 otherwise). Token is HMAC-signed by the backend (secret from
-settings, generated at startup if unset). Helpers in `petpulse/auth.py` (Track A):
+settings, generated at startup if unset). Helpers in `petpulse/core/auth.py` (Track A):
 `current_user() -> User(uid, name)` and `require_pet_access(pet_id) -> Pet` (404 unless user in pet.owners).
-Until Track A merges, other tracks may import these names; if missing on your branch, add your code
-behind them anyway and note it; do NOT create your own petpulse/auth.py.
 
 ## Demo + pets (Track A)
 - GET  /api/demo/users            -> [{"uid":"alice","name":"Alice"},{"uid":"bob","name":"Bob"}]
@@ -18,7 +16,7 @@ behind them anyway and note it; do NOT create your own petpulse/auth.py.
 - GET  /api/pets/{pet_id}         -> Pet
 Pet = {id, name, animal_type, breed, age, weight, gender, owners, created_at}
 Seed: Alice owns "Max" (dog) and "Luna" (cat); Bob owns his own "Max". ~30 days of entries, one urgent note.
-Legacy routes in api_server.py stay mounted but are auth+ownership protected (Track A).
+The few pre-contract routes still mounted live in `petpulse/routers/legacy.py` and are auth+ownership protected (see Legacy routes below).
 
 ## Records / uploads + analytics (Track B)
 - POST /api/pets/{pet_id}/records  multipart file=PDF -> Record  (size cap, %PDF- check, server filename)
@@ -95,13 +93,13 @@ All `/api/demo/*` routes return 404 when `DEMO_MODE=false`.
   `animal_type` (`dog|cat|bird|rabbit|hamster|guinea-pig|fish|reptile|other`), optional `breed`
   (<=80), `age` (0-40), `weight` (0-500), `gender` (`male|female|male-neutered|female-spayed`,
   `""` = none); `extra="forbid"`.
-- Raise errors with `petpulse.errors` (`NotFoundError`, `UnprocessableError(detail, code=...)`,
+- Raise errors with `petpulse.core.errors` (`NotFoundError`, `UnprocessableError(detail, code=...)`,
   `BadGatewayError`, `UnsupportedMediaTypeError`, `PayloadTooLargeError`, ...). They are
   `HTTPException`s; plain `HTTPException` also gets the same body.
 
 ### Using the auth helpers (backend tracks)
 ```python
-from petpulse.auth import Pet, User, current_user, require_pet_access
+from petpulse.core.auth import Pet, User, current_user, require_pet_access
 
 @router.get("/api/pets/{pet_id}/notes")
 def list_notes(pet: Pet = Depends(require_pet_access)): ...        # pet.id, pet.owners, ...
@@ -109,7 +107,7 @@ def list_notes(pet: Pet = Depends(require_pet_access)): ...        # pet.id, pet
 @router.get("/api/voice/samples")
 def samples(user: User = Depends(current_user)): ...
 ```
-`tests/test_auth.py` walks the OpenAPI schema: every new `/api` route automatically gets the
+`tests/integration/test_auth.py` walks the OpenAPI schema: every new `/api` route automatically gets the
 401 (no/bad token) check, and every route with `{pet_id}` the 404-for-another-user check. New
 routes must therefore use one of the two dependencies (or be added to the public list there,
 which needs a reason).
@@ -121,9 +119,8 @@ Test fixtures: `client` is signed in as `alice` (the default owner for `make_pet
 - `users/{uid}`: `{name, email, demo, created_at}`.
 - `pets/{id}`: `{name, animal_type, breed, age, weight, gender, owners, created_by, created_at,
   schema_version: 2}`; `id` is a uuid4. No `pages`, no `default-page`. Helpers in
-  `petpulse/pets.py` (`create_pet`, `get_pet`, `list_pets`, `is_owner`, `to_pet`).
-- Per-pet data stays in sub-collections: `analytics`, `notes`, `textinput`, `voice-notes`,
-  `records`.
+  `petpulse/services/pets.py` (`create_pet`, `get_pet`, `list_pets`, `is_owner`, `to_pet`).
+- Per-pet data stays in sub-collections: `analytics`, `notes`, `records`.
 - `Pet.created_at` / note `created_at`: ISO-8601 UTC with offset (`...+00:00`). Analytics
   `timestamp`s stay in the legacy naive-UTC format the old dashboard parses.
 
@@ -149,27 +146,33 @@ Test fixtures: `client` is signed in as `alice` (the default owner for `make_pet
   repeated_vomiting present); the oldest (day -40) mentions him being tired. Luna and Bob's Max
   have fewer entries and 2 / 1 notes.
 - Seeded notes are written in the `Note` shape (without `id`, plus `pet_id`, `uid`, `tz`) to
-  `pets/{id}/notes`, and mirrored to the legacy `textinput` / `voice-notes` collections (with
-  `note_id`) for the current UI. Track C: switch the mirror off with
-  `petpulse.seed.LEGACY_NOTE_MIRROR = False` once nothing reads the legacy collections.
+  `pets/{id}/notes`, the only place notes live (typed, voice and PDF alike).
 
 ### Legacy routes
-Still mounted, now protected: `{pet_id}` routes use `require_pet_access`; routes that name the
-pet in a body/form (`/api/upload_pdf`, `POST /api/markdown`) need `pet` owned by the caller and
-`uid` (if sent) equal to the caller; `GET /api/markdown?pet=` checks the pet. Removed: `/api/test`,
-`/api/pages/invite`, `GET|POST /api/pages/{page_id}`, and (Track D, review C5) the
-server-microphone routes `/api/start`, `/api/start_recording`, `/api/stop_recording`,
-`/api/recording_status`; voice goes through `POST /api/pets/{pet_id}/voice-notes`. Markdown is
-stored on the pet only (`page` is ignored). Their bodies raise `HTTPException` (Track B
-converted the old `{"error": ...}`-with-200 bodies), so errors use the shared envelope.
-`POST /api/pets/{pet_id}/analytics/{category}` and `GET /api/pets/{pet_id}/analytics` exist both
-as legacy routes and in `petpulse/routers/analytics.py`; the legacy ones are registered first and
-delegate to the router, both carry the pet-access check.
+Four pre-contract routes are still mounted, in `petpulse/routers/legacy.py`, all protected:
+`POST /api/upload_pdf` and `POST /api/markdown` need `pet` owned by the caller and `uid` (if
+sent) equal to the caller; `GET /api/markdown?pet=` checks the pet; `GET /api/user-pets/{user_id}`
+and `POST /api/pets/{user_id}` need `user_id` to be the caller (403 otherwise). Each one except
+markdown has a contract replacement (`POST /api/pets/{pet_id}/records`, `GET /api/me/pets`,
+`POST /api/pets`), and the UI uses only the contract routes. Markdown is stored on the pet only.
+Errors use the shared envelope.
 
-Records and analytics routers import `require_pet_access` from `petpulse.auth` directly (the
-temporary `_auth_bridge` and `tests/_track_b_auth.py` are gone); the route-inventory test in
-`tests/test_auth.py` reads the OpenAPI schema, so every new `/api/pets/{pet_id}/...` route is
-checked for 401 (no token) and 404 (another user's pet) automatically.
+Removed: `/api/test`, `/api/pages/invite`, `GET|POST /api/pages/{page_id}`, the
+server-microphone routes `/api/start`, `/api/start_recording`, `/api/stop_recording`,
+`/api/recording_status` (Track D, review C5), and (Track F) `POST /api/pets/{pet_id}/textinput`,
+`POST /api/pets/{pet_id}/knowledge_search`, `GET /api/pets/{pet_id}/assistant_summary`,
+`GET /api/pets/{pet_id}/health_insights`, `POST /api/pets/{pet_id}/daily_routine`,
+`POST /api/pets/{pet_id}/preload`, `POST /api/pets/{pet_id}/cache/clear`,
+`GET /api/pets/{pet_id}/cache/status`, `GET /api/pets/{pet_id}/analytics/summary`,
+`GET /api/pets/{pet_id}/visualizations`, and the `{"query"}` body of `POST /api/pets/{pet_id}/chat`
+(the contract `{"message","tz"}` handler owns that path; a `query` body is a 422). The analytics
+routes are registered once, by `petpulse/routers/analytics.py`. They answer 404 (or 405 where
+the path still exists for another method); `tests/integration/test_auth.py` asserts that.
+
+Every router imports `require_pet_access` from `petpulse.core.auth`; the route-inventory test
+in `tests/integration/test_auth.py` reads the OpenAPI schema, so every new
+`/api/pets/{pet_id}/...` route is checked for 401 (no token) and 404 (another user's pet)
+automatically.
 
 ---
 

@@ -17,8 +17,8 @@ docker compose down -v           # reset demo data
 Without Docker (Python 3.11):
 
 ```bash
-pip install -r requirements.txt
-uvicorn api_server:app --reload  # http://localhost:8000 ; API docs at /docs
+pip install -r requirements/base.txt                # or: make install (adds dev tools)
+uvicorn petpulse.app:app --reload                   # or: make run ; http://localhost:8000, API docs at /docs
 ```
 
 Log in as Alice or Bob (or create a new demo user). `GET /api/health` shows the mode of every
@@ -32,7 +32,7 @@ cp .env.example .env
 ```
 
 Google Speech-to-Text is opt-in: `STT_PROVIDER=google` plus `GOOGLE_APPLICATION_CREDENTIALS`
-and the live extras (`pip install -r requirements-live.txt`, or
+and the live extras (`pip install -r requirements/live.txt`, or
 `INSTALL_LIVE=true docker compose build`).
 
 ## 3. Optional: Firebase (Firestore + Firebase sign-in)
@@ -42,9 +42,9 @@ install the live extras, and deploy `firestore.rules` / `storage.rules`. With th
 `STORE_BACKEND=auto` / `AUTH_PROVIDER=auto` the app then uses Firestore and shows a
 "Continue with Google" / email sign-in instead of the demo picker. There is no client config
 file to edit: the browser gets its Firebase config from `GET /api/auth/config`. Full steps:
-[docs/firebase.md](docs/firebase.md).
+[firebase.md](firebase.md).
 
-`python setup.py` walks through steps 2 and 3 interactively and writes `.env`.
+Every setting, with its default, is listed in [`.env.example`](../.env.example).
 
 ## Troubleshooting
 
@@ -54,16 +54,16 @@ file to edit: the browser gets its Firebase config from `GET /api/auth/config`. 
 - **Firebase sign-in errors** ("domain not authorised", "sign-in method not enabled"): add your
   origin under Authentication > Settings > Authorized domains and enable the provider in the
   Firebase console.
-- **Port 8000 in use**: `uvicorn api_server:app --port 8001` (and add the origin to
+- **Port 8000 in use**: `uvicorn petpulse.app:app --port 8001` (and add the origin to
   `ALLOWED_ORIGINS`).
 - **Docker cache issues**: `docker compose build --no-cache`.
 
 ## Security
 
 Never commit `.env` or any service-account key. Firebase web API keys are public config, but
-restrict them to your domains in the Google Cloud console. See [SECURITY.md](SECURITY.md).
+restrict them to your domains in the Google Cloud console. See [SECURITY.md](../SECURITY.md).
 
 ## Next steps
 
-[README.md](README.md) (architecture), [docs/api-contract.md](docs/api-contract.md) (API),
-[CONTRIBUTING.md](CONTRIBUTING.md) (development).
+[README.md](../README.md) (architecture), [api-contract.md](api-contract.md) (API),
+[live-smoke.md](live-smoke.md) (live smoke test), [CONTRIBUTING.md](../CONTRIBUTING.md) (development).

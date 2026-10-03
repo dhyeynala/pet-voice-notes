@@ -6,9 +6,9 @@ app uses, on a temporary in-memory store (your demo data is never touched).
 
 | # | Check | Input | Pass criteria |
 |---|---|---|---|
-| 1 | `voice_transcription` | `petpulse/samples/audio/smoke_note.webm` (5 s synthetic TTS: "Max vomited twice this morning and there was some blood.") | status `ok`; transcript contains at least 2 of {vomit, blood, twice} |
+| 1 | `voice_transcription` | `petpulse/seed/samples/audio/smoke_note.webm` (5 s synthetic TTS: "Max vomited twice this morning and there was some blood.") | status `ok`; transcript contains at least 2 of {vomit, blood, twice} |
 | 2 | `note_classification` | the transcript from #1 (or the fixed sentence) via `petpulse.services.notes.process_note` | `kind` MEDICAL or MIXED; `blood` or `repeated_vomiting` flag present; `urgent=True` |
-| 3 | `pdf_summary` | `petpulse/samples/pdfs/smoke_record.pdf` (1 page, "Apoquel 16 mg", "recheck in 2 weeks") via `POST /api/pets/{id}/records` | a summary mentioning Apoquel; every cited page is 1 |
+| 3 | `pdf_summary` | `petpulse/seed/samples/pdfs/smoke_record.pdf` (1 page, "Apoquel 16 mg", "recheck in 2 weeks") via `POST /api/pets/{id}/records` | a summary mentioning Apoquel; every cited page is 1 |
 | 4 | `chat_answer` | 5 fixed notes (seeded with the fake, no live calls) + "What medication is Max on?" via `POST /api/pets/{id}/chat` | `status=answered`; cites the Apoquel note; all citations are in the given set |
 
 All four checks run on `demo/integration`; a check reports `SKIPPED (not available)` only if its

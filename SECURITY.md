@@ -7,13 +7,13 @@ This project uses sensitive API keys and credentials that must be protected.
 ### API Keys Used
 
 #### OpenAI API Key
-- **Purpose**: Text summarization, AI analytics, voice note transcription
-- **Used in**: `petpulse/providers/llm.py`, `petpulse/providers/stt.py` (`OpenAISTT`), `ai_analytics.py`, `summarize_openai.py`
+- **Purpose**: Note extraction, chat answers, PDF summaries, voice note transcription
+- **Used in**: `petpulse/providers/llm.py` (via `petpulse/llm/client.py`), `petpulse/providers/stt.py` (`OpenAISTT`)
 - **Environment Variable**: `OPENAI_API_KEY`
 
 #### Google Cloud Credentials
-- **Purpose**: Speech-to-Text (optional, `STT_PROVIDER=google`), Firestore database, Cloud Storage
-- **Used in**: `petpulse/providers/stt.py` (`GoogleSTT`, via `GOOGLE_APPLICATION_CREDENTIALS`), `firestore_store.py`
+- **Purpose**: Speech-to-Text (optional, `STT_PROVIDER=google`); optional Firebase mode (Firestore, Cloud Storage, sign-in)
+- **Used in**: `petpulse/providers/stt.py` (`GoogleSTT`, via `GOOGLE_APPLICATION_CREDENTIALS`), `petpulse/core/firebase.py` and `petpulse/store/firestore.py` (via `FIREBASE_CREDENTIALS_JSON`, see [docs/firebase.md](docs/firebase.md))
 - **Files**: `gcloud-key.json`, environment variables
 
 ### Security Measures Implemented

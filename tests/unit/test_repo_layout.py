@@ -1,138 +1,47 @@
-"""
-Basic tests for PetPulse application.
-These tests ensure the application structure is correct and basic functionality works.
-"""
+"""Repository layout (Track F): what lives at the root, where the backend, locks and docs are,
+and that no doc, config or CI file still points at a moved or deleted file."""
+
+from __future__ import annotations
+
+import ast
+import re
+import subprocess
+from pathlib import Path
 
 import pytest
-import os
-import sys
 
-# Add parent directory to path to import modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = Path(__file__).resolve().parents[2]
 
+# Tracked top-level entries. Dotfiles are tool config that has to sit at the root.
+ROOT_ALLOWED = {
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "Dockerfile",
+    "docker-compose.yml",
+    "Makefile",
+    "pyproject.toml",
+    ".env.example",
+    ".github",
+    "firestore.rules",
+    "storage.rules",
+    "firebase.json",  # Firebase CLI config; must sit at the root and points at the two rules files
+    "public",
+    "petpulse",
+    "tests",
+    "evals",
+    "scripts",
+    "docs",
+    "requirements",
+    ".gitignore",
+    ".dockerignore",
+    ".flake8",
+    ".secrets.baseline",
+}
 
-def test_environment_variables():
-    """Test that environment variables are properly handled."""
-    # Test that the app doesn't crash when environment variables are missing
-    import os
-
-    # These should not cause import errors even if not set
-    api_key = os.getenv("OPENAI_API_KEY", "test")
-    project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "ci-test")
-
-    assert isinstance(api_key, str)
-    assert isinstance(project_id, str)
-
-
-def test_app_structure():
-    """Test that the app has expected structure."""
-    import os
-
-    # Check that key files exist
-    assert os.path.exists("petpulse/app.py")
-    assert os.path.exists("requirements.txt")
-    assert os.path.exists("README.md")
-    assert os.path.exists("public/index.html")
-
-
-def test_requirements_file():
-    """requirements.txt is a pinned lock of the base (demo + live) runtime."""
-    with open("requirements.txt", "r") as f:
-        content = f.read().lower()
-    assert "fastapi==" in content
-    assert "openai==" in content  # shipped in base, imported lazily
-    for removed in ("pandas", "numpy", "pyaudio", "firebase-admin"):
-        assert f"\n{removed}==" not in content, f"{removed} should not be a base dependency"
-    pins = [line for line in content.splitlines() if line and not line.startswith(("#", " "))]
-    assert pins and all("==" in line for line in pins), "every base requirement must be pinned"
-
-
-def test_readme_exists():
-    """Test that README.md exists and is not empty."""
-    assert os.path.exists("README.md")
-    with open("README.md", "r") as f:
-        content = f.read()
-        assert len(content) > 100  # Should have substantial content
-        assert "PetPulse" in content
-
-
-def test_dockerfile_exists():
-    """Test that Docker configuration exists."""
-    assert os.path.exists("Dockerfile")
-    assert os.path.exists("docker-compose.yml")
-
-
-def test_public_directory():
-    """Test that public directory has expected files."""
-    assert os.path.exists("public")
-    assert os.path.exists("public/index.html")
-    assert os.path.exists("public/styles.css")
-    assert os.path.exists("public/main.html")
-
-
-def test_assets_directory():
-    """Test that assets directory exists with documentation images."""
-    assert os.path.exists("assets")
-    # Should have at least some PNG files for documentation
-    import glob
-
-    png_files = glob.glob("assets/*.png")
-    assert len(png_files) > 0
-
-
-def test_pyproject_toml():
-    """Test that pyproject.toml exists and has Black configuration."""
-    assert os.path.exists("pyproject.toml")
-    with open("pyproject.toml", "r") as f:
-        content = f.read()
-        assert "[tool.black]" in content
-        assert "line-length" in content
-
-
-def test_gitignore():
-    """Test that .gitignore exists and has expected patterns."""
-    assert os.path.exists(".gitignore")
-    with open(".gitignore", "r") as f:
-        content = f.read()
-        assert ".env" in content
-        assert "gcloud-key.json" in content
-        assert "__pycache__" in content
-
-
-def test_ci_workflow():
-    """Test that CI workflow exists."""
-    assert os.path.exists(".github/workflows/ci.yml")
-
-
-class TestBasicFunctionality:
-    """Test class for basic application functionality that doesn't require external services."""
-
-    def test_python_syntax(self):
-        """Test that all Python files have valid syntax."""
-        import py_compile
-        import glob
-
-        python_files = glob.glob("*.py")
-        for py_file in python_files:
-            try:
-                py_compile.compile(py_file, doraise=True)
-            except py_compile.PyCompileError as e:
-                pytest.fail(f"Syntax error in {py_file}: {e}")
-
-    def test_documentation_completeness(self):
-        """Test that key documentation files exist."""
-        docs = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "QUICK_START.md", "LICENSE"]
-        for doc in docs:
-            assert os.path.exists(doc), f"Missing documentation file: {doc}"
-
-    def test_template_files(self):
-        """Test that template files exist for user configuration."""
-        assert os.path.exists(".env.example")
-        # Firebase web config is served by GET /api/auth/config; no client config file/template.
-        assert not os.path.exists("public/firebase-config.template.js")
-
-
-LEGACY_MODULES = (
+DELETED = (
+    "api_server.py",
     "firestore_store.py",
     "summarize_openai.py",
     "intelligent_chatbot_service.py",
@@ -141,29 +50,188 @@ LEGACY_MODULES = (
     "ai_analytics.py",
     "visualization_service.py",
     "setup.py",
+    "QUICK_START.md",
+    "assets",
+    "requirements.txt",
+    "requirements.in",
+    "requirements-dev.txt",
+    "requirements-dev.in",
+    "requirements-live.txt",
+    "requirements-live.in",
     "petpulse/store/firestore_compat.py",
+    "petpulse/samples",
+    *(f"petpulse/{m}.py" for m in ("config", "auth", "errors", "deps", "firebase", "timeutil", "pets", "audio")),
+    # Review C5: recording happens in the browser; the server never opens a microphone.
+    "transcribe.py",
+    "main.py",
+    "gcloud_auth.py",
+)
+
+# Anything a reader (or a tool) would follow to a file or name that no longer exists.
+STALE = re.compile(
+    r"(?<![\w/.-])("
+    r"api_server|firestore_store\.py|summarize_openai|intelligent_chatbot_service|simple_rag_service"
+    r"|pdf_parser|ai_analytics|visualization_service|setup\.py|QUICK_START|assets/"
+    r"|requirements\.(txt|in)|requirements-(dev|live)|firestore_compat|legacy_chat|LegacyTask"
+    r"|LEGACY_NOTE_MIRROR|BODY_PET_ACCESS|test_bugfixes|test_ai_analytics|test_basic|test_track_c\w*"
+    r")\b"
+    r"|petpulse/(config|auth|errors|deps|firebase|timeutil|pets|audio)\.py"
+    r"|petpulse\.(config|auth|errors|deps|firebase|timeutil|pets|audio)\b"
+    r"|petpulse/samples|petpulse\.samples|tests/test_\w+"
 )
 
 
-def test_legacy_modules_are_gone():
-    """Replaced by petpulse/services and petpulse/llm (Track F)."""
-    for module in LEGACY_MODULES:
-        assert not os.path.exists(module), f"{module} should be deleted"
+def _tracked() -> list[str]:
+    try:
+        out = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("not a git checkout")
+    return [path for path in out.splitlines() if (ROOT / path).exists()]
 
 
-def test_server_microphone_path_is_gone():
-    """Review C5: recording happens in the browser; the server never opens a microphone."""
-    for removed in ("transcribe.py", "main.py", "gcloud_auth.py"):
-        assert not os.path.exists(removed), f"{removed} should be deleted (server-microphone path)"
+def _doc_and_config_files() -> list[str]:
+    names = {"Dockerfile", "Makefile", ".env.example", ".dockerignore", ".flake8", "firestore.rules", "storage.rules"}
+    suffixes = (".md", ".yml", ".yaml", ".toml", ".json", ".in")
+    return [
+        path
+        for path in _tracked()
+        if not path.startswith("public/vendor/")
+        and path != ".secrets.baseline"
+        and (Path(path).name in names or path.endswith(suffixes))
+    ]
+
+
+def test_root_holds_only_the_allowed_entries():
+    top = {path.split("/", 1)[0] for path in _tracked()}
+    assert top - ROOT_ALLOWED == set(), "unexpected files at the repo root"
+    for required in ("README.md", "LICENSE", "Dockerfile", "pyproject.toml", "petpulse", "public", "requirements"):
+        assert required in top
+
+
+@pytest.mark.parametrize("path", DELETED)
+def test_moved_or_deleted_paths_are_gone(path):
+    assert not (ROOT / path).exists(), f"{path} should be gone (moved or deleted in Track F)"
+
+
+def test_backend_packages():
+    pkg = ROOT / "petpulse"
+    for sub in ("core", "routers", "services", "llm", "providers", "store", "schemas", "seed"):
+        assert (pkg / sub / "__init__.py").is_file(), f"petpulse/{sub} must be a package"
+    for module in ("config", "auth", "errors", "logging"):
+        assert (pkg / "core" / f"{module}.py").is_file()
+    assert (pkg / "services" / "pdf_text.py").is_file()  # per-page PDF extraction
+
+
+def test_app_module_has_no_route_bodies():
+    """petpulse/app.py only builds the app: no @app/@router route decorators, no handlers."""
+    tree = ast.parse((ROOT / "petpulse" / "app.py").read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in node.decorator_list:
+                target = decorator.func if isinstance(decorator, ast.Call) else decorator
+                name = ast.unparse(target)
+                assert not re.match(r"\w+\.(get|post|put|patch|delete|api_route|route)$", name), name
+    from petpulse import app as app_module
+
+    assert [r.__name__ for r in app_module.ROUTERS], "routers are registered from petpulse/routers"
+
+
+def test_tests_are_split():
+    assert (ROOT / "tests" / "unit").is_dir() and (ROOT / "tests" / "integration").is_dir()
+    assert list((ROOT / "tests" / "js").glob("*.test.mjs"))
+    flat = [p.name for p in (ROOT / "tests").glob("test_*.py")]
+    assert flat == [], f"tests belong in tests/unit or tests/integration: {flat}"
+
+
+@pytest.mark.parametrize("name", ["base", "dev", "live"])
+def test_requirements_are_pinned_locks(name):
+    lock = (ROOT / "requirements" / f"{name}.txt").read_text(encoding="utf-8").lower()
+    assert (ROOT / "requirements" / f"{name}.in").is_file(), "each lock keeps its .in source"
+    assert f"uv pip compile requirements/{name}.in" in lock
+    pins = [line for line in lock.splitlines() if line and not line.startswith(("#", " "))]
+    assert pins and all("==" in line for line in pins), f"every {name} requirement must be pinned"
+
+
+def test_base_requirements_content():
+    base = (ROOT / "requirements" / "base.txt").read_text(encoding="utf-8").lower()
+    assert "\nfastapi==" in base
+    assert "\nopenai==" in base  # shipped in base, imported lazily
+    for removed in ("pandas", "numpy", "pyaudio", "firebase-admin"):
+        assert f"\n{removed}==" not in base, f"{removed} should not be a base dependency"
+
+
+def test_entry_points_use_the_new_paths():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert '"petpulse.app:app"' in dockerfile
+    assert "requirements/base.txt" in dockerfile and "requirements/live.txt" in dockerfile
+    assert "petpulse.app:app" in (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "petpulse.app:app" in (ROOT / "Makefile").read_text(encoding="utf-8")
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "requirements/base.txt" in ci and "requirements/dev.txt" in ci
+    assert "per-file-ignores" not in (ROOT / ".flake8").read_text(encoding="utf-8")
+
+
+def test_docs_folder():
+    docs = ROOT / "docs"
+    for name in ("api-contract.md", "live-smoke.md", "firebase.md", "quick-start.md"):
+        assert (docs / name).is_file(), name
+    assert list((docs / "images").glob("*.png")), "README screenshots live in docs/images/"
+
+
+def test_no_doc_or_config_mentions_a_moved_or_deleted_file():
+    hits = []
+    for path in _doc_and_config_files():
+        for number, line in enumerate((ROOT / path).read_text(encoding="utf-8").splitlines(), 1):
+            if STALE.search(line):
+                hits.append(f"{path}:{number}: {line.strip()}")
+    assert hits == [], "\n".join(hits)
+
+
+def test_markdown_links_resolve():
+    link = re.compile(r"\]\(([^)\s]+)\)|<img [^>]*src=\"([^\"]+)\"")
+    broken = []
+    for path in _tracked():
+        if not path.endswith(".md") or path.startswith("public/vendor/"):
+            continue
+        source = ROOT / path
+        for match in link.finditer(source.read_text(encoding="utf-8")):
+            target = (match.group(1) or match.group(2)).split("#", 1)[0]
+            if not target or re.match(r"[a-z]+:", target):
+                continue
+            if not (source.parent / target).exists():
+                broken.append(f"{path} -> {target}")
+    assert broken == [], broken
+
+
+def test_readme():
+    content = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "PetPulse" in content and len(content) > 100
+    assert "uvicorn petpulse.app:app" in content
+
+
+def test_public_directory():
+    for name in ("index.html", "main.html", "styles.css"):
+        assert (ROOT / "public" / name).is_file(), name
+
+
+def test_pyproject_toml():
+    content = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[tool.black]" in content and "line-length" in content
+
+
+def test_gitignore():
+    content = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    for pattern in (".env", "gcloud-key.json", "__pycache__"):
+        assert pattern in content
+
+
+def test_template_files():
+    assert (ROOT / ".env.example").is_file()
+    # Firebase web config is served by GET /api/auth/config; no client config file/template.
+    assert not (ROOT / "public" / "firebase-config.template.js").exists()
 
 
 def test_no_sensitive_files():
-    """Test that no sensitive files are accidentally included."""
-    sensitive_files = [".env", "gcloud-key.json", "firebase-config.js"]
-
-    for sensitive_file in sensitive_files:
-        if sensitive_file == "firebase-config.js":
-            # Check it's not in public/
-            assert not os.path.exists(f"public/{sensitive_file}"), f"Sensitive file found: public/{sensitive_file}"
-        else:
-            assert not os.path.exists(sensitive_file), f"Sensitive file found: {sensitive_file}"
+    for name in (".env", "gcloud-key.json"):
+        assert not (ROOT / name).exists(), f"Sensitive file found: {name}"
+    assert not (ROOT / "public" / "firebase-config.js").exists()

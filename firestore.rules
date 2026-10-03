@@ -35,7 +35,7 @@ service cloud.firestore {
         && request.resource.data.owners == resource.data.owners
         && request.resource.data.created_by == resource.data.created_by;
 
-      // notes, analytics, records, voice-notes, textinput, ...: owners only.
+      // notes, analytics, records, ...: owners only.
       match /{subcollection}/{docId} {
         allow read, write: if ownsPet(petId);
       }

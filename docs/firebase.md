@@ -14,11 +14,11 @@ mismatch), and Firebase without the `firebase-admin` package. Nothing falls back
 `GET /api/health` reports what was picked: `store` (`json|memory|firestore`), `auth`
 (`demo|firebase`) and `blobs` (`local|firebase`).
 
-`firebase-admin` is **not** in the base image. It is pinned in `requirements-live.txt` and
+`firebase-admin` is **not** in the base image. It is pinned in `requirements/live.txt` and
 imported lazily, only in Firebase mode:
 
 ```bash
-pip install -r requirements.txt -r requirements-live.txt     # local
+pip install -r requirements/base.txt -r requirements/live.txt     # local
 INSTALL_LIVE=true docker compose build                        # Docker
 ```
 
@@ -81,7 +81,7 @@ database once.
 
 **Storage.** `FirestoreStore` implements the same `Store` interface as `JsonFileStore`
 (`petpulse/store/firestore.py`), same paths: `users/{uid}`, `pets/{id}` with sub-collections
-(`notes`, `analytics`, `records`, `voice-notes`, `textinput`), `llm_calls`, `meta/seed`.
+(`notes`, `analytics`, `records`), `llm_calls`, `meta/seed`.
 `set(merge=True)` stays a shallow merge (sent as an explicit field list), `ArrayUnion` maps to
 the Firestore transform, `add` uses uuid4 hex ids. All queries are single-field, so no composite
 indexes are needed. `FirebaseBlobStore` keeps objects private; PDFs are served only through the
