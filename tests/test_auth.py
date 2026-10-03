@@ -139,8 +139,10 @@ def test_another_users_pet_is_404_and_the_owner_gets_through(client, client_as, 
     assert as_bob.status_code == 404, as_bob.text
     assert as_bob.json()["detail"] == "pet not found"
     # The owner passes the auth/ownership layer (some legacy bodies still 4xx on an empty body).
+    # Other placeholders (e.g. {record_id}) don't exist, so a 404 for *that* is fine; "pet not found" is not.
     as_alice = client.request(method, url, json={"query": "How is Max?", "input": "Max ate", "days": 7})
-    assert as_alice.status_code not in (401, 403, 404), as_alice.text
+    assert as_alice.status_code not in (401, 403), as_alice.text
+    assert not (as_alice.status_code == 404 and as_alice.json()["detail"] == "pet not found"), as_alice.text
 
 
 def test_unknown_pet_is_404_like_someone_elses(client):
@@ -152,6 +154,7 @@ def test_unknown_pet_is_404_like_someone_elses(client):
     "method, path, body",
     [
         ("GET", "/api/pets/{pet}/analytics", None),
+        ("GET", "/api/pets/{pet}/records", None),
         ("GET", "/api/pets/{pet}/analytics/summary", None),
         ("GET", "/api/pets/{pet}/visualizations", None),
         ("POST", "/api/pets/{pet}/analytics/diet", {"food": "kibble"}),

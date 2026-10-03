@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tests._track_b_auth import as_user, install_fake_auth, seed_pets
+from petpulse.auth import issue_token
+
+
+def as_user(uid: str) -> dict[str, str]:
+    """Real demo-token headers for ``uid`` (overrides the ``client`` fixture's alice token)."""
+    return {"Authorization": f"Bearer {issue_token(uid)}"}
+
 
 RECORD_KEYS = {"id", "pet_id", "filename", "pages", "summary", "status", "created_at"}
 BLOB_KEY = re.compile(r"^pets/[A-Za-z0-9_-]+/records/[0-9a-f]{32}\.pdf$")
@@ -27,9 +33,9 @@ def make_pdf(text: str = "Apoquel 16 mg daily. Recheck in 2 weeks.", pages: int 
 
 
 @pytest.fixture
-def pets(app, store):
-    install_fake_auth(app, store)
-    return seed_pets(store)
+def pets(make_pet):
+    """Alice's Max and Bob's Max: distinct uuid4 pets (C2)."""
+    return make_pet("alice", "Max"), make_pet("bob", "Max")
 
 
 @pytest.fixture
@@ -218,7 +224,7 @@ def test_summary_outage_is_reported_not_stored_as_text(client, store, fake_llm, 
     assert store.get(f"pets/{alice_pet}/records/{record['id']}")["summary"] is None
 
 
-def test_record_is_never_public(client, store, blobs, alice_pet):
+def test_record_is_never_public(client, anon_client, store, blobs, alice_pet):
     import api_server
 
     response = upload(client, alice_pet, make_pdf())
@@ -234,7 +240,7 @@ def test_record_is_never_public(client, store, blobs, alice_pet):
     assert client.get(f"/{stored['blob_key']}").status_code == 404
     assert client.get(f"/data/blobs/{stored['blob_key']}").status_code == 404
     # The only way to the bytes is the authenticated download route.
-    assert client.get(f"/api/pets/{alice_pet}/records/{body['id']}/file").status_code == 401
+    assert anon_client.get(f"/api/pets/{alice_pet}/records/{body['id']}/file").status_code == 401
 
 
 def test_owner_can_download_the_original(client, alice_pet):
@@ -272,9 +278,9 @@ def test_unknown_or_malformed_record_id_is_404(client, alice_pet, record_id):
     assert client.get(f"/api/pets/{alice_pet}/records/{record_id}/file", headers=as_user("alice")).status_code == 404
 
 
-def test_requests_without_credentials_are_401(client, alice_pet):
-    assert client.get(f"/api/pets/{alice_pet}/records").status_code == 401
-    response = client.post(f"/api/pets/{alice_pet}/records", files={"file": ("a.pdf", make_pdf(), "application/pdf")})
+def test_requests_without_credentials_are_401(anon_client, alice_pet):
+    assert anon_client.get(f"/api/pets/{alice_pet}/records").status_code == 401
+    response = anon_client.post(f"/api/pets/{alice_pet}/records", files={"file": ("a.pdf", make_pdf(), "application/pdf")})
     assert response.status_code == 401
 
 
@@ -296,29 +302,6 @@ def test_list_records_newest_first_including_legacy_rows(client, store, alice_pe
         "status": "summarized",
         "created_at": "2025-01-01T00:00:00",
     }
-
-
-def test_without_petpulse_auth_the_routes_fail_closed(monkeypatch):
-    """Until the auth track's petpulse.auth exists, the bridge never lets a request through."""
-    import importlib
-
-    from fastapi import HTTPException
-
-    from petpulse.routers import _auth_bridge
-
-    real_import = importlib.import_module
-
-    def no_auth_module(name, *args, **kwargs):
-        if name == "petpulse.auth":
-            raise ModuleNotFoundError(name=name)
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(importlib, "import_module", no_auth_module)
-    for name in ("current_user", "require_pet_access"):
-        dependency = _auth_bridge._resolve(name)
-        with pytest.raises(HTTPException) as excinfo:
-            dependency(**({"pet_id": "x"} if name == "require_pet_access" else {}))
-        assert excinfo.value.status_code == 401
 
 
 def test_legacy_upload_route_delegates_to_the_safe_path(client_as, store, make_pet):

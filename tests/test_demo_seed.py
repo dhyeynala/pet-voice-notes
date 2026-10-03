@@ -102,7 +102,7 @@ def test_bob_cannot_see_alices_max(seeded):
 
 def test_seeded_max_drives_the_legacy_dashboard(seeded):
     alice = seeded("alice")
-    data = alice.get(f"/api/pets/{ALICE_MAX_ID}/analytics?days=30").json()["data"]
+    data = alice.get(f"/api/pets/{ALICE_MAX_ID}/analytics?days=30").json()
     assert {d["category"] for d in data} >= set(demo_data.CATEGORIES)
     viz = alice.get(f"/api/pets/{ALICE_MAX_ID}/visualizations?days=30")
     assert viz.status_code == 200 and viz.json()["data_points"] > 200
