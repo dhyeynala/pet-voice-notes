@@ -30,12 +30,10 @@ def test_app_structure():
 
     # Check that key files exist
     assert os.path.exists("api_server.py")
-    assert os.path.exists("main.py")
     assert os.path.exists("requirements.txt")
     assert os.path.exists("README.md")
     assert os.path.exists("public/index.html")
     assert os.path.exists("summarize_openai.py")
-    assert os.path.exists("transcribe.py")
     assert os.path.exists("firestore_store.py")
 
 
@@ -141,10 +139,7 @@ def test_module_files_exist():
     modules = [
         "api_server.py",
         "summarize_openai.py",
-        "transcribe.py",
         "firestore_store.py",
-        "gcloud_auth.py",
-        "main.py",
         "pdf_parser.py",
         "setup.py",
         "ai_analytics.py",
@@ -155,6 +150,12 @@ def test_module_files_exist():
 
     for module in modules:
         assert os.path.exists(module), f"Missing module: {module}"
+
+
+def test_server_microphone_path_is_gone():
+    """Review C5: recording happens in the browser; the server never opens a microphone."""
+    for removed in ("transcribe.py", "main.py", "gcloud_auth.py"):
+        assert not os.path.exists(removed), f"{removed} should be deleted (server-microphone path)"
 
 
 def test_no_sensitive_files():

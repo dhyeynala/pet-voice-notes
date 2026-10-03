@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     seed_on_start: bool = True
     allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:8000"]
     live_call_cap: int = 6
+    # Speech-to-text (voice track). The OpenAI model is a pinned dated snapshot.
+    stt_openai_model: str = "gpt-4o-mini-transcribe-2025-12-15"
+    stt_google_model: str = "default"
+    stt_language: str = "en-US"
+    stt_timeout_seconds: float = 30.0
+    voice_max_bytes: int = 5 * 1024 * 1024
+    voice_max_seconds: float = 60.0
 
     @field_validator("openai_api_key", "google_application_credentials", "auth_secret", mode="before")
     @classmethod
@@ -103,6 +110,10 @@ class Settings(BaseSettings):
             problems.append("LLM_TIMEOUT_SECONDS must be in (0, 120].")
         if self.live_call_cap < 0:
             problems.append("LIVE_CALL_CAP must be >= 0.")
+        if self.stt_timeout_seconds <= 0:
+            problems.append("STT_TIMEOUT_SECONDS must be > 0.")
+        if self.voice_max_bytes <= 0 or self.voice_max_seconds <= 0:
+            problems.append("VOICE_MAX_BYTES and VOICE_MAX_SECONDS must be > 0.")
         if problems:
             raise ConfigError("Invalid PetPulse configuration:\n  - " + "\n  - ".join(problems))
 

@@ -288,37 +288,9 @@ def test_model_health_insights_are_validated():
     assert _validated_insights(["x"]) is None
 
 
-@pytest.mark.parametrize("transcript, status", [("No speech detected", 200), ("Error: boom", 502), ("   ", 200)])
-def test_stop_recording_never_stores_no_speech_or_error_strings(client, store, make_pet, monkeypatch, transcript, status):
-    import api_server
-
-    pet_id = make_pet()
-    monkeypatch.setattr(api_server, "stop_recording", lambda: {"status": "stopped", "transcript": transcript})
-    response = client.post("/api/stop_recording", json={"uid": "alice", "pet": pet_id})
-    assert response.status_code == status
-    assert store.query(f"pets/{pet_id}/voice-notes") == []
-    assert store.query(f"pets/{pet_id}/analytics") == []
-
-
-def test_stop_recording_stores_a_real_transcript(client, store, make_pet, monkeypatch):
-    import api_server
-
-    pet_id = make_pet()
-    monkeypatch.setattr(api_server, "stop_recording", lambda: {"status": "stopped", "transcript": "Max limped after the walk"})
-    body = client.post("/api/stop_recording", json={"uid": "alice", "pet": pet_id}).json()
-    assert body["status"] == "success"
-    [(_, note)] = store.query(f"pets/{pet_id}/voice-notes")
-    assert note["transcript"] == "Max limped after the walk" and note["summary"].startswith("[Simulated summary]")
-
-
-@pytest.mark.parametrize("transcript", ["No speech detected", "Error: device busy", ""])
-def test_cli_voice_path_never_stores_no_speech_or_error_strings(app, store, monkeypatch, transcript):
-    import main
-
-    monkeypatch.setattr(main, "transcribe_audio", lambda duration_seconds: transcript)
-    result = main.main("alice", "max")
-    assert "error" in result
-    assert store.query("pets/max/voice-notes") == []
+# The server-microphone routes (/api/stop_recording) and main.py are deleted (review C5). The
+# "no speech / STT error is never stored" guarantee now lives on POST /api/pets/{id}/voice-notes
+# (422 / 502 with nothing stored): see tests/test_voice.py.
 
 
 # ------------------------------------------------------------------------------------- C4
@@ -372,7 +344,6 @@ def test_legacy_errors_are_http_errors_not_200(client_noraise, make_pet, fake_ll
     assert client_noraise.post(f"/api/pets/{pet_id}/textinput", json={"input": ""}).status_code == 422
     assert client_noraise.post(f"/api/pets/{pet_id}/chat", json={"query": ""}).status_code == 422
     assert client_noraise.post(f"/api/pets/{pet_id}/knowledge_search", json={"query": ""}).status_code == 422
-    assert client_noraise.post("/api/stop_recording", json={}).status_code == 422
     fake_llm.fail = True
     response = client_noraise.post(f"/api/pets/{pet_id}/chat", json={"query": "How is Max?"})
     assert response.status_code == 503 and "simulated provider outage" not in response.text

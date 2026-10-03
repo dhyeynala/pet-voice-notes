@@ -58,10 +58,20 @@ def _build_stt() -> STTProvider:
     settings = get_settings()
     choice = settings.resolved_stt()
     if choice == "openai":
-        return OpenAISTT(api_key=_openai_key(settings))
+        return OpenAISTT(
+            api_key=_openai_key(settings),
+            model=settings.stt_openai_model,
+            timeout=settings.stt_timeout_seconds,
+            language=settings.stt_language,
+        )
     if choice == "google":
         settings.check()
-        return GoogleSTT()
+        return GoogleSTT(
+            credentials_path=settings.google_application_credentials,
+            language_code=settings.stt_language,
+            timeout=settings.stt_timeout_seconds,
+            model=settings.stt_google_model,
+        )
     return FakeSTT()
 
 

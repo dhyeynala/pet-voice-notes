@@ -97,23 +97,6 @@ def test_pdf_upload_goes_to_local_blob_store(client, store, blobs, make_pet, tmp
     assert blobs.exists(record["blob_key"])
 
 
-def test_server_recording_reports_missing_pyaudio(client, monkeypatch, make_pet):
-    monkeypatch.setitem(sys.modules, "pyaudio", None)  # make ``import pyaudio`` fail
-    body = client.post("/api/start_recording", json={"uid": "alice", "pet": make_pet()}).json()
-    assert body["status"] == "error" and "PyAudio" in body["message"]
-
-
-def test_legacy_transcription_goes_through_stt_provider(fake_stt, app):
-    import transcribe
-
-    assert transcribe._transcribe_audio_data(b"\x00" * 10) == "No speech detected"
-    text = transcribe._transcribe_audio_data(b"\x01\x02" * 4000)
-    assert text and not text.startswith("Error")
-    assert fake_stt.calls[-1]["mime"] == "audio/wav"
-    fake_stt.fail = True
-    assert transcribe._transcribe_audio_data(b"\x01\x02" * 4000).startswith("Error:")
-
-
 def test_demo_mode_makes_no_live_sdk_imports(client, make_pet):
     pet_id = make_pet()
     client.post(f"/api/pets/{pet_id}/textinput", json={"input": "Max ate dinner"})

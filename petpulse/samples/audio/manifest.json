@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "note": "Synthetic TTS clips (espeak-ng + ffmpeg). Regenerate with scripts/make_samples.py.",
+  "samples": [
+    {
+      "id": "walk_and_dinner",
+      "label": "Routine: walk and dinner",
+      "file": "walk_and_dinner.webm",
+      "mime": "audio/webm",
+      "bytes": 14633,
+      "seconds": 4.29,
+      "status": "ok",
+      "transcript": "Max had his usual thirty minute walk and finished all of his dinner.",
+      "confidence": 0.97,
+      "listed": true
+    },
+    {
+      "id": "vomiting_blood",
+      "label": "Urgent: vomiting with blood",
+      "file": "vomiting_blood.webm",
+      "mime": "audio/webm",
+      "bytes": 12548,
+      "seconds": 3.71,
+      "status": "ok",
+      "transcript": "Max vomited twice this morning and there was some blood.",
+      "confidence": 0.97,
+      "listed": true
+    },
+    {
+      "id": "heartworm_pill",
+      "label": "Medication: heartworm pill",
+      "file": "heartworm_pill.ogg",
+      "mime": "audio/ogg",
+      "bytes": 10979,
+      "seconds": 3.52,
+      "status": "ok",
+      "transcript": "Gave Max his heartworm pill with breakfast this morning.",
+      "confidence": 0.97,
+      "listed": true
+    },
+    {
+      "id": "silence",
+      "label": "Silence (no speech)",
+      "file": "silence.wav",
+      "mime": "audio/wav",
+      "bytes": 48044,
+      "seconds": 1.5,
+      "status": "no_speech",
+      "transcript": "",
+      "confidence": null,
+      "listed": true
+    },
+    {
+      "id": "smoke_note",
+      "label": "Smoke test: vomiting with blood (5 s)",
+      "file": "smoke_note.webm",
+      "mime": "audio/webm",
+      "bytes": 16763,
+      "seconds": 5.21,
+      "status": "ok",
+      "transcript": "Max vomited twice this morning and there was some blood.",
+      "confidence": 0.97,
+      "listed": false
+    }
+  ]
+}
