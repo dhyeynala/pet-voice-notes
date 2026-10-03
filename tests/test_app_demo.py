@@ -40,11 +40,10 @@ def test_text_note_is_classified_and_summarised_by_fake(client, store, fake_llm,
 
 def test_analytics_write_read_and_charts(client, make_pet):
     pet_id = make_pet()
-    assert client.post(f"/api/pets/{pet_id}/analytics/exercise", json={"type": "walk", "duration": 30}).json()["status"] == (
-        "success"
-    )
+    created = client.post(f"/api/pets/{pet_id}/analytics/exercise", json={"type": "walk", "duration": 30})
+    assert created.status_code == 201 and created.json()["duration"] == 30
     client.post(f"/api/pets/{pet_id}/analytics/energy_levels", json={"level": 4})
-    data = client.get(f"/api/pets/{pet_id}/analytics").json()["data"]
+    data = client.get(f"/api/pets/{pet_id}/analytics").json()
     assert sorted(d["category"] for d in data) == ["energy_levels", "exercise"]
     summary = client.get(f"/api/pets/{pet_id}/analytics/summary").json()["summary"]
     assert summary["exercise"]["total"] == 1
@@ -91,7 +90,8 @@ def test_pdf_upload_goes_to_local_blob_store(client, store, blobs, make_pet, tmp
     assert body["url"] is None
     assert "Apoquel 16 mg daily" in body["summary"]
     [(_, record)] = store.query(f"pets/{pet_id}/records")
-    assert record["file_name"] == "visit.pdf" and record["file_url"] is None
+    assert record["filename"] == record["file_name"] == "visit.pdf" and "file_url" not in record
+    assert body["record"]["pages"] == 1 and body["record"]["status"] == "summarized"
     assert blobs.exists(record["blob_key"])
 
 

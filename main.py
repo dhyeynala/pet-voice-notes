@@ -13,6 +13,10 @@ def main(user_id, pet_id):
         transcript = transcribe_audio(duration_seconds=20)
         print("\n TRANSCRIPT:\n", transcript)
 
+        # The legacy transcriber returns "No speech detected" / "Error: ..." as text; never store those (review H2).
+        if not transcript or transcript == "No speech detected" or transcript.startswith("Error:"):
+            return {"error": "No speech detected or transcription failed; nothing was saved"}
+
         summary = summarize_text(transcript)
         print("\n SUMMARY:\n", summary)
 

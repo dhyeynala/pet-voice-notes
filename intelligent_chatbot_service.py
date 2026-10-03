@@ -537,8 +537,10 @@ For summary requests, analyze the pet's data and provide detailed text insights 
 - Sleep patterns and behavior
 - Recent observations and notable changes
 
+Answer from the context below. If it does not contain the answer, say that the records do not show it; do not guess.
+
 Context from Pet's Health Data:
-{rag_response.get('context_used', 'Limited context available')}"""
+{rag_response.get('context_text') or 'No matching records were found.'}"""
 
         try:
             # Call OpenAI with function calling enabled

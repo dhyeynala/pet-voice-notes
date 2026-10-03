@@ -39,30 +39,39 @@ def test_c2_two_users_with_same_pet_name_get_distinct_pets(client, store):
     assert store.get(f"pets/{a['pet']['id']}")["animal_type"] == "dog"
 
 
-@known_bug("C3: upload filename controls where the server writes (path traversal)", "bug-fix track")
-def test_c3_upload_filename_cannot_choose_write_location(client, monkeypatch, tmp_path):
-    import api_server
+def test_c3_upload_filename_cannot_choose_write_location(client_as, store, make_pet, monkeypatch, tmp_path):
+    """Fixed: uploads are parsed from memory and stored under a server-generated blob key."""
+    import pymupdf
+
+    from petpulse.routers import records
 
     target = tmp_path / "TRAVERSAL_PROOF.pdf"
-    # "/tmp/" + "../<absolute path without leading slash>" resolves to ``target`` anywhere.
+    # "/tmp/" + "../<absolute path without leading slash>" resolved to ``target`` in the old code.
     filename = "../" + os.path.relpath(target, "/")
     seen: dict[str, bool] = {}
+    real_extract = records.extract_pdf_text
 
-    def fake_extract(path, *args, **kwargs):
+    def spy_extract(data, *args, **kwargs):
         seen["existed_during_processing"] = target.exists()
-        return {"summary": "x"}
+        return real_extract(data, *args, **kwargs)
 
-    monkeypatch.setattr(api_server, "extract_text_and_summarize", fake_extract)
-    client.post(
+    monkeypatch.setattr(records, "extract_pdf_text", spy_extract)
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), "Recheck in 2 weeks.")
+    pet_id = make_pet("alice", "Max")
+    response = client_as("alice").post(
         "/api/upload_pdf",
-        data={"uid": "victim", "pet": "max"},
-        files={"file": (filename, b"%PDF-1.4 proof", "application/pdf")},
+        data={"uid": "victim", "pet": pet_id},
+        files={"file": (filename, doc.tobytes(), "application/pdf")},
     )
-    assert not seen.get("existed_during_processing")
+    assert response.status_code == 200
+    assert seen == {"existed_during_processing": False}
     assert not target.exists()
+    [(_, record)] = store.query(f"pets/{pet_id}/records")
+    assert record["filename"] == "TRAVERSAL_PROOF.pdf"
+    assert record["blob_key"].startswith(f"pets/{pet_id}/records/") and "TRAVERSAL" not in record["blob_key"]
 
 
-@known_bug("C4: the chat model's context is the boolean True, not the retrieved notes", "bug-fix track")
 def test_c4_chat_prompt_contains_the_retrieved_note(client, store, fake_llm, make_pet):
     from petpulse.providers.llm import LegacyTask
 
@@ -84,7 +93,6 @@ def test_c4_chat_prompt_contains_the_retrieved_note(client, store, fake_llm, mak
     assert "limping on his left hind leg" in prompt
 
 
-@known_bug("H2: on an LLM outage an emergency note is classified DAILY_ACTIVITY", "bug-fix track")
 def test_h2_outage_does_not_classify_emergency_as_daily_activity(client, fake_llm, make_pet, no_retry_sleep):
     pet_id = make_pet("alice", "Max")
     fake_llm.fail = True
@@ -94,7 +102,6 @@ def test_h2_outage_does_not_classify_emergency_as_daily_activity(client, fake_ll
     assert response.json().get("content_type") != "DAILY_ACTIVITY"
 
 
-@known_bug("H2: health insights fall back to an invented overall_health_score of 7", "bug-fix track")
 def test_h2_health_insights_never_invent_a_score(client, make_pet):
     pet_id = make_pet("alice", "Max")
     response = client.get(f"/api/pets/{pet_id}/health_insights")
@@ -102,7 +109,6 @@ def test_h2_health_insights_never_invent_a_score(client, make_pet):
     assert insights.get("overall_health_score") is None
 
 
-@known_bug("M2: _calculate_trend counts list halves and can never say 'decreasing'", "bug-fix track")
 def test_m2_trend_reports_decreasing_activity():
     from visualization_service import PetVisualizationService
 
@@ -112,7 +118,6 @@ def test_m2_trend_reports_decreasing_activity():
     assert PetVisualizationService()._calculate_trend(early + late, 30) == "decreasing"
 
 
-@known_bug("M3: one analytics row without a timestamp makes the summary endpoint 500", "bug-fix track")
 def test_m3_missing_timestamp_does_not_break_summary(client_noraise, store, make_pet):
     pet_id = make_pet("alice", "Max")
     store.add(f"pets/{pet_id}/analytics", {"category": "diet"})
@@ -120,7 +125,6 @@ def test_m3_missing_timestamp_does_not_break_summary(client_noraise, store, make
     assert response.status_code == 200
 
 
-@known_bug("M4: the dynamic chart averages missing values as 0", "bug-fix track")
 def test_m4_dynamic_chart_average_ignores_entries_without_the_metric():
     from visualization_service import PetVisualizationService
 

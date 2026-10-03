@@ -6,6 +6,7 @@ Generates intelligent insights, recommendations, and daily routine headlines
 from datetime import datetime
 import json
 import logging
+import math
 import statistics
 from typing import List, Dict, Any, Optional
 from collections import defaultdict, Counter
@@ -33,6 +34,43 @@ def _parse_timestamp(value) -> Optional[datetime]:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _number(value) -> Optional[float]:
+    """A finite number from a stored field; ``None`` if missing or malformed (review M3)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def _durations(entries: List[Dict]) -> List[float]:
+    """Positive recorded durations only; missing ones are not assumed (review H2)."""
+    return [d for d in (_number(e.get('duration')) for e in entries) if d is not None and d > 0]
+
+
+def _levels(entries: List[Dict]) -> List[int]:
+    """1-5 levels that were actually recorded; missing ones are not defaulted to 3."""
+    return [int(v) for v in (_number(e.get('level')) for e in entries) if v is not None and 1 <= v <= 5]
+
+
+def _validated_insights(raw: Any) -> Optional[Dict[str, Any]]:
+    """Accept model insights only with the expected shape; the score must be 1-10 or absent."""
+    if not isinstance(raw, dict):
+        return None
+    score = raw.get('overall_health_score')
+    if isinstance(score, bool) or not isinstance(score, (int, float)) or not 1 <= score <= 10:
+        score = None
+    out: Dict[str, Any] = {'overall_health_score': score}
+    for key in ('key_insights', 'recommendations', 'alerts', 'positive_trends'):
+        value = raw.get(key, [])
+        if not isinstance(value, list):
+            return None
+        out[key] = [str(item)[:500] for item in value if isinstance(item, str)][:10]
+    return out
 
 
 class PetAnalyticsAI:
@@ -153,7 +191,9 @@ class PetAnalyticsAI:
             )
 
             content = response.choices[0].message.content.strip()
-            insights = json.loads(content)
+            insights = _validated_insights(json.loads(content))
+            if insights is None:
+                raise ValueError("health insights failed validation")
             return insights
 
         except Exception as e:
@@ -180,7 +220,7 @@ class PetAnalyticsAI:
                     'meal_types': [e.get('type', '') for e in entries],
                 }
             elif category == 'exercise':
-                total_duration = sum(int(e.get('duration', 0)) for e in entries)
+                total_duration = int(sum(_durations(entries)))
                 daily_summary['exercise'] = {
                     'session_count': len(entries),
                     'total_duration': total_duration,
@@ -188,9 +228,9 @@ class PetAnalyticsAI:
                     'avg_intensity': self._calculate_avg_intensity(entries),
                 }
             elif category == 'energy_levels':
-                levels = [int(e.get('level', 3)) for e in entries]
+                levels = _levels(entries)
                 daily_summary['energy'] = {
-                    'avg_level': _mean(levels) if levels else 3,
+                    'avg_level': _mean(levels) if levels else None,
                     'recordings': len(levels),
                     'trend': self._calculate_energy_trend(levels),
                 }
@@ -223,7 +263,7 @@ class PetAnalyticsAI:
         # Analyze each category
         for category, entries in categories.items():
             if category == 'exercise':
-                durations = [int(e.get('duration', 0)) for e in entries]
+                durations = _durations(entries)
                 context['exercise_analysis'] = {
                     'total_sessions': len(entries),
                     'avg_duration': _mean(durations) if durations else 0,
@@ -241,9 +281,9 @@ class PetAnalyticsAI:
                 }
 
             elif category == 'energy_levels':
-                levels = [int(e.get('level', 3)) for e in entries]
+                levels = _levels(entries)
                 context['energy_analysis'] = {
-                    'avg_energy': _mean(levels) if levels else 3,
+                    'avg_energy': _mean(levels) if levels else None,
                     'recordings': len(levels),
                     'high_energy_days': sum(1 for l in levels if l >= 4),
                     'low_energy_days': sum(1 for l in levels if l <= 2),
@@ -351,14 +391,16 @@ class PetAnalyticsAI:
             headlines.append(f"🍽️ {pet_name} enjoyed {meal_count} meal{'s' if meal_count != 1 else ''} today")
 
         if categories.get('exercise'):
-            total_duration = sum(int(e.get('duration', 0)) for e in categories['exercise'])
+            total_duration = int(sum(_durations(categories['exercise'])))
             if total_duration > 30:
                 headlines.append(f"🏃 Active day: {pet_name} exercised for {total_duration} minutes!")
 
         if categories.get('energy_levels'):
-            levels = [int(e.get('level', 3)) for e in categories['energy_levels']]
-            avg_energy = sum(levels) / len(levels) if levels else 3
-            if avg_energy >= 4:
+            levels = _levels(categories['energy_levels'])
+            avg_energy = sum(levels) / len(levels) if levels else None
+            if avg_energy is None:
+                pass
+            elif avg_energy >= 4:
                 headlines.append(f"⚡ High energy day for {pet_name}!")
             elif avg_energy <= 2:
                 headlines.append(f"😴 {pet_name} had a relaxed day")
@@ -375,7 +417,9 @@ class PetAnalyticsAI:
             categories[entry.get('category', 'unknown')].append(entry)
 
         insights = {
-            "overall_health_score": 7,  # Default neutral score
+            # No score without a model that produced one (review H2): never a made-up default.
+            "overall_health_score": None,
+            "source": "rules",
             "key_insights": [],
             "recommendations": [],
             "alerts": [],
