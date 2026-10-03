@@ -178,9 +178,10 @@ def test_uid_in_path_must_be_the_caller(client):
 def test_pet_in_body_must_be_owned(client, client_as, make_pet):
     alice_pet = make_pet("alice")
     bob = client_as("bob")
-    assert bob.post("/api/start_recording", json={"uid": "bob", "pet": alice_pet}).status_code == 404
-    assert client.post("/api/start_recording", json={"uid": "bob", "pet": alice_pet}).status_code == 403
-    assert client.post("/api/start_recording", json={"uid": "alice"}).status_code == 422
+    # POST /api/markdown names the pet in the JSON body (not a voice route: Track D removes those).
+    assert bob.post("/api/markdown", json={"uid": "bob", "pet": alice_pet, "markdown": "x"}).status_code == 404
+    assert client.post("/api/markdown", json={"uid": "bob", "pet": alice_pet, "markdown": "x"}).status_code == 403
+    assert client.post("/api/markdown", json={"uid": "alice", "markdown": "x"}).status_code == 422
     upload = bob.post(
         "/api/upload_pdf",
         data={"uid": "bob", "pet": alice_pet},
@@ -199,11 +200,6 @@ def test_markdown_is_per_owned_pet_with_no_shared_page(client, client_as, make_p
     assert bob.get("/api/markdown", params={"page": "default-page", "pet": bob_pet}).json() == {"markdown": ""}
     assert bob.get("/api/markdown", params={"page": "default-page", "pet": alice_pet}).status_code == 404
     assert client.get("/api/markdown", params={"pet": alice_pet}).json() == {"markdown": "alice secret"}
-
-
-def test_recording_status_needs_auth(anon_client, client):
-    assert anon_client.get("/api/recording_status").status_code == 401
-    assert client.get("/api/recording_status").status_code == 200
 
 
 def test_current_user_name_comes_from_the_store(client_as, store):
