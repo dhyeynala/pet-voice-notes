@@ -11,21 +11,41 @@ with a hard byte limit. The spooled upload is closed (deleted) before the respon
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict
 from starlette.datastructures import UploadFile
 
 from petpulse.auth import current_user, require_pet_access
 from petpulse.config import Settings
-from petpulse.deps import get_settings, get_stt
+from petpulse.deps import get_llm, get_settings, get_store, get_stt
+from petpulse.providers.llm import LLMProvider
 from petpulse.providers.stt import STTProvider
-
 from petpulse.services import voice
+from petpulse.services.notes import Note
+from petpulse.store.base import Store
 
 router = APIRouter(tags=["voice"])
 
 MULTIPART_OVERHEAD = 64 * 1024  # boundaries, headers and the small form fields
+
+
+class TranscriptionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["ok", "no_speech", "error"]
+    text: str
+    confidence: Optional[float]
+
+
+class VoiceNoteOut(BaseModel):
+    """``{"transcription": {...}, "note": Note}`` (the note is the shared ``Note`` shape)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    transcription: TranscriptionOut
+    note: Note
 
 
 def _http(exc: voice.VoiceError) -> HTTPException:
@@ -76,7 +96,7 @@ def _field(value: Any) -> Optional[str]:
     return value.strip() if isinstance(value, str) and value.strip() else None
 
 
-@router.post("/api/pets/{pet_id}/voice-notes", status_code=201, openapi_extra=_OPENAPI_BODY)
+@router.post("/api/pets/{pet_id}/voice-notes", response_model=VoiceNoteOut, status_code=201, openapi_extra=_OPENAPI_BODY)
 async def create_voice_note(
     pet_id: str,
     request: Request,
@@ -84,6 +104,8 @@ async def create_voice_note(
     pet: Any = Depends(require_pet_access),
     stt: STTProvider = Depends(get_stt),
     settings: Settings = Depends(get_settings),
+    store: Store = Depends(get_store),
+    llm: LLMProvider = Depends(get_llm),
 ) -> dict[str, Any]:
     length = request.headers.get("content-length")
     if length and length.isdigit() and int(length) > settings.voice_max_bytes + MULTIPART_OVERHEAD:
@@ -111,7 +133,7 @@ async def create_voice_note(
             data = await _read_capped(upload, settings.voice_max_bytes)
             audio = voice.validate_audio(data, upload.content_type, upload.filename, settings, stt)
             del data
-        return await voice.create_voice_note(pet_id, _uid(user), audio, tz, stt, settings)
+        return await voice.create_voice_note(pet_id, _uid(user), audio, tz, stt, store=store, llm=llm)
     except voice.VoiceError as exc:
         raise _http(exc) from None
     finally:

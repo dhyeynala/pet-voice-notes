@@ -11,7 +11,8 @@ app uses, on a temporary in-memory store (your demo data is never touched).
 | 3 | `pdf_summary` | `petpulse/samples/pdfs/smoke_record.pdf` (1 page, "Apoquel 16 mg", "recheck in 2 weeks") via `POST /api/pets/{id}/records` | a summary mentioning Apoquel; every cited page is 1 |
 | 4 | `chat_answer` | 5 fixed notes (seeded with the fake, no live calls) + "What medication is Max on?" via `POST /api/pets/{id}/chat` | `status=answered`; cites the Apoquel note; all citations are in the given set |
 
-A check whose service or route is not merged yet reports `SKIPPED (not available)`.
+All four checks run on `demo/integration`; a check reports `SKIPPED (not available)` only if its
+route is not mounted.
 
 ## Steps
 

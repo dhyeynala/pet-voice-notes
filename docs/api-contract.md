@@ -47,7 +47,11 @@ Service (used by Track D): `petpulse.services.notes.process_note(pet_id, uid, te
 As implemented by Track D: success is **201**. Also **413** (over `VOICE_MAX_BYTES`, 5 MiB, or
 `VOICE_MAX_SECONDS`, 60 s, where the container header gives a duration) and **400** (both or
 neither of `audio`/`sample_id`, unknown `sample_id`, unknown `tz`). Accepted containers:
-webm, ogg, mp4, wav (sniffed from the bytes; `audio/webm;codecs=opus` etc. are fine). Samples:
+webm, ogg, mp4, wav (sniffed from the bytes; `audio/webm;codecs=opus` etc. are fine). On `ok` the
+transcript goes to `await process_note(pet_id, uid, text, "voice", tz, store=, llm=)`, so the note
+is stored at `pets/{pet_id}/notes/{id}` like a typed note (same `urgent`/`red_flags` rules; an LLM
+failure stores an `unprocessed` note, still 201); its `ValueError` (e.g. transcript over 5000
+characters) is a **400**. Samples:
 `walk_and_dinner`, `vomiting_blood` (urgent), `heartworm_pill`, `silence` (-> 422).
 
 ## Health (exists)

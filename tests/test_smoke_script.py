@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from fastapi import APIRouter, File, UploadFile
 
 from petpulse.providers.llm import FakeLLM
 from petpulse.providers.stt import FakeSTT, OpenAISTT
@@ -41,7 +40,7 @@ def _statuses(report: dict[str, Any]) -> dict[str, str]:
     return {c["name"]: c["status"] for c in report["checks"]}
 
 
-def test_fake_run_passes_or_reports_unavailable(smoke, tmp_path):
+def test_fake_run_passes_every_check(smoke, tmp_path):
     code, output, report = _run(smoke, tmp_path, "--allow-fake")
     assert code == 0, output
     assert report is not None and report["exit_code"] == 0 and report["call_cap"] == 6
@@ -51,11 +50,7 @@ def test_fake_run_passes_or_reports_unavailable(smoke, tmp_path):
         "pdf_summary",
         "chat_answer",
     ]
-    assert _statuses(report)["voice_transcription"] == "PASS"
-    for check in report["checks"]:
-        assert check["status"] in ("PASS", "SKIPPED"), check
-        if check["status"] == "SKIPPED":
-            assert check["detail"].startswith("not available"), check
+    assert set(_statuses(report).values()) == {"PASS"}, output
     assert report["calls_used"] <= 6 and report["llm"] == "fake:fake-llm-v1" and report["stt"] == "fake:fake-stt-v1"
     assert "[PASS]    voice_transcription" in output
 
@@ -176,79 +171,19 @@ def test_script_runs_as_a_subprocess(tmp_path):
 
 
 # ------------------------------------------------------- the four checks end to end (stand-ins)
-@pytest.fixture
-def contract_stand_ins(monkeypatch):
-    """Minimal stand-ins for the LLM/bug-fix tracks' contract services, each making one LLM call.
-
-    They let the note, PDF and chat checks run end to end before those tracks are merged.
-    """
-    import asyncio
-
-    import api_server
-    from petpulse import deps
-    from petpulse.services import voice
-
-    def llm_call(task: str) -> None:
-        asyncio.run(deps.get_llm().complete_json(task=task, system="s", user="u", schema={"type": "object"}))
-
-    def process_note(pet_id: str, uid: str, text: str, source: str, tz: str) -> dict[str, Any]:
-        llm_call("note_extract")
-        bloody = "blood" in text.lower()
-        note = {
-            "pet_id": pet_id,
-            "source": source,
-            "text": text,
-            "kind": "MEDICAL" if bloody else "DAILY_ACTIVITY",
-            "urgent": bloody,
-            "red_flags": [{"flag": "blood", "status": "present", "sentences": [1]}] if bloody else [],
-            "status": "processed",
-        }
-        note["id"] = deps.get_store().add(f"pets/{pet_id}/notes", note)
-        return note
-
-    router = APIRouter()
-
-    async def records(pet_id: str, file: UploadFile = File(...)) -> dict[str, Any]:
-        await deps.get_llm().complete_json(task="pdf_summary", system="s", user="u", schema={})
-        assert (await file.read()).startswith(b"%PDF-")
-        return {
-            "id": "r1",
-            "pages": 1,
-            "status": "summarized",
-            "summary": {"medications": [{"name": "Apoquel 16 mg", "pages": [1]}]},
-        }
-
-    async def chat(pet_id: str, body: dict[str, Any]) -> dict[str, Any]:
-        await deps.get_llm().complete_json(task="chat_answer", system="s", user=body["message"], schema={})
-        notes = deps.get_store().query(f"pets/{pet_id}/notes")
-        cited = [{"id": i, "snippet": n["text"]} for i, n in notes if "Apoquel" in n["text"]]
-        return {"answer": "Apoquel 16 mg", "status": "answered", "citations": cited, "chart": None, "mode": "demo"}
-
-    for fn in (records, chat):
-        fn.__module__ = "petpulse.routers.stand_in"
-    router.add_api_route("/api/pets/{pet_id}/records", records, methods=["POST"])
-    router.add_api_route("/api/pets/{pet_id}/chat", chat, methods=["POST"])
-    before = list(api_server.app.router.routes)
-    # Ahead of the legacy chat route, so the stand-in answers.
-    api_server.app.include_router(router)
-    api_server.app.router.routes.insert(0, api_server.app.router.routes.pop())
-    monkeypatch.setattr(voice, "resolve_process_note", lambda: process_note)
-    yield
-    api_server.app.router.routes[:] = before
-
-
-def test_all_four_checks_pass_end_to_end(smoke, tmp_path, contract_stand_ins):
+def test_all_four_checks_pass_end_to_end(smoke, tmp_path):
+    """The real voice, note, records and assistant services on the fakes."""
     llm = FakeLLM()
     code, output, report = _run(smoke, tmp_path, "--allow-fake", llm=llm)
     assert code == 0, output
     assert report is not None and set(_statuses(report).values()) == {"PASS"}, output
     # 1 STT + 1 note + 1 PDF + 1 chat; the 5 seeded chat records go to an unbudgeted fake.
     assert report["calls_used"] == 4 and [c["calls"] for c in report["checks"]] == [1, 1, 1, 1]
-    assert [c["task"] for c in llm.calls] == ["note_extract", "pdf_summary", "chat_answer"]
-    assert "kind=MEDICAL urgent=True flags=[blood:present]" in output
+    assert len(llm.calls) == 3
+    assert "kind=MEDICAL urgent=True flags=[blood:present,repeated_vomiting:present]" in output
 
 
-def test_cap_two_runs_two_checks_and_skips_two(smoke, tmp_path, contract_stand_ins, monkeypatch):
+def test_cap_two_runs_two_checks_and_skips_two(smoke, tmp_path, monkeypatch):
     monkeypatch.setenv("LIVE_CALL_CAP", "2")
     llm, stt = FakeLLM(), FakeSTT()
     code, _output, report = _run(smoke, tmp_path, "--allow-fake", llm=llm, stt=stt)
@@ -257,10 +192,8 @@ def test_cap_two_runs_two_checks_and_skips_two(smoke, tmp_path, contract_stand_i
     assert len(stt.calls) + len(llm.calls) == 2
 
 
-def test_a_wrong_note_is_a_fail(smoke, tmp_path, contract_stand_ins, monkeypatch):
-    from petpulse.services import voice
-
-    monkeypatch.setattr(voice, "resolve_process_note", lambda: lambda *a: {"id": "n", "kind": "OTHER", "urgent": False})
-    code, output, report = _run(smoke, tmp_path, "--allow-fake")
+def test_a_wrong_note_is_a_fail(smoke, tmp_path):
+    """A provider outage stores an 'unprocessed' note: the note check must FAIL, not PASS."""
+    code, output, report = _run(smoke, tmp_path, "--allow-fake", llm=FakeLLM(fail=True))
     assert code == 1 and report is not None and _statuses(report)["note_classification"] == "FAIL"
-    assert "kind=OTHER" in output
+    assert "note status=unprocessed" in output

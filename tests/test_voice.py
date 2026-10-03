@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from petpulse import deps
 from petpulse.config import Settings
 from petpulse.pets import create_pet
+from petpulse.providers.llm import FakeLLM
 from petpulse.providers.stt import FakeSTT
 from petpulse.samples import audio_manifest
 from petpulse.services import voice as voice_service
@@ -85,10 +86,22 @@ def test_sample_id_is_transcribed_and_stored_as_a_voice_note(client, auth, store
     assert note["source"] == "voice" and note["text"] == expected.transcript
     assert note["pet_id"] == PET and note["id"]
     assert fake_stt.calls == [{"bytes": len(_sample("vomiting_blood")), "mime": "audio/webm", "hint": "vomiting_blood.webm"}]
-    if voice_service.resolve_process_note() is None:  # legacy fallback until the LLM track lands
-        [(_, stored)] = store.query(f"pets/{PET}/voice-notes")
-        assert stored["transcript"] == expected.transcript and stored["uid"] == "alice"
-        assert stored["tz"] == "America/New_York"
+    [(note_id, stored)] = store.query(f"pets/{PET}/notes")
+    assert note_id == note["id"] and stored["source"] == "voice" and stored["text"] == expected.transcript
+    assert store.query(f"pets/{PET}/voice-notes") == []  # not the legacy collection
+
+
+@pytest.mark.parametrize(
+    "sample_id, urgent", [("vomiting_blood", True), ("walk_and_dinner", False), ("heartworm_pill", False)]
+)
+def test_urgency_comes_through_the_note_pipeline(client, auth, sample_id, urgent):
+    note = _post(client, data={"sample_id": sample_id}).json()["note"]
+    assert note["urgent"] is urgent and note["status"] == "processed" and note["mode"] == "demo"
+    if urgent:
+        present = {f["flag"] for f in note["red_flags"] if f["status"] == "present"}
+        assert {"blood", "repeated_vomiting"} <= present
+    listed = client.get(f"/api/pets/{PET}/notes").json()
+    assert [(n["id"], n["source"], n["urgent"]) for n in listed] == [(note["id"], "voice", urgent)]
 
 
 @pytest.mark.parametrize(
@@ -116,30 +129,40 @@ def test_mp4_and_wav_uploads_are_accepted(client, auth, fake_stt):
     assert [c["mime"] for c in fake_stt.calls] == ["audio/mp4", "audio/wav"]
 
 
-def test_process_note_is_called_with_the_contract_signature(client, auth, monkeypatch):
+def test_process_note_is_awaited_with_the_contract_signature(client, auth, monkeypatch, store):
     seen: list[tuple[Any, ...]] = []
+    real = voice_service.process_note
 
-    class Note:  # pydantic-like
-        def model_dump(self, mode: str = "python") -> dict[str, Any]:
-            return {"id": "n1", "source": "voice", "urgent": True, "mode": "demo"}
+    async def spy(pet_id: str, uid: str, text: str, source: str, tz: str, **kwargs: Any) -> Any:
+        seen.append((pet_id, uid, text, source, tz, kwargs["store"] is store))
+        return await real(pet_id, uid, text, source, tz, **kwargs)  # type: ignore[arg-type]
 
-    def process_note(pet_id: str, uid: str, text: str, source: str, tz: str) -> Note:
-        seen.append((pet_id, uid, text, source, tz))
-        return Note()
-
-    monkeypatch.setattr(voice_service, "resolve_process_note", lambda: process_note)
+    monkeypatch.setattr(voice_service, "process_note", spy)
     body = _post(client, data={"sample_id": "vomiting_blood", "tz": "Asia/Tokyo"}).json()
     transcript = audio_manifest().get("vomiting_blood").transcript  # type: ignore[union-attr]
-    assert seen == [(PET, "alice", transcript, "voice", "Asia/Tokyo")]
-    assert body["note"] == {"id": "n1", "source": "voice", "urgent": True, "mode": "demo"}
+    assert seen == [(PET, "alice", transcript, "voice", "Asia/Tokyo", True)]
+    assert body["note"]["urgent"] is True
 
 
-def test_async_process_note_is_awaited(client, auth, monkeypatch):
-    async def process_note(pet_id: str, uid: str, text: str, source: str, tz: str) -> dict[str, Any]:
-        return {"id": "n2", "source": source, "tz": tz}
+def test_note_pipeline_value_error_is_400(client, auth, monkeypatch, store):
+    async def refuse(*args: Any, **kwargs: Any) -> Any:
+        raise ValueError("note text is longer than 5000 characters")
 
-    monkeypatch.setattr(voice_service, "resolve_process_note", lambda: process_note)
-    assert _post(client, data={"sample_id": "walk_and_dinner"}).json()["note"] == {"id": "n2", "source": "voice", "tz": "UTC"}
+    monkeypatch.setattr(voice_service, "process_note", refuse)
+    before = store.snapshot()
+    response = _post(client, data={"sample_id": "walk_and_dinner"})
+    assert response.status_code == 400 and "5000 characters" in response.json()["detail"]
+    assert store.snapshot() == before
+
+
+def test_llm_failure_still_stores_an_unprocessed_voice_note(client, auth, app, store):
+    down = FakeLLM(fail=True)  # simulated outage on every call
+    app.dependency_overrides[deps.get_llm] = lambda: down
+    response = _post(client, data={"sample_id": "vomiting_blood"})
+    assert response.status_code == 201, response.text
+    note = response.json()["note"]
+    assert note["status"] == "unprocessed" and note["needs_review"] is True and note["summary"] is None
+    assert [doc["source"] for _, doc in store.query(f"pets/{PET}/notes")] == ["voice"]
 
 
 # ---------------------------------------------------------------- nothing is stored

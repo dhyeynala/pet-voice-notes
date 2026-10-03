@@ -3,39 +3,39 @@ note pipeline. Audio is never stored: it lives in memory for the length of the r
 
 Status mapping (the router turns ``VoiceError`` into HTTP errors):
 
-- 400  bad form input (neither or both of ``audio`` / ``sample_id``, unknown sample, bad tz)
+- 400  bad form input (neither or both of ``audio`` / ``sample_id``, unknown sample, bad tz),
+       or a transcript the note pipeline refuses (``ValueError``: e.g. over 5000 characters)
 - 413  larger than ``VOICE_MAX_BYTES`` or longer than ``VOICE_MAX_SECONDS``
 - 415  not WebM / Ogg / MP4 / WAV, or a format the configured provider cannot decode
 - 422  no speech (nothing stored)
 - 502  speech-to-text failed (nothing stored)
 
 On ``ok`` the transcript goes to ``petpulse.services.notes.process_note(..., source="voice")``
-(LLM track). Until that module exists on the branch, the legacy classify-and-store path is used
-so voice notes keep working; the switch is automatic once the module is importable.
+(the shared note pipeline): the note lands at ``pets/{pet_id}/notes/{id}`` exactly like a typed
+note, with ``urgent`` / ``red_flags`` decided by that pipeline. An LLM failure there still stores
+an ``unprocessed`` note (it never raises), so the transcript is not lost.
 """
 
 from __future__ import annotations
 
-import dataclasses
-import importlib
-import inspect
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Mapping, Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from typing import Any, Optional
 
 from starlette.concurrency import run_in_threadpool
 
-from petpulse import deps
 from petpulse.audio import GENERIC_MIMES, SUPPORTED_MIMES, is_near_silence, normalize_mime, probe_duration, sniff
 from petpulse.config import Settings
 from petpulse.providers.stt import UNSUPPORTED_FORMAT, STTProvider, Transcription
+from petpulse.providers.llm import LLMProvider
 from petpulse.samples import audio_manifest
+from petpulse.services.notes import process_note
+from petpulse.store.base import Store
+from petpulse.timeutil import InvalidTimezone
+from petpulse.timeutil import validate_tz as _canonical_tz
 
 logger = logging.getLogger(__name__)
 
-NOTES_MODULE = "petpulse.services.notes"
 SUPPORTED_LIST = "audio/webm, audio/ogg, audio/mp4 or audio/wav"
 
 
@@ -100,12 +100,12 @@ def validate_audio(
 
 
 def validate_tz(tz: Optional[str]) -> str:
+    """Checked before any STT call, with the note pipeline's own rules (``petpulse.timeutil``)."""
     name = (tz or "").strip() or "UTC"
     try:
-        ZoneInfo(name)
-    except (ZoneInfoNotFoundError, ValueError) as exc:
-        raise VoiceError(400, f"Unknown time zone {name!r} (use an IANA name such as 'America/New_York').") from exc
-    return name
+        return _canonical_tz(name)
+    except InvalidTimezone as exc:
+        raise VoiceError(400, f"Unknown time zone {name[:64]!r} (use an IANA name such as 'America/New_York').") from exc
 
 
 def _mib(size: int) -> str:
@@ -142,86 +142,33 @@ def raise_for_status(result: Transcription) -> None:
 
 
 # ---------------------------------------------------------------------- note storage
-def resolve_process_note() -> Optional[Callable[..., Any]]:
-    """``petpulse.services.notes.process_note`` if the LLM track's module is on this branch."""
+async def store_voice_note(
+    pet_id: str,
+    uid: str,
+    text: str,
+    tz: str,
+    *,
+    store: Optional[Store] = None,
+    llm: Optional[LLMProvider] = None,
+) -> dict[str, Any]:
+    """Hand the transcript to the shared note pipeline; its ``ValueError`` (bad input) is a 400."""
     try:
-        module = importlib.import_module(NOTES_MODULE)
-    except ModuleNotFoundError as exc:
-        if exc.name != NOTES_MODULE:
-            raise  # the module exists but one of its imports is broken: surface it
-        return None
-    fn = getattr(module, "process_note", None)
-    return fn if callable(fn) else None
-
-
-def note_to_dict(note: Any) -> dict[str, Any]:
-    if hasattr(note, "model_dump"):
-        return dict(note.model_dump(mode="json"))
-    if dataclasses.is_dataclass(note) and not isinstance(note, type):
-        return dataclasses.asdict(note)
-    if isinstance(note, Mapping):
-        return dict(note)
-    raise TypeError(f"process_note returned {type(note).__name__}, expected a Note")
-
-
-async def store_voice_note(pet_id: str, uid: str, text: str, tz: str, settings: Settings) -> dict[str, Any]:
-    process_note = resolve_process_note()
-    if process_note is None:
-        return await run_in_threadpool(_legacy_store_note, pet_id, uid, text, tz, settings)
-    if inspect.iscoroutinefunction(process_note):
-        note = await process_note(pet_id, uid, text, "voice", tz)
-    else:
-        note = await run_in_threadpool(process_note, pet_id, uid, text, "voice", tz)
-        if inspect.isawaitable(note):
-            note = await note
-    return note_to_dict(note)
-
-
-def _legacy_store_note(pet_id: str, uid: str, text: str, tz: str, settings: Settings) -> dict[str, Any]:
-    """Transitional: the legacy classify + summarise path, shaped like the contract's Note.
-
-    Used only while ``petpulse.services.notes`` is absent. The legacy modules are untyped and
-    imported lazily.
-    """
-    legacy = importlib.import_module("summarize_openai")
-    classification = legacy.classify_pet_content(text)
-    summary = legacy.summarize_text(text)
-    kind = str(classification.get("classification", "MIXED"))
-    created_at = datetime.now(timezone.utc).isoformat()
-    entry = {
-        "transcript": text,
-        "summary": summary,
-        "content_type": kind,
-        "confidence": classification.get("confidence", 0.5),
-        "keywords": classification.get("keywords", []),
-        "timestamp": created_at,
-        "source": "voice",
-        "uid": uid,
-        "tz": tz,
-    }
-    note_id = deps.get_store().add(f"pets/{pet_id}/voice-notes", entry)
-    if kind == "DAILY_ACTIVITY":
-        importlib.import_module("firestore_store").store_analytics_from_voice(pet_id, text, summary, classification)
-    return {
-        "id": note_id,
-        "pet_id": pet_id,
-        "source": "voice",
-        "text": text,
-        "summary": summary,
-        "kind": kind,
-        "urgent": False,
-        "needs_review": kind in ("MEDICAL", "MIXED", "UNKNOWN"),
-        "red_flags": [],
-        "observations": [],
-        "status": "processed",
-        "created_at": created_at,
-        "mode": settings.feature_modes()["notes"]["mode"],
-    }
+        note = await process_note(pet_id, uid, text, "voice", tz, store=store, llm=llm)
+    except ValueError as exc:
+        raise VoiceError(400, f"The transcript could not be saved as a note: {exc}.") from exc
+    return note.model_dump(mode="json")
 
 
 # ---------------------------------------------------------------------------- facade
 async def create_voice_note(
-    pet_id: str, uid: str, audio: AudioInput, tz: str, stt: STTProvider, settings: Settings
+    pet_id: str,
+    uid: str,
+    audio: AudioInput,
+    tz: str,
+    stt: STTProvider,
+    *,
+    store: Optional[Store] = None,
+    llm: Optional[LLMProvider] = None,
 ) -> dict[str, Any]:
     """Transcribe ``audio`` and store the transcript as a voice note.
 
@@ -238,5 +185,5 @@ async def create_voice_note(
         audio.sample_id or "-",
     )
     raise_for_status(result)
-    note = await store_voice_note(pet_id, uid, result.text, tz, settings)
+    note = await store_voice_note(pet_id, uid, result.text, tz, store=store, llm=llm)
     return {"transcription": result.public(), "note": note}

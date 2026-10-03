@@ -15,8 +15,8 @@ Checks, in order (each is one provider call when everything works):
 Everything runs in this process on a temporary in-memory store (demo data is never touched)
 and a temporary data dir. Every provider call goes through a ``CallBudget`` capped by
 ``LIVE_CALL_CAP`` (default 6); once the cap is reached the remaining checks are SKIPPED and
-never called. A check whose service or route is not on this branch yet is SKIPPED (not
-available). Keys are never printed (only the last 4 characters).
+never called. A check whose route is not mounted is SKIPPED (not available). Keys are never
+printed (only the last 4 characters).
 
 Exit codes: 0 all checks passed or were skipped, 1 at least one FAIL, 2 configuration error
 (invalid settings, or only fake providers without --allow-fake).
@@ -28,7 +28,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import importlib
-import inspect
 import json
 import os
 import re
@@ -205,29 +204,13 @@ class Context:
 
 
 def _create_identity(ctx: Context) -> tuple[str, dict[str, str]]:
-    """A temporary user and pet in the temporary store, signed in the app's real way if possible."""
-    try:
-        auth = importlib.import_module("petpulse.auth")
-        pets = importlib.import_module("petpulse.pets")
-    except ModuleNotFoundError:
-        auth = pets = None
-    if auth is not None and pets is not None:
-        pets.save_user(ctx.store, SMOKE_UID, "Smoke Test")
-        pet = pets.create_pet(ctx.store, SMOKE_UID, {"name": "Max", "animal_type": "dog", "breed": "Labrador"})
-        token = auth.issue_token(SMOKE_UID, settings=ctx.settings)
-        return str(pet["id"]), {"Authorization": f"Bearer {token}"}
-    # The auth track is not on this branch: stand in for its dependencies.
-    from types import SimpleNamespace
+    """A temporary user and pet in the temporary store, signed in the app's real way."""
+    from petpulse import auth, pets
 
-    from petpulse.routers import voice as voice_router
-
-    pet_id = "smoke-pet"
-    ctx.store.set(f"pets/{pet_id}", {"id": pet_id, "name": "Max", "animal_type": "dog", "owners": [SMOKE_UID]})
-    app = ctx.app
-    app.dependency_overrides[voice_router.current_user] = lambda: SimpleNamespace(uid=SMOKE_UID, name="Smoke Test")
-    app.dependency_overrides[voice_router.require_pet_access] = lambda pet_id: SimpleNamespace(id=pet_id)
-    ctx._overrides += [voice_router.current_user, voice_router.require_pet_access]
-    return pet_id, {}
+    pets.save_user(ctx.store, SMOKE_UID, "Smoke Test")
+    pet = pets.create_pet(ctx.store, SMOKE_UID, {"name": "Max", "animal_type": "dog", "breed": "Labrador"})
+    token = auth.issue_token(SMOKE_UID, settings=ctx.settings)
+    return str(pet["id"]), {"Authorization": f"Bearer {token}"}
 
 
 def _routes(routes: list[Any], prefix: str = "") -> Iterator[tuple[str, set[str], str]]:
@@ -251,26 +234,13 @@ def require_route(ctx: Context, method: str, path: str, owner: str) -> None:
     raise NotAvailable(f"{method} {path} ({owner}) is not on this branch")
 
 
-def require_process_note() -> Callable[..., Any]:
-    from petpulse.services import voice
+def call_process_note(ctx: Context, text: str, llm: Any = None) -> dict[str, Any]:
+    """``petpulse.services.notes.process_note(..., source="voice")`` on the temporary store."""
+    from petpulse.services import notes
 
-    process_note = voice.resolve_process_note()
-    if process_note is None:
-        raise NotAvailable("petpulse.services.notes.process_note (LLM track) is not on this branch")
-    return process_note
-
-
-def call_process_note(process_note: Callable[..., Any], pet_id: str, text: str) -> dict[str, Any]:
-    from petpulse.services import voice
-
-    note = process_note(pet_id, SMOKE_UID, text, "voice", SMOKE_TZ)
-    if inspect.isawaitable(note):
-        note = asyncio.run(_await(note))
-    return voice.note_to_dict(note)
-
-
-async def _await(awaitable: Any) -> Any:
-    return await awaitable
+    pet_id = ctx.pet_id
+    note = asyncio.run(notes.process_note(pet_id, SMOKE_UID, text, "voice", SMOKE_TZ, store=ctx.store, llm=llm or ctx.llm))
+    return dict(note.model_dump(mode="json"))
 
 
 def _expect(condition: bool, message: str) -> None:
@@ -308,9 +278,7 @@ def check_voice(ctx: Context) -> str:
 
 
 def check_note(ctx: Context) -> str:
-    process_note = require_process_note()
-    text = ctx.transcript or FIXED_NOTE
-    note = call_process_note(process_note, ctx.pet_id, text)
+    note = call_process_note(ctx, ctx.transcript or FIXED_NOTE)
     if note.get("id"):
         ctx.note_ids.add(str(note["id"]))
     flags = [f for f in note.get("red_flags") or [] if isinstance(f, dict)]
@@ -347,28 +315,18 @@ def check_pdf(ctx: Context) -> str:
 
 
 def check_chat(ctx: Context) -> str:
-    from petpulse import deps
     from petpulse.providers.llm import FakeLLM
 
     path = "/api/pets/{pet_id}/chat"
     require_route(ctx, "POST", path, "LLM track")
-    process_note = require_process_note()
     # Seed the 5 fixed records with the deterministic fake: no live calls, the app's own schema.
-    live_llm = ctx.llm
     seeding = FakeLLM()
-    deps.override(llm=seeding)
-    ctx.app.dependency_overrides[deps.get_llm] = lambda: seeding
     apoquel_ids: set[str] = set()
-    try:
-        for text in CHAT_RECORDS:
-            note = call_process_note(process_note, ctx.pet_id, text)
-            note_id = str(note.get("id", ""))
-            ctx.note_ids.add(note_id)
-            if "Apoquel" in text:
-                apoquel_ids.add(note_id)
-    finally:
-        deps.override(llm=live_llm)
-        ctx.app.dependency_overrides[deps.get_llm] = lambda: live_llm
+    for text in CHAT_RECORDS:
+        note_id = str(call_process_note(ctx, text, llm=seeding).get("id", ""))
+        ctx.note_ids.add(note_id)
+        if "Apoquel" in text:
+            apoquel_ids.add(note_id)
     response = ctx.client.post(path.format(pet_id=ctx.pet_id), json={"message": CHAT_QUESTION, "tz": SMOKE_TZ})
     _expect(200 <= response.status_code < 300, f"HTTP {response.status_code}: {response.text[:120]}")
     body = response.json()

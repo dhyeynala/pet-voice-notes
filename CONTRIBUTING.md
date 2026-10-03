@@ -28,7 +28,7 @@ stepping on each other.
 | **A. auth/data** | D1-1 backend, D1-2, D1-3, D1-4 backend | `petpulse/auth.py`, `petpulse/errors.py`, `petpulse/pets.py`, `petpulse/seed/`, `petpulse/routers/{demo,pets}.py`, `petpulse/schemas/pets.py`, `firestore_store.py`, the CORS/errors block in `api_server.py`, `_auth_headers` in `tests/conftest.py` |
 | **B. bug fixes** | D2-1, D2-2, D2-3, D2-5, D2-6 | `visualization_service.py`, `pdf_parser.py`, `petpulse/routers/records.py`, `petpulse/schemas/analytics.py`, `petpulse/store/blobs.py`, the H2 fallback lines in `summarize_openai.py` / `ai_analytics.py` / `api_server.py` (`health_insights`), the C4 hotfix lines in `simple_rag_service.py` / `intelligent_chatbot_service.py` |
 | **C. LLM layer** | D4-*, D5-*, D7-1 (LLM part) | `petpulse/llm/**`, `petpulse/schemas/llm.py`, `petpulse/services/**`, `petpulse/timeutil.py`, `petpulse/providers/llm.py`, `evals/**`; deletes `summarize_openai.py`, `ai_analytics.py`, `simple_rag_service.py`, `intelligent_chatbot_service.py` once replaced (and `LLMProvider.legacy_chat` with them) |
-| **D. voice** | D3-2, D3-3, D7-1 (STT part) | `petpulse/providers/stt.py`, `petpulse/routers/voice.py`, `samples/audio/**`; deletes `transcribe.py`, `main.py`, `gcloud_auth.py` and the `/api/start*`, `/api/stop_recording`, `/api/recording_status` routes |
+| **D. voice** | D3-2, D3-3, D7-1 (STT part) | `petpulse/providers/stt.py`, `petpulse/routers/voice.py`, `petpulse/samples/audio/**`; deleted the server-microphone path (`transcribe.py`, `main.py`, `gcloud_auth.py` and the `/api/start*`, `/api/stop_recording`, `/api/recording_status` routes) |
 | **E. frontend** | every `public/**` change: D1-1 login UI, D1-4 banner, D2-4 XSS, D3-1 recorder, D4/D5 UI, D6-3 JS split | `public/**` (`main.html`, `index.html`, `js/`, `vendor/`). **Only this track edits `public/main.html`.** |
 
 Docs/evals (Phase 6) and the live smoke test (Phase 7) come after the tracks above.
@@ -373,12 +373,11 @@ petpulse/
 ├── simple_rag_service.py      # RAG-based AI with breed APIs
 ├── visualization_service.py   # Dynamic chart generation engine
 ├── ai_analytics.py           # AI-powered analytics and insights
-├── transcribe.py             # Real-time voice processing
+├── petpulse/providers/stt.py # Speech-to-text (OpenAI, Google, deterministic fake)
+├── petpulse/services/voice.py # Browser voice notes: validate, transcribe, hand to process_note
 ├── firestore_store.py        # Database operations and caching
 ├── summarize_openai.py       # OpenAI text processing and classification
 ├── pdf_parser.py             # Document analysis and extraction
-├── main.py                   # Application initialization
-├── gcloud_auth.py           # Google Cloud authentication
 └── public/                  # Frontend assets and components
 ```
 
