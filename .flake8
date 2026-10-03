@@ -1,0 +1,17 @@
+[flake8]
+max-line-length = 127
+max-complexity = 10
+# E203: whitespace before ':' conflicts with black's slice formatting.
+extend-ignore = E203
+extend-exclude = .venv,venv,data,build,dist
+# New code (petpulse/, tests/) gets the full rule set. The legacy modules below are
+# grandfathered with exactly the codes they violate today; tracks that rewrite or delete a
+# module remove its entry. Do not add codes to these lists.
+per-file-ignores =
+    ai_analytics.py: E501,E741,W293
+    api_server.py: C901,E402,E501,E722,F401,F541,F841
+    intelligent_chatbot_service.py: C901,E501,F401
+    setup.py: F401
+    simple_rag_service.py: C901,E501,F401
+    summarize_openai.py: C901,E501,F541,F841,W293
+    visualization_service.py: C901,E722,F401,F841
