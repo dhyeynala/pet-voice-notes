@@ -9,7 +9,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from tests._track_b_auth import as_user, install_fake_auth, seed_pets
+from petpulse.auth import issue_token
+
+
+def as_user(uid: str) -> dict[str, str]:
+    """Real demo-token headers for ``uid`` (overrides the ``client`` fixture's alice token)."""
+    return {"Authorization": f"Bearer {issue_token(uid)}"}
+
 
 # One payload per category, shaped exactly like the tracking forms in public/main.html send them.
 VALID = {
@@ -99,9 +105,8 @@ def test_nan_and_infinity_are_rejected():
 
 # ----------------------------------------------------------------- API (served at the contract paths)
 @pytest.fixture
-def pet(app, store):
-    install_fake_auth(app, store)
-    return seed_pets(store)[0]
+def pet(make_pet):
+    return make_pet("alice", "Max")
 
 
 def test_post_entry_returns_201_entry_and_stores_only_validated_fields(client, store, pet):
@@ -186,12 +191,14 @@ def _router_only_app(store) -> FastAPI:
     app = FastAPI()
     app.include_router(analytics.router)
     app.dependency_overrides[deps.get_store] = lambda: store
-    install_fake_auth(app, store)
     return app
 
 
 def test_router_routes_enforce_pet_ownership(store):
-    alice_pet, _ = seed_pets(store)
+    from petpulse.pets import create_pet
+
+    alice_pet = create_pet(store, "alice", {"name": "Max", "animal_type": "dog"})["id"]
+    create_pet(store, "bob", {"name": "Max", "animal_type": "dog"})
     with TestClient(_router_only_app(store)) as c:
         created = c.post(f"/api/pets/{alice_pet}/analytics/diet", json=VALID["diet"], headers=as_user("alice"))
         assert created.status_code == 201

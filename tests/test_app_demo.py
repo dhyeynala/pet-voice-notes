@@ -18,11 +18,13 @@ def test_index_and_static_files_are_served(client):
 
 
 def test_create_and_list_pets(client, store):
+    """The legacy create/list routes still work for the signed-in user (uuid ids, owners)."""
     response = client.post("/api/pets/alice", json={"name": "Luna", "animal_type": "cat", "age": 3})
     assert response.json()["status"] == "success"
+    pet_id = response.json()["pet"]["id"]
     pets = client.get("/api/user-pets/alice").json()
-    assert [(p["id"], p["name"], p["age"]) for p in pets] == [("luna", "Luna", 3)]
-    assert store.get("users/alice")["pets"] == ["luna"]
+    assert [(p["id"], p["name"], p["age"]) for p in pets] == [(pet_id, "Luna", 3)]
+    assert store.get(f"pets/{pet_id}")["owners"] == ["alice"]
 
 
 def test_text_note_is_classified_and_summarised_by_fake(client, store, fake_llm, make_pet):
@@ -95,9 +97,9 @@ def test_pdf_upload_goes_to_local_blob_store(client, store, blobs, make_pet, tmp
     assert blobs.exists(record["blob_key"])
 
 
-def test_server_recording_reports_missing_pyaudio(client, monkeypatch):
+def test_server_recording_reports_missing_pyaudio(client, monkeypatch, make_pet):
     monkeypatch.setitem(sys.modules, "pyaudio", None)  # make ``import pyaudio`` fail
-    body = client.post("/api/start_recording", json={"uid": "alice", "pet": "max"}).json()
+    body = client.post("/api/start_recording", json={"uid": "alice", "pet": make_pet()}).json()
     assert body["status"] == "error" and "PyAudio" in body["message"]
 
 

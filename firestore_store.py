@@ -4,10 +4,9 @@
 # ``db`` is a Firestore-shaped facade that resolves the configured store on every call,
 # so nothing is initialised at import time and no credentials are needed.
 from datetime import datetime
-import uuid
 
-from petpulse.deps import legacy_db
-from petpulse.store.firestore_compat import ArrayUnion
+from petpulse.deps import get_store, legacy_db
+from petpulse.pets import create_pet, get_pet, list_pets
 
 db = legacy_db()
 
@@ -26,99 +25,21 @@ def store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url, 
     )
 
 
-# Get pets linked to a user
+# Get pets owned by a user (ownership lives on the pet: ``owners`` contains the uid).
 def get_pets_by_user_id(user_id):
-    user_doc = db.collection("users").document(user_id).get()
-    if not user_doc.exists:
-        return []
-    pet_ids = user_doc.to_dict().get("pets", [])
-    return [{"id": pid, **db.collection("pets").document(pid).get().to_dict()} for pid in pet_ids]
+    return list_pets(get_store(), user_id)
 
 
 # Get individual pet by ID
 def get_pet_by_id(pet_id):
     """Get individual pet data by pet ID"""
-    try:
-        pet_doc = db.collection("pets").document(pet_id).get()
-        if pet_doc.exists:
-            return {"id": pet_id, **pet_doc.to_dict()}
-        return None
-    except Exception as e:
-        print(f"Error getting pet by ID: {e}")
-        return None
+    return get_pet(get_store(), pet_id)
 
 
-# Add a pet and sync it across user and page, with authorizedUsers and markdown
-def add_pet_to_page_and_user(user_id, pet_data, page_id):
-    pet_name = pet_data.get("name", "")
-    pet_id = pet_name.lower().replace(" ", "_").replace(".", "").replace(",", "")
-
-    # Create timestamp for breed_last_updated
-    from datetime import datetime
-
-    current_time = datetime.utcnow().isoformat()
-
-    # Create enhanced pet document
-    pet_document = {
-        "name": pet_name,
-        "animal_type": pet_data.get("animal_type", ""),
-        "breed": pet_data.get("breed", ""),
-        "breed_last_updated": current_time,
-        "created_at": current_time,
-    }
-
-    # Add optional fields if provided
-    if pet_data.get("age") is not None:
-        pet_document["age"] = pet_data["age"]
-    if pet_data.get("weight") is not None:
-        pet_document["weight"] = pet_data["weight"]
-    if pet_data.get("gender"):
-        pet_document["gender"] = pet_data["gender"]
-
-    # Create or update pet
-    db.collection("pets").document(pet_id).set(pet_document)
-
-    # Link pet to user and page
-    db.collection("users").document(user_id).set({"pets": ArrayUnion([pet_id]), "pages": ArrayUnion([page_id])}, merge=True)
-
-    db.collection("pages").document(page_id).set(
-        {
-            "pets": ArrayUnion([pet_id]),
-            "authorizedUsers": ArrayUnion([user_id]),
-            "markdown": "",  # initialized only if not set yet
-        },
-        merge=True,
-    )
-
-    return {"id": pet_id, "name": pet_name, **pet_document}
-
-
-# Invite user by email and link to page
-def handle_user_invite(data):
-    email = data["email"]
-    page_id = data["pageId"]
-
-    user_query = db.collection("users").where("email", "==", email).limit(1).stream()
-    user_doc = next(user_query, None)
-
-    if user_doc:
-        uid = user_doc.id
-    else:
-        uid = str(uuid.uuid4())
-        create_user_entry(uid, email)
-
-    # Add user to page
-    db.collection("pages").document(page_id).set({"authorizedUsers": ArrayUnion([uid])}, merge=True)
-
-    # Add page to user
-    db.collection("users").document(uid).set({"pages": ArrayUnion([page_id])}, merge=True)
-
-    return {"status": "success", "userId": uid}
-
-
-# (Optional) Create blank user entry when invited
-def create_user_entry(uid, email):
-    db.collection("users").document(uid).set({"email": email, "pets": [], "pages": []})
+# Create a pet owned by ``user_id`` under a server-generated uuid4 id (review C2). The shared
+# "page" concept is gone; ``page_id`` is accepted for old callers and ignored.
+def add_pet_to_page_and_user(user_id, pet_data, page_id=None):
+    return create_pet(get_store(), user_id, pet_data)
 
 
 # Analytics helper functions

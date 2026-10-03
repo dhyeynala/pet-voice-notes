@@ -1,5 +1,5 @@
 # api_server.py
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import Depends, FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -20,15 +20,25 @@ builds SDK clients at import time.
 # Load .env (if present) so legacy os.getenv() reads see the same values as Settings.
 load_dotenv()
 
-from petpulse.deps import get_blobs, get_settings  # noqa: E402
 from fastapi import HTTPException  # noqa: E402
 
+from petpulse import errors, seed  # noqa: E402
+from petpulse.auth import (  # noqa: E402
+    current_user,
+    require_body_pet_access,
+    require_pet_access,
+    require_query_pet_access,
+    require_self,
+)
+from petpulse.deps import get_blobs, get_settings, get_store  # noqa: E402
 from petpulse.routers import analytics as analytics_router  # noqa: E402
+from petpulse.routers import demo as demo_router  # noqa: E402
 from petpulse.routers import health as health_router  # noqa: E402
+from petpulse.routers import pets as pets_router  # noqa: E402
 from petpulse.routers import records as records_router  # noqa: E402
 
 from main import main as run_main
-from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
+from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, db, store_to_firestore
 from transcribe import start_recording, stop_recording, get_recording_status
 
 # Lazy-loaded service instances to improve startup performance
@@ -78,13 +88,24 @@ PUBLIC_DIR = Path(__file__).resolve().parent / "public"
 
 app = FastAPI(title="PetPulse")
 
+# Errors: one JSON shape ({"detail", "request_id"}), real status codes, no str(e) leaks on 500.
+errors.install(app)
+
+# CORS: explicit allow-list from settings (ALLOWED_ORIGINS). Auth is a bearer header, not a
+# cookie, so credentials are never allowed and no origin is reflected.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=get_settings().allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
+
+# Every /api route except /api/health, /api/demo/users and /api/demo/login needs a bearer
+# token (petpulse.auth); routes that touch a pet also check that the caller owns it.
+PET_ACCESS = [Depends(require_pet_access)]
+BODY_PET_ACCESS = [Depends(require_body_pet_access)]
 
 
 # Startup event to pre-warm critical services
@@ -111,13 +132,20 @@ async def startup_event():
     print("🎉 PetPulse API server ready!")
 
 
-@app.post("/api/start")
+@app.on_event("startup")
+async def load_demo_seed():
+    """Load the demo seed into an empty store (SEED_ON_START=true, the default)."""
+    if get_settings().seed_on_start:
+        seed.seed_if_empty(get_store(), blobs=get_blobs())
+
+
+@app.post("/api/start", dependencies=BODY_PET_ACCESS)
 async def start(request: Request):
     data = await request.json()
     return run_main(data["uid"], data["pet"])
 
 
-@app.post("/api/upload_pdf")
+@app.post("/api/upload_pdf", dependencies=BODY_PET_ACCESS)
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
     """Legacy upload route; delegates to the safe implementation in petpulse/routers/records.py.
 
@@ -139,12 +167,12 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
     return {"message": "PDF processed", "summary": record["summary"], "url": None, "record": record}
 
 
-@app.get("/api/user-pets/{user_id}")
+@app.get("/api/user-pets/{user_id}", dependencies=[Depends(require_self)])
 async def get_user_pets(user_id: str):
     return get_pets_by_user_id(user_id)
 
 
-@app.post("/api/pets/{user_id}")
+@app.post("/api/pets/{user_id}", dependencies=[Depends(require_self)])
 async def create_pet(user_id: str, request: Request):
     data = await request.json()
 
@@ -162,53 +190,29 @@ async def create_pet(user_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Failed to create pet") from None
 
 
-@app.post("/api/pages/invite")
-async def invite_user(request: Request):
-    data = await request.json()
-    return handle_user_invite(data)
-
-
-@app.get("/api/pages/{page_id}")
-async def get_page(page_id: str):
-    doc = db.collection("pages").document(page_id).get()
-    return doc.to_dict() or {}
-
-
-@app.post("/api/pages/{page_id}")
-async def update_page(page_id: str, request: Request):
-    data = await request.json()
-    db.collection("pages").document(page_id).update({"markdown": data.get("markdown", "")})
-    return {"status": "updated"}
-
-
-@app.get("/api/markdown")
+# Markdown notes live on the (owned) pet only; the shared "pages" (default-page) are gone (C2).
+# ``page`` is still accepted from old clients and ignored.
+@app.get("/api/markdown", dependencies=[Depends(require_query_pet_access)])
 async def get_markdown(page: str = None, pet: str = None):
-    if not page or not pet:
+    if not pet:
         return {"markdown": ""}
 
-    page_doc = db.collection("pages").document(page).get()
-    pet_doc = db.collection("pets").document(pet).get()
-
-    pet_data = pet_doc.to_dict() or {}
-    page_data = page_doc.to_dict() or {}
-
-    return {"markdown": pet_data.get("markdown") or page_data.get("markdown", "")}
+    pet_data = db.collection("pets").document(pet).get().to_dict() or {}
+    return {"markdown": pet_data.get("markdown", "")}
 
 
-@app.post("/api/markdown")
+@app.post("/api/markdown", dependencies=BODY_PET_ACCESS)
 async def update_markdown(request: Request):
     data = await request.json()
-    page = data["page"]
     pet = data["pet"]
     markdown = data.get("markdown", "")
 
     db.collection("pets").document(pet).set({"markdown": markdown}, merge=True)
-    db.collection("pages").document(page).set({"markdown": markdown}, merge=True)
     return {"status": "updated"}
 
 
 # NEW: Add text input note under each pet
-@app.post("/api/pets/{pet_id}/textinput")
+@app.post("/api/pets/{pet_id}/textinput", dependencies=PET_ACCESS)
 async def add_pet_textinput(pet_id: str, request: Request):
     data = await request.json()
     input_text = data.get("input", "")
@@ -264,7 +268,7 @@ async def add_pet_textinput(pet_id: str, request: Request):
 
 
 # NEW: Start recording endpoint
-@app.post("/api/start_recording")
+@app.post("/api/start_recording", dependencies=BODY_PET_ACCESS)
 async def start_recording_endpoint(request: Request):
     data = await request.json()
     user_id = data.get("uid")
@@ -278,7 +282,7 @@ async def start_recording_endpoint(request: Request):
 
 
 # NEW: Stop recording endpoint
-@app.post("/api/stop_recording")
+@app.post("/api/stop_recording", dependencies=BODY_PET_ACCESS)
 async def stop_recording_endpoint(request: Request):
     data = await request.json()
     user_id = data.get("uid")
@@ -363,13 +367,13 @@ async def stop_recording_endpoint(request: Request):
 
 
 # NEW: Get recording status endpoint
-@app.get("/api/recording_status")
+@app.get("/api/recording_status", dependencies=[Depends(current_user)])
 async def recording_status_endpoint():
     return get_recording_status()
 
 
 # Enhanced Analytics endpoints for comprehensive pet tracking
-@app.post("/api/pets/{pet_id}/analytics/{category}")
+@app.post("/api/pets/{pet_id}/analytics/{category}", dependencies=PET_ACCESS)
 async def add_analytics_entry(pet_id: str, category: str, request: Request):
     """Typed write (review M7); delegates to petpulse/routers/analytics.py."""
     import json
@@ -387,7 +391,7 @@ async def add_analytics_entry(pet_id: str, category: str, request: Request):
     return JSONResponse(status_code=201, content=entry)
 
 
-@app.get("/api/pets/{pet_id}/analytics")
+@app.get("/api/pets/{pet_id}/analytics", dependencies=PET_ACCESS)
 async def get_analytics_data(pet_id: str, category: str = None, days: int = 30):
     """Typed analytics entries of the last ``days`` days, newest first (``[Entry]``, see the API contract).
 
@@ -398,7 +402,7 @@ async def get_analytics_data(pet_id: str, category: str = None, days: int = 30):
     return analytics_router.list_entries(get_store(), pet_id, category, days)
 
 
-@app.get("/api/pets/{pet_id}/analytics/summary")
+@app.get("/api/pets/{pet_id}/analytics/summary", dependencies=PET_ACCESS)
 async def get_analytics_summary(pet_id: str):
     """Get summary statistics for all analytics categories including voice-notes.
 
@@ -499,7 +503,7 @@ async def get_analytics_summary(pet_id: str):
     return {"summary": dict(summary), "skipped_rows": skipped}
 
 
-@app.post("/api/pets/{pet_id}/daily_routine")
+@app.post("/api/pets/{pet_id}/daily_routine", dependencies=PET_ACCESS)
 async def generate_daily_routine_headlines(pet_id: str, request: Request):
     """Generate AI-powered daily routine headlines based on analytics data"""
     try:
@@ -583,7 +587,7 @@ async def generate_daily_routine_headlines_fallback(pet_id: str, request: Reques
     return {"headlines": headlines, "date": date, "data_points": len(daily_data)}
 
 
-@app.get("/api/pets/{pet_id}/health_insights")
+@app.get("/api/pets/{pet_id}/health_insights", dependencies=PET_ACCESS)
 async def get_health_insights(pet_id: str, days: int = 30):
     """Get AI-powered health insights and recommendations"""
     try:
@@ -614,7 +618,7 @@ async def get_health_insights(pet_id: str, days: int = 30):
         raise HTTPException(status_code=503, detail="Health insights are temporarily unavailable") from None
 
 
-@app.get("/api/pets/{pet_id}/visualizations")
+@app.get("/api/pets/{pet_id}/visualizations", dependencies=PET_ACCESS)
 async def get_visualization_data(pet_id: str, chart_type: str = "all", days: int = 30):
     """Get data for various chart visualizations including voice recordings"""
     try:
@@ -787,7 +791,7 @@ def generate_routine_headlines(pet_name: str, daily_data: list, date: str):
 
 
 # NEW: RAG-powered AI Assistant endpoints
-@app.post("/api/pets/{pet_id}/preload")
+@app.post("/api/pets/{pet_id}/preload", dependencies=PET_ACCESS)
 async def preload_pet_data(pet_id: str, request: Request):
     """Preload and cache pet data for faster subsequent queries"""
     try:
@@ -806,7 +810,7 @@ async def preload_pet_data(pet_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Failed to preload pet data") from None
 
 
-@app.post("/api/pets/{pet_id}/cache/clear")
+@app.post("/api/pets/{pet_id}/cache/clear", dependencies=PET_ACCESS)
 async def clear_pet_cache(pet_id: str):
     """Clear cached data for a specific pet"""
     try:
@@ -820,7 +824,7 @@ async def clear_pet_cache(pet_id: str):
         raise HTTPException(status_code=500, detail="Failed to clear cache") from None
 
 
-@app.get("/api/pets/{pet_id}/cache/status")
+@app.get("/api/pets/{pet_id}/cache/status", dependencies=PET_ACCESS)
 async def get_cache_status(pet_id: str):
     """Get cache status for a specific pet"""
     try:
@@ -849,7 +853,7 @@ async def get_cache_status(pet_id: str):
         raise HTTPException(status_code=500, detail="Failed to check cache status") from None
 
 
-@app.post("/api/pets/{pet_id}/chat")
+@app.post("/api/pets/{pet_id}/chat", dependencies=PET_ACCESS)
 async def chat_with_assistant(pet_id: str, request: Request):
     """Chat with AI Assistant using Intelligent RAG with Smart Visualization"""
     try:
@@ -877,7 +881,7 @@ async def chat_with_assistant(pet_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Failed to process chat request") from None
 
 
-@app.post("/api/pets/{pet_id}/knowledge_search")
+@app.post("/api/pets/{pet_id}/knowledge_search", dependencies=PET_ACCESS)
 async def search_knowledge_base(pet_id: str, request: Request):
     """Search veterinary knowledge base"""
     try:
@@ -915,7 +919,7 @@ async def search_knowledge_base(pet_id: str, request: Request):
         raise HTTPException(status_code=500, detail="Failed to search knowledge base") from None
 
 
-@app.get("/api/pets/{pet_id}/assistant_summary")
+@app.get("/api/pets/{pet_id}/assistant_summary", dependencies=PET_ACCESS)
 async def get_assistant_summary(pet_id: str):
     """Get AI-powered health summary for assistant dashboard using cached data"""
     try:
@@ -952,19 +956,10 @@ async def get_assistant_summary(pet_id: str):
         raise HTTPException(status_code=500, detail="Failed to generate assistant summary") from None
 
 
-# NEW: Simple test endpoint for diagnostics
-@app.get("/api/test")
-async def test_endpoint():
-    return {
-        "status": "OK",
-        "message": "PetPulse API server is running",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0",
-    }
-
-
 # New-style routers (one per track). Registered before the static mount.
 app.include_router(health_router.router)
+app.include_router(demo_router.router)
+app.include_router(pets_router.router)
 app.include_router(records_router.router)
 app.include_router(analytics_router.router)
 

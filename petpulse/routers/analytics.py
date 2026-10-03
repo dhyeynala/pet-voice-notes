@@ -18,7 +18,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import ValidationError
 
 from petpulse.deps import get_store
-from petpulse.routers._auth_bridge import require_pet_access
+from petpulse.auth import require_pet_access
 from petpulse.schemas.analytics import CATEGORIES, ENTRY_MODELS, Entry, validate_entry
 from petpulse.store.base import Store
 

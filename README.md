@@ -206,8 +206,9 @@ uvicorn api_server:app --reload
 pytest
 ```
 
-> The demo UI login (replacing Firebase Google sign-in) arrives with the auth/data track; until
-> then the API is usable directly. See [CONTRIBUTING.md](CONTRIBUTING.md) for the demo build plan.
+> Auth is a demo login: `POST /api/demo/login {"uid": "alice"}` returns a bearer token for every
+> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). See
+> [docs/api-contract.md](docs/api-contract.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## API Reference
 
@@ -229,10 +230,9 @@ FastAPI generates interactive documentation at `http://localhost:8000/docs`. Her
 - `POST /api/upload_pdf` - Upload and analyze veterinary documents
 - `GET /api/user-pets/{user_id}` - List user's pets
 - `POST /api/pets/{user_id}` - Create new pet profile
-- `GET /api/pages/{page_id}` - Shared family access to pet data
 
 **System:**
-- `GET /api/test` - Health check and diagnostics
+- `GET /api/health` - Health check and per-feature Demo/Live mode
 
 ## Development & Testing
 
@@ -266,7 +266,7 @@ docker-compose -f docker-compose.prod.yml up -d
 **Testing API Endpoints:**
 ```bash
 # Health check
-curl http://localhost:8000/api/test
+curl http://localhost:8000/api/health
 
 # Test voice recording
 curl -X POST http://localhost:8000/api/start_recording

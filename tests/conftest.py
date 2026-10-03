@@ -116,17 +116,29 @@ def app(store, blobs, fake_llm, fake_stt):
 
 
 def _auth_headers(uid: str) -> dict[str, str]:
-    """Headers that authenticate as ``uid``.
+    """Headers that authenticate as ``uid`` (a demo token signed by the app's secret)."""
+    from petpulse.auth import issue_token
 
-    There is no server-side auth yet (review C1), so this is empty. The auth track replaces
-    the body with ``{"Authorization": f"Bearer {issue_token(uid)}"}``; every test that uses
-    ``client_as`` then authenticates without further changes.
-    """
-    return {}
+    return {"Authorization": f"Bearer {issue_token(uid)}"}
 
 
 @pytest.fixture
 def client(app):
+    """A TestClient signed in as ``alice`` (the default owner used by ``make_pet``).
+
+    Every /api route except health and demo login needs a token, so the everyday client is
+    authenticated. Use ``anon_client`` for unauthenticated requests and ``client_as(uid)`` for
+    other users.
+    """
+    from fastapi.testclient import TestClient
+
+    with TestClient(app, headers=_auth_headers("alice")) as c:
+        yield c
+
+
+@pytest.fixture
+def anon_client(app):
+    """A TestClient with no credentials."""
     from fastapi.testclient import TestClient
 
     with TestClient(app) as c:
@@ -135,10 +147,10 @@ def client(app):
 
 @pytest.fixture
 def client_noraise(app):
-    """Like ``client`` but returns 500 responses instead of re-raising server exceptions."""
+    """Like ``client`` (signed in as alice) but returns 500 responses instead of re-raising."""
     from fastapi.testclient import TestClient
 
-    with TestClient(app, raise_server_exceptions=False) as c:
+    with TestClient(app, raise_server_exceptions=False, headers=_auth_headers("alice")) as c:
         yield c
 
 
@@ -174,11 +186,12 @@ def now_iso() -> str:
 
 @pytest.fixture
 def make_pet(app) -> Callable[..., str]:
-    """Create a pet through the legacy data layer; returns its id."""
-    from firestore_store import add_pet_to_page_and_user
+    """Create a pet owned by ``uid`` (uuid4 id, ``owners=[uid]``); returns its id."""
+    from petpulse import deps
+    from petpulse.pets import create_pet
 
     def make(uid: str = "alice", name: str = "Max", animal_type: str = "dog", **extra: Any) -> str:
-        pet = add_pet_to_page_and_user(uid, {"name": name, "animal_type": animal_type, **extra}, "default-page")
+        pet = create_pet(deps.get_store(), uid, {"name": name, "animal_type": animal_type, **extra})
         return str(pet["id"])
 
     return make

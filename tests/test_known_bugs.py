@@ -9,7 +9,11 @@ raises=AssertionError)``:
 - any other exception (e.g. a route was renamed) is a real failure, not a silent xfail:
   update the test to the new API in the PR that changes it.
 
-Finding IDs refer to the review (pet-voice-notes-review.md).
+Finding IDs refer to the review (pet-voice-notes-review.md). Every proof below is fixed now
+(C1, C2, CORS by the auth/data track; C3, C4, H2, M2-M4 by the bug-fix track), so none carries
+the marker; they stay as regression tests. ``known_bug`` is kept for the next finding.
+
+The ``client`` fixture is signed in as alice, who owns the pets ``make_pet()`` creates.
 """
 
 from __future__ import annotations
@@ -24,19 +28,32 @@ def known_bug(finding: str, owner: str):
     return pytest.mark.xfail(strict=True, raises=AssertionError, reason=f"{finding} (fix owner: {owner})")
 
 
-@known_bug("C1: no server-side auth, anyone can list any user's pets", "auth/data track")
-def test_c1_anonymous_request_cannot_read_another_users_pets(client, make_pet):
-    make_pet("alice", "Max")
-    response = client.get("/api/user-pets/alice")  # no credentials at all
-    assert response.status_code in (401, 403, 404)
+def test_c1_anonymous_request_cannot_read_another_users_pets(anon_client, client_as, make_pet):
+    """Fixed (C1): no token -> 401; another user's token -> no access to alice's data."""
+    pet_id = make_pet("alice", "Max")
+    assert anon_client.get("/api/user-pets/alice").status_code == 401
+    assert anon_client.get(f"/api/pets/{pet_id}/analytics").status_code == 401
+    bob = client_as("bob")
+    assert bob.get("/api/user-pets/alice").status_code == 403
+    assert bob.get(f"/api/pets/{pet_id}/analytics").status_code == 404
 
 
-@known_bug("C2: pet ids derive from the name, so two users' 'Max' collide", "auth/data track")
-def test_c2_two_users_with_same_pet_name_get_distinct_pets(client, store):
-    a = client.post("/api/pets/userA", json={"name": "Max", "animal_type": "dog"}).json()
-    b = client.post("/api/pets/userB", json={"name": "Max", "animal_type": "cat"}).json()
-    assert a["pet"]["id"] != b["pet"]["id"]
-    assert store.get(f"pets/{a['pet']['id']}")["animal_type"] == "dog"
+def test_c2_two_users_with_same_pet_name_get_distinct_pets(client_as, store):
+    """Fixed (C2): pet ids are uuid4s and ownership is per pet, so two "Max"es never collide."""
+    a = client_as("userA").post("/api/pets", json={"name": "Max", "animal_type": "dog"}).json()
+    b = client_as("userB").post("/api/pets", json={"name": "Max", "animal_type": "cat"}).json()
+    assert a["id"] != b["id"]
+    assert store.get(f"pets/{a['id']}")["animal_type"] == "dog"
+    assert store.get(f"pets/{b['id']}")["owners"] == ["userB"]
+
+
+def test_cors_does_not_reflect_an_arbitrary_origin(client):
+    """Fixed (CORS): only ALLOWED_ORIGINS are echoed, and never with credentials."""
+    response = client.options(
+        "/api/user-pets/x", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
+    )
+    assert response.headers.get("access-control-allow-origin") not in ("https://evil.example", "*")
+    assert response.headers.get("access-control-allow-credentials") != "true"
 
 
 def test_c3_upload_filename_cannot_choose_write_location(client_as, store, make_pet, monkeypatch, tmp_path):
@@ -61,7 +78,7 @@ def test_c3_upload_filename_cannot_choose_write_location(client_as, store, make_
     pet_id = make_pet("alice", "Max")
     response = client_as("alice").post(
         "/api/upload_pdf",
-        data={"uid": "victim", "pet": pet_id},
+        data={"uid": "alice", "pet": pet_id},  # the owner uploading (a foreign uid is a 403 now)
         files={"file": (filename, doc.tobytes(), "application/pdf")},
     )
     assert response.status_code == 200
@@ -136,11 +153,3 @@ def test_m4_dynamic_chart_average_ignores_entries_without_the_metric():
     ]
     cfg = PetVisualizationService().generate_dynamic_chart(data, "line", "date", "level", None, "average", 30, None)
     assert cfg["data"]["datasets"][0]["data"] == [4.0]
-
-
-@known_bug("CORS: any origin is reflected with credentials allowed", "auth/data track")
-def test_cors_does_not_reflect_an_arbitrary_origin(client):
-    response = client.options(
-        "/api/user-pets/x", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
-    )
-    assert response.headers.get("access-control-allow-origin") not in ("https://evil.example", "*")

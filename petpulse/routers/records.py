@@ -28,7 +28,7 @@ from starlette.datastructures import UploadFile  # fastapi.UploadFile subclasses
 
 from pdf_parser import PDF_MAGIC, PdfError, extract_pdf_text, summarize_pdf_text
 from petpulse.deps import get_blobs, get_store
-from petpulse.routers._auth_bridge import require_pet_access
+from petpulse.auth import require_pet_access
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore, new_key
 

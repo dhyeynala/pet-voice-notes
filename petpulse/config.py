@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     openai_api_key: Optional[SecretStr] = None
     google_application_credentials: Optional[str] = None
     auth_secret: Optional[SecretStr] = None  # generated at startup when unset (auth track)
+
+    # Auth track (A): kept as its own block so other tracks can append fields below.
+    auth_token_ttl_minutes: int = 720  # demo login token lifetime
+
     seed_on_start: bool = True
     allowed_origins: Annotated[list[str], NoDecode] = ["http://localhost:8000"]
     live_call_cap: int = 6
@@ -79,7 +83,7 @@ class Settings(BaseSettings):
 
     def check(self) -> None:
         """Fail fast on contradictory configuration. Never falls back silently."""
-        problems = []
+        problems = self._auth_problems()
         if self.resolved_llm() == "openai" and not self.has_openai_key:
             problems.append("LLM_PROVIDER=openai requires OPENAI_API_KEY (or use LLM_PROVIDER=auto|fake).")
         stt = self.resolved_stt()
@@ -91,6 +95,15 @@ class Settings(BaseSettings):
             problems.append("LIVE_CALL_CAP must be >= 0.")
         if problems:
             raise ConfigError("Invalid PetPulse configuration:\n  - " + "\n  - ".join(problems))
+
+    def _auth_problems(self) -> list[str]:
+        """Auth-track checks (A), kept apart from ``check`` so other tracks' checks merge cleanly."""
+        problems = []
+        if self.auth_token_ttl_minutes <= 0:
+            problems.append("AUTH_TOKEN_TTL_MINUTES must be > 0.")
+        if "*" in self.allowed_origins:
+            problems.append("ALLOWED_ORIGINS must list explicit origins; '*' is not allowed.")
+        return problems
 
     def feature_modes(self) -> dict[str, dict[str, str]]:
         """Per-feature provider and Demo/Live mode, as reported by /api/health and the UI."""
