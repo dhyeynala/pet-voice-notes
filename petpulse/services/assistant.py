@@ -1,6 +1,10 @@
 """Grounded chat over one pet's records (review C4, M6, M8; replaces the 12 legacy tools).
 
 Routing is code:
+0. Requests for dosing, treatment or diagnosis advice, and questions that are not about the pet
+   at all, are ``out_of_scope`` before anything else runs (no retrieval, no model call). This
+   check runs first so an advice question about something the records never mention is still
+   ``out_of_scope``, not ``not_in_records``.
 1. Date and count questions ("when did I first mention...", "how many times...") are answered
    by the deterministic query tools. No model call, and nothing is counted from snippets.
 2. Everything else: BM25 retrieval. No hit -> ``not_in_records`` with no model call.
@@ -35,6 +39,9 @@ MAX_RECORD_CHARS = 500
 SNIPPET_CHARS = 160
 MAX_MESSAGE_CHARS = 1000
 NOT_FOUND = "I couldn't find this in {pet}'s records."
+OUT_OF_SCOPE_ANSWER = (
+    "I can only answer from {pet}'s records. For medical advice, a diagnosis or dosing, please ask your veterinarian."
+)
 Mode = Literal["demo", "live"]
 
 
@@ -94,6 +101,22 @@ CATEGORY_TERMS = {stem(word): category for word, category in _CATEGORY_WORDS.ite
 
 Intent = Literal["first", "last", "count", "open"]
 
+# Asking for advice (what to give, how much, a diagnosis) is never answered from the records,
+# whatever they contain. Past-tense questions about the records ("what was he diagnosed with?")
+# are not advice and stay in scope.
+_ADVICE = re.compile(
+    r"\b(should i (give|feed|use)|(can|may) i give|is it (ok|okay|safe) to give|what (dose|dosage)|"
+    r"how (much|many) \w+(\s\w+)? (should|can|could|do) i give|prescribe|what (medicine|medication|drug) (should|can)|"
+    r"(can|could) you diagnose|diagnose (him|her|it|my|this|what))\b",
+    re.IGNORECASE,
+)
+_OFF_TOPIC = re.compile(r"\b(weather|stocks?|bitcoin|capital of|recipe|president)\b", re.IGNORECASE)
+
+
+def is_out_of_scope(message: str) -> bool:
+    """Dosing/treatment/diagnosis advice, or a question that is not about the pet."""
+    return bool(_ADVICE.search(message) or _OFF_TOPIC.search(message))
+
 
 def detect_intent(message: str) -> Intent:
     if _COUNT.search(message):
@@ -137,6 +160,12 @@ def _citation(event: Event, tz: str) -> Citation:
 def _not_found(ctx: _Context, answer: Optional[str] = None) -> ChatResponse:
     return ChatResponse(
         answer=answer or NOT_FOUND.format(pet=ctx.pet_name), status="not_in_records", citations=[], chart=None, mode=ctx.mode
+    )
+
+
+def _out_of_scope(ctx: _Context) -> ChatResponse:
+    return ChatResponse(
+        answer=OUT_OF_SCOPE_ANSWER.format(pet=ctx.pet_name), status="out_of_scope", citations=[], chart=None, mode=ctx.mode
     )
 
 
@@ -205,6 +234,8 @@ async def answer_question(
     if len(question) > MAX_MESSAGE_CHARS:
         raise ValueError(f"message is longer than {MAX_MESSAGE_CHARS} characters")
     ctx = _Context(pet_name or pet_name_for(store, pet_id), validate_tz(tz), now or utc_now(), provider_mode(llm))
+    if is_out_of_scope(question):
+        return _out_of_scope(ctx)
     events = load_events(store, pet_id).events
 
     intent = detect_intent(question)

@@ -249,6 +249,32 @@ def test_dosing_questions_are_out_of_scope():
     assert reply.status == "out_of_scope" and reply.citations == []
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "What dose of ibuprofen should I give Max?",  # nothing in the records mentions ibuprofen
+        "Can I give him chocolate as a treat?",
+        "How much Benadryl should I give Max?",
+        "Can you diagnose what's wrong with him?",
+        "What's the weather tomorrow?",
+    ],
+)
+def test_out_of_scope_runs_before_the_not_found_branch(message):
+    """Regression: with no matching records the not-found branch used to answer first."""
+    llm = FakeLLM()
+    reply = ask(seeded_store(), message, llm)
+    assert reply.status == "out_of_scope" and reply.citations == [] and reply.chart is None
+    assert "veterinarian" in reply.answer and llm.calls == []  # decided by code, no model call
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["What was Max diagnosed with at the vet?", "When did Max first seem tired?", "Has he ever had a seizure?"],
+)
+def test_record_questions_are_not_out_of_scope(message):
+    assert ask(seeded_store(), message).status != "out_of_scope"
+
+
 def test_open_question_cites_only_retrieved_records():
     reply = ask(seeded_store(), "Why was he limping?")
     assert reply.status == "answered" and reply.citations and reply.citations[0].snippet.startswith("He was limping")

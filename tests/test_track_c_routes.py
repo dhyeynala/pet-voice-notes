@@ -171,3 +171,12 @@ def test_app_chat_dispatches_contract_and_legacy_bodies(client, anon_client, cli
     assert anon_client.post(url, json={"message": "hi"}).status_code == 401
     assert client_as("bob").post(url, json={"message": "hi"}).status_code == 404
     assert "citations" not in client.post(url, json={"query": "How is Max?"}).json()
+
+
+def test_chat_dosing_question_with_no_matching_records_is_out_of_scope(client, pets, fake_llm):
+    alice_pet, _ = pets
+    response = client.post(f"/api/pets/{alice_pet}/chat", json={"message": "What dose of ibuprofen should I give Max?"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "out_of_scope" and body["citations"] == [] and body["chart"] is None
+    assert fake_llm.calls == []
