@@ -36,6 +36,13 @@ jobs:
         run: black --check --diff .
       - name: mypy (petpulse/)
         run: mypy
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Frontend JS (syntax check + node:test unit/lint tests, no npm install)
+        run: |
+          for f in public/js/*.js; do node --check "$f"; done
+          node --test tests/js/*.test.mjs
 
   test:
     runs-on: ubuntu-latest
