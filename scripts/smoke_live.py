@@ -12,6 +12,12 @@ Checks, in order (each is one provider call when everything works):
 3. pdf_summary          bundled 1-page PDF -> POST /api/pets/{pet_id}/records (in-process)
 4. chat_answer          5 fixed notes + "What medication is Max on?" -> POST /api/pets/{pet_id}/chat
 
+A full live run makes 4 provider calls (5-6 only if a model reply needs its one repair retry).
+The 5 chat records are stored through the real ``process_note`` but extracted by the
+deterministic fake on purpose (5 live calls would blow the cap); chat retrieval reads the note
+text, not the extraction, so the chat check is just as live. It does not depend on the PDF
+check: one record names the medication, so retrieval finds it on its own.
+
 Everything runs in this process on a temporary in-memory store (demo data is never touched)
 and a temporary data dir. Every provider call goes through a ``CallBudget`` capped by
 ``LIVE_CALL_CAP`` (default 6); once the cap is reached the remaining checks are SKIPPED and
@@ -51,7 +57,8 @@ VOICE_KEYWORDS = ("vomit", "blood", "twice")
 CHAT_QUESTION = "What medication is Max on?"
 CHAT_RECORDS = (
     "Max had his usual thirty minute walk and finished all of his dinner.",
-    "Vet visit today: Max started Apoquel 16 mg once daily for his itchy skin.",
+    # Says "medication": retrieval is lexical, and the question must not depend on the PDF check.
+    "Vet visit today: Max started a new medication, Apoquel 16 mg once daily for his itchy skin.",
     "Max slept well and was playful this morning.",
     "Max played fetch at the park for twenty minutes.",
     "Max ate all of his kibble and drank plenty of water.",
@@ -321,6 +328,15 @@ def check_chat(ctx: Context) -> str:
         ctx.note_ids.add(note_id)
         if "Apoquel" in text:
             apoquel_ids.add(note_id)
+    # Pre-flight, no call: the app's own retrieval must find a seeded record, or the route would
+    # answer not_in_records without asking the model (a seed/retrieval bug, not a model one).
+    from petpulse.services.assistant import TOP_K
+    from petpulse.services.events import load_events
+    from petpulse.services.retrieval import search
+
+    events = load_events(ctx.store, ctx.pet_id).events
+    hits = {hit.event.id for hit in search(events, CHAT_QUESTION, k=TOP_K, extra_stopwords=["Max"])}
+    _expect(bool(hits & apoquel_ids), "retrieval does not find the seeded Apoquel record (no call made)")
     response = ctx.client.post(path.format(pet_id=ctx.pet_id), json={"message": CHAT_QUESTION, "tz": SMOKE_TZ})
     _expect(200 <= response.status_code < 300, f"HTTP {response.status_code}: {response.text[:120]}")
     body = response.json()

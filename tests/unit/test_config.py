@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+import re
+from pathlib import Path
+
 import pytest
 
 from petpulse.core.config import ConfigError, Settings
@@ -117,3 +121,73 @@ def test_env_example_lists_every_setting_and_defaults_to_demo():
     s = Settings(_env_file=example)  # type: ignore[call-arg]
     s.check()
     assert s.overall_mode() == "demo"
+
+
+# ------------------------------------------------- .env parsing (Docker Compose vs python-dotenv)
+ENV_LINE = re.compile(r"^[A-Z][A-Z0-9_]*=[^\s#]*$")
+
+
+def test_env_example_has_no_inline_comments():
+    """Compose's env_file reads ``KEY=   # note`` as the value ``# note`` (python-dotenv drops
+    it), which broke ``make smoke-live``. Every line is blank, a comment, or a bare KEY=value."""
+    example = Path(__file__).resolve().parents[2] / ".env.example"
+    bad = [
+        f"{number}: {line}"
+        for number, line in enumerate(example.read_text(encoding="utf-8").splitlines(), 1)
+        if line.strip() and not line.startswith("#") and not ENV_LINE.match(line)
+    ]
+    assert bad == [], "inline comment or stray whitespace in .env.example:\n" + "\n".join(bad)
+
+
+def test_env_example_read_literally_like_compose_is_still_demo_safe(monkeypatch):
+    """Each value exactly as written (no comment stripping) must give the same settings."""
+    example = Path(__file__).resolve().parents[2] / ".env.example"
+    from dotenv import dotenv_values
+
+    literal = {}
+    for line in example.read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            literal[key] = value
+    assert literal == dotenv_values(example)
+    for key, value in literal.items():
+        monkeypatch.setenv(key, value)
+    s = make()
+    s.check()
+    assert s.overall_mode() == "demo"
+
+
+@pytest.mark.parametrize("value", ["", "   ", "\t"])
+def test_whitespace_only_values_are_unset(monkeypatch, value):
+    for key in ("FIREBASE_CREDENTIALS_JSON", "AUTH_SECRET", "LLM_TIMEOUT_SECONDS", "OPENAI_MODEL", "STORE_BACKEND"):
+        monkeypatch.setenv(key, value)
+    s = make()
+    assert s.firebase_credentials_json is None and s.auth_secret is None
+    assert s.llm_timeout_seconds == Settings.model_fields["llm_timeout_seconds"].default
+    assert s.openai_model == Settings.model_fields["openai_model"].default
+    s.check()
+
+
+def test_a_comment_read_as_a_value_is_unset_with_a_warning(monkeypatch, caplog):
+    """The exact live failure: FIREBASE_CREDENTIALS_JSON='# inline service-account JSON ...'
+    made check() fail with 'FIREBASE_CREDENTIALS_JSON is not valid JSON'."""
+    comment = "# inline service-account JSON (or GOOGLE_APPLICATION_CREDENTIALS + FIREBASE_PROJECT_ID)"
+    monkeypatch.setenv("FIREBASE_CREDENTIALS_JSON", comment)
+    monkeypatch.setenv("AUTH_SECRET", "# demo-login signing secret")
+    monkeypatch.setenv("LLM_PROVIDER", "  # auto | fake | openai")
+    with caplog.at_level(logging.WARNING, logger="petpulse.config"):
+        s = make()
+    s.check()
+    assert s.firebase_credentials_json is None and s.auth_secret is None and s.llm_provider == "auto"
+    assert s.resolved_store() != "firestore"
+    warned = " ".join(r.getMessage() for r in caplog.records)
+    for key in ("FIREBASE_CREDENTIALS_JSON", "AUTH_SECRET", "LLM_PROVIDER"):
+        assert key in warned
+    assert "service-account" not in warned and "signing" not in warned  # names the key, not the value
+
+
+def test_real_values_are_kept_and_trimmed(monkeypatch):
+    monkeypatch.setenv("OPENAI_MODEL", "  gpt-5.4-mini-2026-03-17  ")
+    monkeypatch.setenv("LIVE_CALL_CAP", " 4 ")
+    s = make()
+    assert s.openai_model == "gpt-5.4-mini-2026-03-17" and s.live_call_cap == 4

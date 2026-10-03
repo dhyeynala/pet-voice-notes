@@ -2,7 +2,7 @@
 // (POST /api/pets/{id}/chat {message, tz}); the old static "veterinary knowledge base"
 // (/knowledge_search) is gone. Results are the cited records, rendered as text.
 import { apiFetch, apiPath, browserTimeZone, describeError } from "./api.js";
-import { el, icon, replaceChildren, showNotification } from "./dom.js";
+import { el, icon, formatDate, replaceChildren, showNotification } from "./dom.js";
 import { state } from "./state.js";
 
 const EMPTY_HINT = {
@@ -11,7 +11,7 @@ const EMPTY_HINT = {
 };
 
 function renderCitation(c) {
-  const meta = [c.date, c.source].filter(Boolean).join(" · ");
+  const meta = [formatDate(c.date), c.source].filter(Boolean).join(" · ");
   return el(
     "div",
     { class: "knowledge-result" },

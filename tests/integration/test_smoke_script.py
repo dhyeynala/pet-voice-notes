@@ -197,3 +197,53 @@ def test_a_wrong_note_is_a_fail(smoke, tmp_path):
     code, output, report = _run(smoke, tmp_path, "--allow-fake", llm=FakeLLM(fail=True))
     assert code == 1 and report is not None and _statuses(report)["note_classification"] == "FAIL"
     assert "note status=unprocessed" in output
+
+
+# ------------------------------------------- a live run: the real OpenAI SDK, a local stand-in
+def test_live_run_over_the_real_sdk_passes_all_four_in_four_calls(smoke, tmp_path, monkeypatch):
+    """Regression for the first live macOS run: pdf_summary died with "Event loop is closed"
+    (the note check's asyncio.run loop had opened the pooled connection the TestClient loop
+    then reused) and chat_answer was not_in_records with 0 calls (retrieval only found the
+    Apoquel record through the PDF). Real OpenAILLM/OpenAISTT adapters, real SDK, real httpx
+    pool; the stand-in server answers with what the fake would say."""
+    import openai
+
+    from petpulse.llm.config import OPENAI_PINNED_MODEL
+    from petpulse.providers.llm import OpenAILLM
+    from tests.openai_stub import fake_backed_reply, openai_stub
+
+    monkeypatch.setenv("OPENAI_API_KEY", FAKE_KEY)
+    with openai_stub(fake_backed_reply(smoke.FIXED_NOTE)) as (base_url, paths):
+        llm = OpenAILLM(api_key=FAKE_KEY, model=OPENAI_PINNED_MODEL, max_retries=0, base_url=base_url)
+        stt = OpenAISTT(api_key=FAKE_KEY, max_retries=0, client=openai.OpenAI(api_key=FAKE_KEY, base_url=base_url))
+        code, output, report = _run(smoke, tmp_path, llm=llm, stt=stt)
+    assert code == 0, output
+    assert report is not None and report["llm"] == f"openai:{OPENAI_PINNED_MODEL}"
+    assert _statuses(report) == dict.fromkeys(
+        ("voice_transcription", "note_classification", "pdf_summary", "chat_answer"), "PASS"
+    ), output
+    assert report["calls_used"] == 4 and [c["calls"] for c in report["checks"]] == [1, 1, 1, 1]
+    assert paths == ["/v1/audio/transcriptions"] + ["/v1/chat/completions"] * 3
+    assert FAKE_KEY not in output
+
+
+def test_chat_check_finds_its_seeded_records_without_the_pdf_check(smoke, tmp_path, monkeypatch):
+    """Live mode, chat alone: the fake-extracted seed notes are retrievable, so the route asks
+    the (live) model once instead of answering not_in_records with 0 calls."""
+    calls: list[str] = []
+
+    class LiveNamed:  # a live provider as far as the script and the app can tell
+        name, model = "openai", "gpt-5.4-mini-2026-03-17"
+
+        def __init__(self) -> None:
+            self._fake = FakeLLM()
+
+        async def complete_json(self, **kwargs: Any) -> Any:
+            calls.append(kwargs["task"])
+            return await self._fake.complete_json(**kwargs)
+
+    chat_only = [c for c in smoke.CHECKS if c[0] == "chat_answer"]
+    code, output, report = _run(smoke, tmp_path, "--allow-fake", llm=LiveNamed(), checks=chat_only)
+    assert code == 0, output
+    assert report is not None and _statuses(report) == {"chat_answer": "PASS"}
+    assert calls == ["chat_answer.v1"] and report["calls_used"] == 1

@@ -145,22 +145,51 @@ export function updateFormProgress() {
   progressFill.style.width = `${fields.length ? (filled.length / fields.length) * 100 : 0}%`;
 }
 
-/** Parse a backend timestamp. Values without an offset are treated as UTC (the backend stores UTC). */
+// Dates are shown with the month as a word ("Oct 3, 2026" / "3 Oct 2026" by browser locale), so
+// a day/month order can never be misread.
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DAY_FORMAT = { year: "numeric", month: "short", day: "numeric" };
+const TIME_FORMAT = { hour: "2-digit", minute: "2-digit" };
+
+/**
+ * Parse a backend value into a Date.
+ * - Timestamps without an offset are UTC (the backend stores UTC).
+ * - A date-only value ("2026-10-03", e.g. a chat citation date) is a calendar day the backend
+ *   already computed in the request's time zone. It becomes local midnight of that same day.
+ *   (`new Date("2026-10-03")` would be UTC midnight, i.e. the previous day anywhere west of UTC.)
+ */
 export function parseTimestamp(value) {
   if (!value) return null;
-  const s = String(value);
-  const hasZone = /[zZ]$|[+-]\d\d:?\d\d$/.test(s);
-  const d = new Date(hasZone || !s.includes("T") ? s : s + "Z");
+  const s = String(value).trim();
+  const day = DATE_ONLY.exec(s);
+  if (day) return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  const iso = /^\d{4}-\d{2}-\d{2} \d/.test(s) ? s.replace(" ", "T") : s;
+  const hasZone = /[zZ]$|[+-]\d\d:?\d\d$/.test(iso);
+  const d = new Date(hasZone || !iso.includes("T") ? iso : iso + "Z");
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateTime(value) {
-  const d = parseTimestamp(value);
-  if (!d) return "";
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+/** "Oct 3, 2026": a calendar date. Date-only values are shown as that exact day in any zone. */
+export function formatDate(value, { locale, timeZone } = {}) {
+  const s = String(value || "").trim();
+  const day = DATE_ONLY.exec(s);
+  if (day) {
+    const utc = new Date(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])));
+    return utc.toLocaleDateString(locale, { ...DAY_FORMAT, timeZone: "UTC" });
+  }
+  const d = parseTimestamp(s);
+  return d ? d.toLocaleDateString(locale, { ...DAY_FORMAT, timeZone }) : s;
 }
 
-export function formatDate(value) {
+/** "Oct 3, 2026 04:32 PM": a timestamp in the browser's zone (the tz the UI sends to the API). */
+export function formatDateTime(value, { locale, timeZone } = {}) {
   const d = parseTimestamp(value);
-  return d ? d.toLocaleDateString() : String(value || "");
+  if (!d) return "";
+  if (DATE_ONLY.test(String(value).trim())) return formatDate(value, { locale });
+  return `${d.toLocaleDateString(locale, { ...DAY_FORMAT, timeZone })} ${d.toLocaleTimeString(locale, { ...TIME_FORMAT, timeZone })}`;
+}
+
+/** "Oct 3": short axis label for a local Date (charts). */
+export function formatDay(date, { locale } = {}) {
+  return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }

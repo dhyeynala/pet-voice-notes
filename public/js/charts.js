@@ -2,7 +2,7 @@
 // browser from the typed analytics entries, and the chart that a chat answer can carry
 // ({type, title, data}).
 import { apiFetch, apiPath, asList } from "./api.js";
-import { el, icon, parseTimestamp } from "./dom.js";
+import { el, icon, formatDay, parseTimestamp } from "./dom.js";
 import { state } from "./state.js";
 import { entryFields, entryTime } from "./analytics.js";
 
@@ -100,7 +100,7 @@ export function prepareChartData(entries, now = new Date()) {
   });
 
   return {
-    activity: { labels: days.map((d) => d.toLocaleDateString()), data: activity },
+    activity: { labels: days.map((d) => formatDay(d)), data: activity },
     energy,
     diet: { labels: Object.keys(dietTypes), data: Object.values(dietTypes) },
     overview: barConfig(Object.keys(perCategory).map((c) => String(c).replace(/_/g, " ")), Object.values(perCategory), "Entries", "#667eea"),

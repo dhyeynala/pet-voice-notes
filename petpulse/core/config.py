@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import sys
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional
 
-from pydantic import PrivateAttr, SecretStr, field_validator
+from pydantic import PrivateAttr, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from petpulse.llm.config import DEFAULT_TIMEOUT_SECONDS, OPENAI_PINNED_MODEL, is_dated_snapshot
@@ -30,6 +31,8 @@ AuthProviderChoice = Literal["auto", "demo", "firebase"]
 ResolvedStore = Literal["json", "memory", "firestore"]
 ResolvedAuth = Literal["demo", "firebase"]
 
+logger = logging.getLogger("petpulse.config")
+
 
 class ConfigError(RuntimeError):
     """Raised at startup when the configuration asks for something it cannot have."""
@@ -37,6 +40,29 @@ class ConfigError(RuntimeError):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unset_blank_and_comment_values(cls, data: Any) -> Any:
+        """A blank value, or one that is really a comment, means "not set" (the default).
+
+        ``KEY=   # note`` is a comment to python-dotenv but the value ``# note`` to some other
+        env-file readers (Docker Compose ``env_file``). No setting legitimately starts with
+        ``#``, so such a value is dropped with a warning that names the key, never the value.
+        """
+        if not isinstance(data, dict):
+            return data
+        cleaned: dict[str, Any] = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                value = value.strip()
+                if not value:
+                    continue
+                if value.startswith("#"):
+                    logger.warning("%s looks like a comment, not a value; treating it as unset", str(key).upper())
+                    continue
+            cleaned[key] = value
+        return cleaned
 
     demo_mode: bool = True
     store: Literal["json", "memory"] = "json"
