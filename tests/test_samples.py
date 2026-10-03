@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from petpulse.samples import AUDIO_DIR, MANIFEST_PATH, SMOKE_AUDIO_ID, SMOKE_PDF_PATH, audio_manifest
+from petpulse.seed.samples import AUDIO_DIR, MANIFEST_PATH, SMOKE_AUDIO_ID, SMOKE_PDF_PATH, audio_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 

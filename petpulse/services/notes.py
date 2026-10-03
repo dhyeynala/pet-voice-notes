@@ -23,7 +23,7 @@ from petpulse.llm.client import LLMClient, LLMFailure, TaskSpec, provider_mode
 from petpulse.llm.schemas import NoteExtraction, NoteKind, Observation, RedFlag
 from petpulse.providers.llm import LLMProvider
 from petpulse.store.base import Store
-from petpulse.timeutil import parse_timestamp, to_iso, utc_now, validate_tz
+from petpulse.core.timeutil import parse_timestamp, to_iso, utc_now, validate_tz
 
 NoteSource = Literal["text", "voice", "pdf"]
 NoteStatus = Literal["processed", "unprocessed"]
@@ -97,7 +97,7 @@ def decide(extraction: NoteExtraction) -> tuple[bool, bool]:
 
 
 def _default_deps(store: Optional[Store], llm: Optional[LLMProvider]) -> tuple[Store, LLMProvider]:
-    from petpulse import deps  # late import: deps builds providers from settings
+    from petpulse.core import deps  # late import: deps builds providers from settings
 
     return (store if store is not None else deps.get_store()), (llm if llm is not None else deps.get_llm())
 

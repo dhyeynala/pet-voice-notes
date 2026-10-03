@@ -1,1 +1,1 @@
-"""FastAPI routers. Each track adds its own module and one ``include_router`` line in api_server."""
+"""FastAPI routers, one module per domain. ``petpulse.app.ROUTERS`` registers them in order."""

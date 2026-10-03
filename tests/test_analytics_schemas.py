@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from petpulse.auth import issue_token
+from petpulse.core.auth import issue_token
 
 
 def as_user(uid: str) -> dict[str, str]:
@@ -158,7 +158,7 @@ def test_post_unknown_category_and_non_json_are_422(client, pet):
 def test_get_entries_filters_sorts_and_skips_bad_rows(client, store, pet):
     for category in ("diet", "exercise", "energy_levels"):
         assert client.post(f"/api/pets/{pet}/analytics/{category}", json=VALID[category]).status_code == 201
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     store.add(
         f"pets/{pet}/analytics", {"category": "diet", "food": "old", "timestamp": (now - timedelta(days=40)).isoformat()}
     )
@@ -185,7 +185,7 @@ def test_get_entries_rejects_bad_query(client, pet, params):
 
 def _router_only_app(store) -> FastAPI:
     """The new router on its own: what serves these paths once the legacy handlers are removed."""
-    from petpulse import deps
+    from petpulse.core import deps
     from petpulse.routers import analytics
 
     app = FastAPI()
@@ -195,7 +195,7 @@ def _router_only_app(store) -> FastAPI:
 
 
 def test_router_routes_enforce_pet_ownership(store):
-    from petpulse.pets import create_pet
+    from petpulse.services.pets import create_pet
 
     alice_pet = create_pet(store, "alice", {"name": "Max", "animal_type": "dog"})["id"]
     create_pet(store, "bob", {"name": "Max", "animal_type": "dog"})

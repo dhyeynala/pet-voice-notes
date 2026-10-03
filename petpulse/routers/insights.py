@@ -6,14 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from petpulse.config import Settings
-from petpulse.deps import get_settings, get_store
-from petpulse.auth import require_pet_access
+from petpulse.core.config import Settings
+from petpulse.core.deps import get_settings, get_store
+from petpulse.core.auth import require_pet_access
 from petpulse.services.assistant import pet_name_for
 from petpulse.services.events import load_events
 from petpulse.services.insights import Insights, Mode, compute_insights
 from petpulse.store.base import Store
-from petpulse.timeutil import InvalidTimezone, utc_now, validate_tz
+from petpulse.core.timeutil import InvalidTimezone, utc_now, validate_tz
 
 router = APIRouter(tags=["insights"])
 

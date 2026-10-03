@@ -29,7 +29,7 @@ def test_app_structure():
     import os
 
     # Check that key files exist
-    assert os.path.exists("api_server.py")
+    assert os.path.exists("petpulse/app.py")
     assert os.path.exists("requirements.txt")
     assert os.path.exists("README.md")
     assert os.path.exists("public/index.html")

@@ -23,13 +23,13 @@ def test_health_in_demo_mode(client):
 
 
 def test_health_reports_live_when_key_present(monkeypatch):
-    import api_server
-    from petpulse import deps
+    import petpulse.app as app_module
+    from petpulse.core import deps
 
     monkeypatch.setenv("OPENAI_API_KEY", FAKE_KEY)
     monkeypatch.setenv("STT_PROVIDER", "fake")
     deps.reset()
-    with TestClient(api_server.app) as c:  # builds nothing live: health only reads settings
+    with TestClient(app_module.app) as c:  # builds nothing live: health only reads settings
         body = c.get("/api/health").json()
     assert body["mode"] == "mixed"
     assert body["features"]["chat"] == {"provider": "openai", "mode": "live"}
@@ -40,12 +40,12 @@ def test_health_reports_live_when_key_present(monkeypatch):
 def test_startup_fails_fast_on_contradictory_config(monkeypatch):
     import pytest
 
-    import api_server
-    from petpulse import deps
-    from petpulse.config import ConfigError
+    import petpulse.app as app_module
+    from petpulse.core import deps
+    from petpulse.core.config import ConfigError
 
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     deps.reset()
     with pytest.raises(ConfigError):
-        with TestClient(api_server.app):
+        with TestClient(app_module.app):
             pass

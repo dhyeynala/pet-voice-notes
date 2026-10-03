@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
 
-from petpulse import pets as pet_records
-from petpulse.auth import current_user, require_pet_access
-from petpulse.deps import get_store
+from petpulse.services import pets as pet_records
+from petpulse.core.auth import current_user, require_pet_access
+from petpulse.core.deps import get_store
 from petpulse.schemas.pets import Pet, PetCreate, User
 from petpulse.store.base import Store
 

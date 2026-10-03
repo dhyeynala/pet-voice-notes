@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, ContextManager, Optional, Protocol, runtime_checkable
 
-from petpulse import pets as pet_records
+from petpulse.services import pets as pet_records
 from petpulse.seed.demo_data import ALICE_MAX_ID, DEMO_USERS, SEED_VERSION, DemoData, build
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore
@@ -97,7 +97,7 @@ def sample_record_pdf() -> bytes:
 
 
 def _llm_is_fake() -> bool:
-    from petpulse.deps import get_settings
+    from petpulse.core.deps import get_settings
 
     return get_settings().resolved_llm() == "fake"
 

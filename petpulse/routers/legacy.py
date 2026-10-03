@@ -19,10 +19,10 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 
-from petpulse.auth import Pet, User, current_user, require_body_pet_access, require_query_pet_access, require_self
-from petpulse.deps import get_blobs, get_llm, get_store
-from petpulse.errors import UnprocessableError
-from petpulse import pets as pet_records
+from petpulse.core.auth import Pet, User, current_user, require_body_pet_access, require_query_pet_access, require_self
+from petpulse.core.deps import get_blobs, get_llm, get_store
+from petpulse.core.errors import UnprocessableError
+from petpulse.services import pets as pet_records
 from petpulse.providers.llm import LLMProvider
 from petpulse.routers import records as records_router
 from petpulse.store.base import Store

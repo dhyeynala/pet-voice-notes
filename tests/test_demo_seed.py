@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from petpulse import deps, seed
+from petpulse import seed
+from petpulse.core import deps
 from petpulse.seed import demo_data
 from petpulse.seed.demo_data import ALICE_LUNA_ID, ALICE_MAX_ID, BOB_MAX_ID
 from petpulse.store.memory import JsonFileStore, MemoryStore

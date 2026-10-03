@@ -8,7 +8,7 @@ never turns an error or silence into transcript text:
 - ``no_speech``  nothing intelligible was said (empty result, near-silence),
 - ``error``      the provider failed (``error`` holds a short, key-free reason).
 
-Selection (``petpulse.deps.get_stt``): ``STT_PROVIDER=auto`` uses ``OpenAISTT`` when
+Selection (``petpulse.core.deps.get_stt``): ``STT_PROVIDER=auto`` uses ``OpenAISTT`` when
 ``OPENAI_API_KEY`` is set and ``FakeSTT`` otherwise; ``google`` must be chosen explicitly.
 """
 
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Optional, Protocol, runtime_checkable
 
-from petpulse.audio import (
+from petpulse.services.audio import (
     EXTENSIONS,
     MP4,
     OGG,
@@ -35,7 +35,7 @@ from petpulse.audio import (
     wav_info,
     webm_sample_rate,
 )
-from petpulse.samples import AudioManifest, audio_manifest
+from petpulse.seed.samples import AudioManifest, audio_manifest
 
 Status = Literal["ok", "no_speech", "error"]
 

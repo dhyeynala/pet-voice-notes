@@ -1,4 +1,4 @@
-"""Container sniffing, duration probing and near-silence detection (petpulse.audio)."""
+"""Container sniffing, duration probing and near-silence detection (petpulse.services.audio)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ import struct
 
 import pytest
 
-from petpulse import audio
-from petpulse.samples import audio_manifest
+from petpulse.services import audio
+from petpulse.seed.samples import audio_manifest
 from tests.audio_fixtures import mp4, wav, webm
 
 

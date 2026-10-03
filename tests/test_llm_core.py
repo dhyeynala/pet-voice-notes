@@ -233,7 +233,7 @@ def test_task_spec_key():
 
 # ------------------------------------------------------------------ settings wiring
 def test_settings_wire_the_model_timeout_and_fake_mode(monkeypatch):
-    from petpulse import deps
+    from petpulse.core import deps
     from petpulse.providers.llm import OpenAILLM
 
     monkeypatch.setenv("FAKE_LLM_MODE", "truncate")

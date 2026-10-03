@@ -6,7 +6,7 @@ Every test runs with:
 - outbound network blocked.
 
 The same instances are visible to routes (via ``app.dependency_overrides``) and to code that
-calls ``petpulse.deps`` directly (via ``petpulse.deps.override``).
+calls ``petpulse.core.deps`` directly (via ``petpulse.core.deps.override``).
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from __future__ import annotations
 import os
 import socket
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterator
 
@@ -50,7 +49,7 @@ DEMO_ENV = {
 
 @pytest.fixture(autouse=True)
 def _hermetic_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
-    from petpulse import deps
+    from petpulse.core import deps
 
     for key, value in DEMO_ENV.items():
         monkeypatch.setenv(key, value)
@@ -105,11 +104,11 @@ def fake_stt():
 
 @pytest.fixture
 def app(store, blobs, fake_llm, fake_stt):
-    import api_server
-    from petpulse import deps
+    import petpulse.app as app_module
+    from petpulse.core import deps
 
     deps.override(store=store, blobs=blobs, llm=fake_llm, stt=fake_stt)
-    api_server.app.dependency_overrides.update(
+    app_module.app.dependency_overrides.update(
         {
             deps.get_store: lambda: store,
             deps.get_blobs: lambda: blobs,
@@ -117,13 +116,13 @@ def app(store, blobs, fake_llm, fake_stt):
             deps.get_stt: lambda: fake_stt,
         }
     )
-    yield api_server.app
-    api_server.app.dependency_overrides.clear()
+    yield app_module.app
+    app_module.app.dependency_overrides.clear()
 
 
 def _auth_headers(uid: str) -> dict[str, str]:
     """Headers that authenticate as ``uid`` (a demo token signed by the app's secret)."""
-    from petpulse.auth import issue_token
+    from petpulse.core.auth import issue_token
 
     return {"Authorization": f"Bearer {issue_token(uid)}"}
 
@@ -178,15 +177,11 @@ def client_as(app) -> Iterator[Callable[[str], Any]]:
         c.__exit__(None, None, None)
 
 
-def now_iso() -> str:
-    return datetime.utcnow().isoformat()
-
-
 @pytest.fixture
 def make_pet(app) -> Callable[..., str]:
     """Create a pet owned by ``uid`` (uuid4 id, ``owners=[uid]``); returns its id."""
-    from petpulse import deps
-    from petpulse.pets import create_pet
+    from petpulse.core import deps
+    from petpulse.services.pets import create_pet
 
     def make(uid: str = "alice", name: str = "Max", animal_type: str = "dog", **extra: Any) -> str:
         pet = create_pet(deps.get_store(), uid, {"name": name, "animal_type": animal_type, **extra})

@@ -17,9 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 from starlette.datastructures import UploadFile
 
-from petpulse.auth import current_user, require_pet_access
-from petpulse.config import Settings
-from petpulse.deps import get_llm, get_settings, get_store, get_stt
+from petpulse.core.auth import current_user, require_pet_access
+from petpulse.core.config import Settings
+from petpulse.core.deps import get_llm, get_settings, get_store, get_stt
 from petpulse.providers.llm import LLMProvider
 from petpulse.providers.stt import STTProvider
 from petpulse.services import voice

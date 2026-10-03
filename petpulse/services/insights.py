@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, computed_field
 
 from petpulse.services.events import Event, EventLoad
 from petpulse.services.queries import energy_level, exercise_minutes
-from petpulse.timeutil import local_date
+from petpulse.core.timeutil import local_date
 
 WINDOW_DAYS = 7
 LOW_ENERGY_LEVEL = 2  # at or below, on the 1-5 scale

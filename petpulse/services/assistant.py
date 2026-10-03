@@ -31,7 +31,7 @@ from petpulse.services.charts import build_chart
 from petpulse.services.events import Event, load_events
 from petpulse.services.retrieval import search, stem, tokenize
 from petpulse.store.base import Store
-from petpulse.timeutil import local_date, utc_now, validate_tz
+from petpulse.core.timeutil import local_date, utc_now, validate_tz
 
 CHAT_TASK: TaskSpec[ChatAnswer] = TaskSpec("chat_answer", 1, ChatAnswer)
 TOP_K = 5

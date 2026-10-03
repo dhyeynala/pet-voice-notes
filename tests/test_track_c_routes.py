@@ -1,7 +1,7 @@
 """Track C routes (API contract): notes, chat and insights. Owner gets 2xx, another user 404,
 no credentials 401; bad input 422; a provider outage on chat is 503, never an invented reply.
 
-Auth is the real ``petpulse.auth``: ``client`` is signed in as alice (who owns ``make_pet()``
+Auth is the real ``petpulse.core.auth``: ``client`` is signed in as alice (who owns ``make_pet()``
 pets), ``anon_client`` has no token, ``client_as("bob")`` is another user.
 """
 
@@ -38,7 +38,7 @@ def pets(make_pet):
 @pytest.fixture
 def chat_app(app, store, fake_llm):
     """The contract chat router mounted on its own (no other routes, no static files)."""
-    from petpulse import deps
+    from petpulse.core import deps
     from petpulse.routers import assistant
 
     chat = FastAPI()
@@ -48,7 +48,7 @@ def chat_app(app, store, fake_llm):
 
 
 def as_user(uid: str) -> dict[str, str]:
-    from petpulse.auth import issue_token
+    from petpulse.core.auth import issue_token
 
     return {"Authorization": f"Bearer {issue_token(uid)}"}
 

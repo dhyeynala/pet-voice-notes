@@ -1,11 +1,11 @@
-"""Factories in petpulse.deps build the right implementation from the environment."""
+"""Factories in petpulse.core.deps build the right implementation from the environment."""
 
 from __future__ import annotations
 
 import pytest
 
-from petpulse import deps
-from petpulse.config import ConfigError
+from petpulse.core import deps
+from petpulse.core.config import ConfigError
 from petpulse.providers import FakeLLM, FakeSTT, GoogleSTT, OpenAILLM, OpenAISTT
 from petpulse.store import JsonFileStore, MemoryStore
 

@@ -11,7 +11,7 @@ from typing import Any, Optional, Sequence
 
 from petpulse.services.events import Event
 from petpulse.services.queries import daily_series, energy_level, exercise_minutes
-from petpulse.timeutil import local_date
+from petpulse.core.timeutil import local_date
 
 CHART_DAYS = 30
 

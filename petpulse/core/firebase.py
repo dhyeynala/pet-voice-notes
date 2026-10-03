@@ -15,7 +15,7 @@ import importlib
 import threading
 from typing import Any, Optional
 
-from petpulse.config import ConfigError, Settings
+from petpulse.core.config import ConfigError, Settings
 
 APP_NAME = "petpulse"
 

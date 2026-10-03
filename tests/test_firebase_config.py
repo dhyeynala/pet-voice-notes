@@ -7,8 +7,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from petpulse import config
-from petpulse.config import ConfigError, Settings
+from petpulse.core import config
+from petpulse.core.config import ConfigError, Settings
 from tests.fake_firebase import FAKE_SERVICE_ACCOUNT
 
 SA_JSON = json.dumps(FAKE_SERVICE_ACCOUNT)
@@ -150,8 +150,8 @@ def test_auth_config_and_health_in_demo_mode(anon_client):
 
 
 def test_auth_config_and_health_in_firebase_mode(monkeypatch, installed):
-    import api_server
-    from petpulse import deps
+    import petpulse.app as app_module
+    from petpulse.core import deps
 
     monkeypatch.setenv("AUTH_PROVIDER", "firebase")
     monkeypatch.setenv("STORE_BACKEND", "json")  # Firebase sign-in on the local store
@@ -159,7 +159,7 @@ def test_auth_config_and_health_in_firebase_mode(monkeypatch, installed):
     monkeypatch.setenv("FIREBASE_WEB_API_KEY", WEB_KEY)
     monkeypatch.setenv("FIREBASE_AUTH_DOMAIN", "auth.example.test")
     deps.reset()
-    with TestClient(api_server.app) as c:  # health/config only read settings; nothing touches Firebase
+    with TestClient(app_module.app) as c:  # health/config only read settings; nothing touches Firebase
         body = c.get("/api/auth/config").json()
         health = c.get("/api/health").json()
     assert (health["auth"], health["store"], health["blobs"]) == ("firebase", "memory", "local")
@@ -173,13 +173,13 @@ def test_auth_config_and_health_in_firebase_mode(monkeypatch, installed):
 
 
 def test_startup_fails_when_firestore_is_forced_without_credentials(monkeypatch):
-    import api_server
-    from petpulse import deps
+    import petpulse.app as app_module
+    from petpulse.core import deps
 
     monkeypatch.setenv("STORE_BACKEND", "firestore")
     deps.reset()
     with pytest.raises(ConfigError, match="STORE_BACKEND=firestore"):
-        with TestClient(api_server.app):
+        with TestClient(app_module.app):
             pass
 
 

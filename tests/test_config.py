@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from petpulse.config import ConfigError, Settings
+from petpulse.core.config import ConfigError, Settings
 
 FAKE_KEY = "sk-test-not-real"  # pragma: allowlist secret
 

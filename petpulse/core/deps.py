@@ -11,8 +11,8 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from petpulse import firebase
-from petpulse.config import Settings
+from petpulse.core import firebase
+from petpulse.core.config import Settings
 from petpulse.providers.llm import FakeLLM, LLMProvider, OpenAILLM
 from petpulse.providers.stt import FakeSTT, GoogleSTT, OpenAISTT, STTProvider
 from petpulse.store.base import Store

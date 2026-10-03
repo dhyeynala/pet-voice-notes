@@ -1,9 +1,8 @@
-# api_server.py
 """The FastAPI app: middleware, startup hooks and router registration. No route bodies.
 
 The app imports and starts with no environment at all. Configuration lives in
-``petpulse.config.Settings`` (every field has a demo-safe default); storage and AI
-providers are resolved lazily through ``petpulse.deps``. Nothing reads key files or
+``petpulse.core.config.Settings`` (every field has a demo-safe default); storage and AI
+providers are resolved lazily through ``petpulse.core.deps``. Nothing reads key files or
 builds SDK clients at import time.
 """
 
@@ -15,8 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from petpulse import errors, seed
-from petpulse.deps import get_blobs, get_settings, get_store
+from petpulse import seed
+from petpulse.core import errors
+from petpulse.core.deps import get_blobs, get_settings, get_store
 from petpulse.routers import analytics as analytics_router
 from petpulse.routers import assistant as assistant_router
 from petpulse.routers import demo as demo_router
@@ -31,7 +31,7 @@ from petpulse.routers import voice as voice_router
 # Load .env (if present) so local runs see the same values as Settings.
 load_dotenv()
 
-PUBLIC_DIR = Path(__file__).resolve().parent / "public"
+PUBLIC_DIR = Path(__file__).resolve().parents[1] / "public"
 
 app = FastAPI(title="PetPulse")
 
@@ -51,7 +51,7 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     # Fail fast on contradictory provider config (e.g. LLM_PROVIDER=openai without a key).
     settings = get_settings()
     settings.check()
@@ -62,7 +62,7 @@ async def startup_event():
 
 
 @app.on_event("startup")
-async def load_demo_seed():
+async def load_demo_seed() -> None:
     """Load the demo seed into an empty store (SEED_ON_START=true, the default).
 
     Skipped under Firebase sign-in: the seeded owners are demo logins nobody could use there.
@@ -73,7 +73,7 @@ async def load_demo_seed():
 
 
 # Every /api route except /api/health, /api/auth/config, /api/demo/users and /api/demo/login
-# needs a bearer token (petpulse.auth); routes that touch a pet also check that the caller owns it.
+# needs a bearer token (petpulse.core.auth); routes that touch a pet also check that the caller owns it.
 app.include_router(health_router.router)
 app.include_router(demo_router.router)
 app.include_router(pets_router.router)
@@ -88,7 +88,7 @@ app.include_router(legacy_router.router)
 
 # Serve index last to avoid route shadowing
 @app.get("/")
-async def serve_index():
+async def serve_index() -> FileResponse:
     return FileResponse(PUBLIC_DIR / "index.html")
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from petpulse.auth import issue_token
+from petpulse.core.auth import issue_token
 
 
 def as_user(uid: str) -> dict[str, str]:
@@ -226,7 +226,7 @@ def test_summary_outage_is_reported_not_stored_as_text(client, store, fake_llm, 
 
 
 def test_record_is_never_public(client, anon_client, store, blobs, alice_pet):
-    import api_server
+    import petpulse.app as app_module
 
     response = upload(client, alice_pet, make_pdf())
     body = response.json()
@@ -236,7 +236,7 @@ def test_record_is_never_public(client, anon_client, store, blobs, alice_pet):
 
     blob_path = blobs.root / stored["blob_key"]
     assert blob_path.is_file()
-    assert api_server.PUBLIC_DIR.resolve() not in blob_path.resolve().parents
+    assert app_module.PUBLIC_DIR.resolve() not in blob_path.resolve().parents
     # Neither the blob key nor the data dir is reachable through the static mount.
     assert client.get(f"/{stored['blob_key']}").status_code == 404
     assert client.get(f"/data/blobs/{stored['blob_key']}").status_code == 404

@@ -1,6 +1,6 @@
 """Voice routes: GET /api/voice/samples and POST /api/pets/{pet_id}/voice-notes.
 
-Real auth (``petpulse.auth``): ``client`` is signed in as alice, who owns ``PET``.
+Real auth (``petpulse.core.auth``): ``client`` is signed in as alice, who owns ``PET``.
 """
 
 from __future__ import annotations
@@ -11,12 +11,12 @@ from typing import Any, Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from petpulse import deps
-from petpulse.config import Settings
-from petpulse.pets import create_pet
+from petpulse.core import deps
+from petpulse.core.config import Settings
+from petpulse.services.pets import create_pet
 from petpulse.providers.llm import FakeLLM
 from petpulse.providers.stt import FakeSTT
-from petpulse.samples import audio_manifest
+from petpulse.seed.samples import audio_manifest
 from petpulse.services import voice as voice_service
 from tests.audio_fixtures import mp4, wav, webm
 

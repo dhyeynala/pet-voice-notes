@@ -19,9 +19,9 @@ def _bare_env(tmp_path: Path) -> dict[str, str]:
     return {"PATH": os.environ.get("PATH", ""), "HOME": str(tmp_path), "PYTHONPATH": str(ROOT)}
 
 
-def test_import_api_server_with_no_env_and_no_key_files(tmp_path):
+def test_import_app_with_no_env_and_no_key_files(tmp_path):
     code = (
-        "import sys, api_server\n"
+        "import sys, petpulse.app\n"
         "bad = [m for m in ('openai', 'google.cloud.speech', 'firebase_admin', 'pandas', 'numpy', 'pyaudio') "
         "if m in sys.modules]\n"
         "print('LIVE_MODULES=' + ','.join(bad))\n"
@@ -43,7 +43,7 @@ def test_uvicorn_starts_and_serves_health(tmp_path):
     port = _free_port()
     env = {**_bare_env(tmp_path), "DATA_DIR": str(tmp_path / "data")}
     proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "api_server:app", "--host", "127.0.0.1", "--port", str(port)],
+        [sys.executable, "-m", "uvicorn", "petpulse.app:app", "--host", "127.0.0.1", "--port", str(port)],
         cwd=ROOT,
         env=env,
         stdout=subprocess.PIPE,

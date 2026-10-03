@@ -22,8 +22,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-AUDIO_DIR = ROOT / "petpulse" / "samples" / "audio"
-PDF_DIR = ROOT / "petpulse" / "samples" / "pdfs"
+AUDIO_DIR = ROOT / "petpulse" / "seed" / "samples" / "audio"
+PDF_DIR = ROOT / "petpulse" / "seed" / "samples" / "pdfs"
 MANIFEST = AUDIO_DIR / "manifest.json"
 
 # id, label, file, transcript, espeak words-per-minute, listed in /api/voice/samples
@@ -128,7 +128,7 @@ def _smoke_pdf(out: Path) -> None:
 
 def _duration(path: Path) -> float:
     sys.path.insert(0, str(ROOT))
-    from petpulse.audio import probe_duration, sniff
+    from petpulse.services.audio import probe_duration, sniff
 
     data = path.read_bytes()
     seconds = probe_duration(data, sniff(data) or "")

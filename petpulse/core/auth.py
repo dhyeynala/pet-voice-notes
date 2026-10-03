@@ -34,11 +34,11 @@ from typing import Any, Optional
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from petpulse import firebase
-from petpulse import pets as pet_records
-from petpulse.config import Settings
-from petpulse.deps import get_settings, get_store
-from petpulse.errors import (
+from petpulse.core import firebase
+from petpulse.services import pets as pet_records
+from petpulse.core.config import Settings
+from petpulse.core.deps import get_settings, get_store
+from petpulse.core.errors import (
     ForbiddenError,
     NotFoundError,
     ServiceUnavailableError,

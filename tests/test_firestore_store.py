@@ -166,7 +166,7 @@ def test_blob_errors_other_than_not_found_propagate():
 
 # ---------------------------------------------------------------------------- wiring
 def test_deps_build_firestore_and_storage_from_settings(monkeypatch):
-    from petpulse import config, deps, firebase
+    from petpulse.core import config, deps, firebase
 
     fake = install(monkeypatch)
     monkeypatch.setattr(config, "firebase_admin_installed", lambda: True)
@@ -185,7 +185,7 @@ def test_deps_build_firestore_and_storage_from_settings(monkeypatch):
 
 
 def test_firestore_without_bucket_keeps_local_blobs(monkeypatch):
-    from petpulse import config, deps
+    from petpulse.core import config, deps
     from petpulse.store.blobs import LocalBlobStore
 
     install(monkeypatch)
@@ -200,14 +200,15 @@ def test_firestore_without_bucket_keeps_local_blobs(monkeypatch):
 @pytest.fixture
 def firestore_app(app, monkeypatch):
     """The demo app, seeded, with every store/blob call going through the Firebase classes."""
-    import api_server
-    from petpulse import deps, seed
+    import petpulse.app as app_module
+    from petpulse import seed
+    from petpulse.core import deps
 
     client = FakeFirestoreClient()
     store = firestore_store(client)
     blobs = FirebaseBlobStore(FakeBucket())
     deps.override(store=store, blobs=blobs)
-    api_server.app.dependency_overrides.update({deps.get_store: lambda: store, deps.get_blobs: lambda: blobs})
+    app_module.app.dependency_overrides.update({deps.get_store: lambda: store, deps.get_blobs: lambda: blobs})
     summary = seed.seed_demo_data(store, blobs=blobs)
     return app, store, client, summary
 
@@ -251,7 +252,7 @@ def test_seed_and_core_flows_run_on_firestore(firestore_app, client_as):
 
 
 def test_demo_reset_is_refused_on_firestore(monkeypatch, client):
-    from petpulse import config, deps
+    from petpulse.core import config, deps
 
     monkeypatch.setattr(config, "firebase_admin_installed", lambda: True)
     monkeypatch.setenv("STORE_BACKEND", "firestore")

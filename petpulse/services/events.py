@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Any, Callable, Literal, Optional
 
 from petpulse.store.base import Store
-from petpulse.timeutil import parse_timestamp
+from petpulse.core.timeutil import parse_timestamp
 
 EventKind = Literal["note", "analytics", "record"]
 EventSource = Literal["text", "voice", "pdf", "analytics"]

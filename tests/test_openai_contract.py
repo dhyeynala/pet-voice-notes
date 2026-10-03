@@ -145,7 +145,7 @@ def test_timeout_is_an_llm_error():
 
 
 def test_undated_model_is_rejected_by_settings():
-    from petpulse.config import ConfigError, Settings
+    from petpulse.core.config import ConfigError, Settings
 
     with pytest.raises(ConfigError, match="dated snapshot"):
         Settings(llm_provider="openai", openai_api_key=FAKE_KEY, openai_model="gpt-5.4-mini").check()

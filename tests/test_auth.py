@@ -8,9 +8,9 @@ from typing import Any
 import pytest
 from fastapi.routing import APIRoute
 
-from petpulse import deps
-from petpulse.auth import InvalidToken, issue_token, verify_token
-from petpulse.config import Settings
+from petpulse.core import deps
+from petpulse.core.auth import InvalidToken, issue_token, verify_token
+from petpulse.core.config import Settings
 
 PUBLIC_ROUTES = {
     ("GET", "/api/health"),
@@ -76,7 +76,7 @@ def test_generated_secret_is_stable_within_the_process():
 
 
 def test_token_ttl_must_be_positive():
-    from petpulse.config import ConfigError
+    from petpulse.core.config import ConfigError
 
     with pytest.raises(ConfigError, match="AUTH_TOKEN_TTL_MINUTES"):
         settings(auth_token_ttl_minutes=0).check()
@@ -85,16 +85,16 @@ def test_token_ttl_must_be_positive():
 # ---------------------------------------------------------------------------- route inventory
 def _api_routes() -> list[tuple[str, str]]:
     """Every (method, path) under /api, from the OpenAPI schema (covers included routers too)."""
-    import api_server
+    import petpulse.app as app_module
 
-    api_server.app.openapi_schema = None  # rebuild: routes may have been added since import
+    app_module.app.openapi_schema = None  # rebuild: routes may have been added since import
     out = []
-    for path, operations in api_server.app.openapi()["paths"].items():
+    for path, operations in app_module.app.openapi()["paths"].items():
         if path.startswith("/api"):
             out.extend((method.upper(), path) for method in operations if method in {"get", "post", "put", "patch", "delete"})
     hidden = [
         r.path
-        for r in api_server.app.routes
+        for r in app_module.app.routes
         if isinstance(r, APIRoute) and r.path.startswith("/api") and not r.include_in_schema
     ]
     assert not hidden, f"routes hidden from OpenAPI escape the auth inventory: {hidden}"

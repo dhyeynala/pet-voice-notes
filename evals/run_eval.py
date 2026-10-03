@@ -34,7 +34,7 @@ def build_provider(name: str) -> Any:
 
     if name == "fake":
         return FakeLLM()
-    from petpulse.config import Settings
+    from petpulse.core.config import Settings
 
     settings = Settings(llm_provider="openai")
     settings.check()

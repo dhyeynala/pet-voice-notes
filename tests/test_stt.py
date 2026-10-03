@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from petpulse import deps
+from petpulse.core import deps
 from petpulse.providers.stt import (
     CANNED_TRANSCRIPTS,
     DEFAULT_OPENAI_STT_MODEL,
@@ -24,7 +24,7 @@ from petpulse.providers.stt import (
     STTProvider,
     Transcription,
 )
-from petpulse.samples import audio_manifest
+from petpulse.seed.samples import audio_manifest
 from tests.audio_fixtures import mp4, wav, webm
 
 FAKE_KEY = "sk-test-not-real-0000"  # pragma: allowlist secret

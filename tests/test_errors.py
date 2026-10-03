@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from petpulse import errors
+from petpulse.core import errors
 
 
 class Body(BaseModel):
@@ -45,7 +45,7 @@ def toy():
 
 
 def test_unhandled_exception_is_a_generic_500_with_request_id(toy, caplog):
-    with TestClient(toy, raise_server_exceptions=False) as c, caplog.at_level(logging.ERROR, "petpulse.errors"):
+    with TestClient(toy, raise_server_exceptions=False) as c, caplog.at_level(logging.ERROR, "petpulse.core.errors"):
         response = c.get("/boom")
     assert response.status_code == 500
     body = response.json()
@@ -105,7 +105,7 @@ def test_cors_allows_configured_origin_without_credentials(client):
 
 
 def test_wildcard_origin_is_rejected_by_config():
-    from petpulse.config import ConfigError, Settings
+    from petpulse.core.config import ConfigError, Settings
 
     with pytest.raises(ConfigError, match="ALLOWED_ORIGINS"):
         Settings(_env_file=None, allowed_origins=["*"]).check()  # type: ignore[call-arg]

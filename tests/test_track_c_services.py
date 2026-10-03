@@ -20,7 +20,7 @@ from petpulse.services.notes import MAX_NOTE_CHARS, decide, list_notes, process_
 from petpulse.services.pdf import MIN_TEXT_CHARS, page_problems, select_pages, summarize_pdf
 from petpulse.services.retrieval import BM25, search, tokenize
 from petpulse.store.memory import MemoryStore
-from petpulse.timeutil import InvalidTimezone, local_date, parse_timestamp, to_iso, validate_tz
+from petpulse.core.timeutil import InvalidTimezone, local_date, parse_timestamp, to_iso, validate_tz
 
 UTC = timezone.utc
 NOW = datetime(2026, 10, 3, 18, 0, tzinfo=UTC)  # 14:00 in New York

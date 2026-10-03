@@ -18,12 +18,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from petpulse import pets as pet_records
+from petpulse.services import pets as pet_records
 from petpulse import seed
-from petpulse.auth import current_user, issue_token
-from petpulse.config import Settings
-from petpulse.deps import get_blobs, get_settings, get_store
-from petpulse.errors import ConflictError, NotFoundError, UnprocessableError
+from petpulse.core.auth import current_user, issue_token
+from petpulse.core.config import Settings
+from petpulse.core.deps import get_blobs, get_settings, get_store
+from petpulse.core.errors import ConflictError, NotFoundError, UnprocessableError
 from petpulse.schemas.pets import DemoLogin, DemoUser, LoginResponse, User
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore

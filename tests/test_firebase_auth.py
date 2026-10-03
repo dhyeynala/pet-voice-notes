@@ -10,8 +10,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from petpulse import config, deps, firebase
-from petpulse.config import Settings
+from petpulse.core import config, deps, firebase
+from petpulse.core.config import Settings
 from tests.fake_firebase import FAKE_SERVICE_ACCOUNT, CertificateFetchError, ExpiredIdTokenError, FakeFirebase, install
 from tests.test_auth import PET_ROUTES, PROTECTED, _fill
 
@@ -82,7 +82,7 @@ def test_verify_returns_claims_and_never_skips_checks(fake_firebase):
 
 
 def test_app_is_never_created_without_a_service_account(fake_firebase):
-    from petpulse.config import ConfigError
+    from petpulse.core.config import ConfigError
 
     bare = Settings(_env_file=None, auth_provider="firebase", firebase_project_id="p")  # type: ignore[call-arg]
     with pytest.raises(ConfigError):
@@ -114,7 +114,7 @@ def test_certificate_outage_is_unavailable_not_invalid(fake_firebase):
 
 # ---------------------------------------------------------------------------- the API in firebase mode
 def test_first_sign_in_creates_the_user_from_verified_claims(fb_client):
-    from petpulse import pets as pet_records
+    from petpulse.services import pets as pet_records
 
     me = fb_client("tok-carol").get("/api/me")
     assert me.status_code == 200
@@ -133,7 +133,7 @@ def test_bad_or_expired_firebase_tokens_are_401(fb_client, token):
 
 
 def test_demo_tokens_are_rejected_in_firebase_mode(fb_client):
-    from petpulse.auth import issue_token
+    from petpulse.core.auth import issue_token
 
     response = fb_client(issue_token("alice")).get("/api/me")
     assert response.status_code == 401
@@ -182,11 +182,11 @@ def test_another_users_pet_is_404_with_firebase_tokens(fb_client, make_pet, meth
 
 
 def test_startup_does_not_seed_demo_users_under_firebase_sign_in(firebase_mode, monkeypatch, store):
-    import api_server
+    import petpulse.app as app_module
 
     monkeypatch.setenv("SEED_ON_START", "true")
     deps.get_settings.cache_clear()
-    with TestClient(api_server.app):
+    with TestClient(app_module.app):
         pass
     assert store.query("users") == [] and store.query("pets") == []
 

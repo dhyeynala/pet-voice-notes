@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-logger = logging.getLogger("petpulse.errors")
+logger = logging.getLogger("petpulse.core.errors")
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _INCOMING_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
