@@ -72,3 +72,13 @@ screenshot*.png
 
 # Firebase configuration (users should create their own)
 public/firebase-config.js
+# Demo store and local blobs (JSON store, PDF uploads)
+data/
+reports/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/

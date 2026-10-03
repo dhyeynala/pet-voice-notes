@@ -2,7 +2,35 @@
 line-length = 127
 target-version = ["py311"]
 skip-string-normalization = true
+extend-exclude = '''
+/(\.venv|data)/
+'''
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+xfail_strict = true
+filterwarnings = [
+    # FastAPI's on_event (legacy startup hook in api_server) is deprecated upstream.
+    "ignore:\\s*on_event is deprecated:DeprecationWarning",
+    "ignore:datetime.datetime.utcnow:DeprecationWarning",
+]
 
+[tool.coverage.run]
+source = ["petpulse"]
+branch = true
 
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
+skip_covered = true
 
+[tool.mypy]
+python_version = "3.11"
+files = ["petpulse"]
+strict = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["openai", "openai.*", "google.*", "pyaudio"]
+ignore_missing_imports = true

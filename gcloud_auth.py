@@ -2,13 +2,6 @@
 
 import os
 
-from google.auth import default
-from google.auth.exceptions import DefaultCredentialsError
-from dotenv import load_dotenv
-
-
-load_dotenv()
-
 
 def setup_google_cloud_auth() -> bool:
     """Set up Google Cloud authentication with an explicit project.
@@ -18,12 +11,20 @@ def setup_google_cloud_auth() -> bool:
     """
 
     try:
+        # Optional dependency (requirements-live.txt); imported lazily so the demo never needs it.
+        from google.auth import default
+        from google.auth.exceptions import DefaultCredentialsError
+    except ImportError as exc:
+        print(f"Google auth libraries are not installed: {exc}")
+        return False
+
+    try:
         project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
         if not project_id:
             # Do not fail here; some environments (e.g., CI) intentionally lack secrets.
             print("GOOGLE_CLOUD_PROJECT is not set; continuing without explicit binding")
 
-        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
+        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
         if project_id:
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
         if credentials_path:
@@ -38,7 +39,7 @@ def setup_google_cloud_auth() -> bool:
 
     except DefaultCredentialsError as exc:
         print(f"Google Cloud authentication failed: {exc}")
-        print("Make sure gcloud-key.json is available or set GOOGLE_APPLICATION_CREDENTIALS")
+        print("Set GOOGLE_APPLICATION_CREDENTIALS to a service-account JSON path")
         return False
     except Exception as exc:
         print(f"Unexpected authentication error: {exc}")

@@ -1,35 +1,25 @@
-version: '3.8'
-
+# Demo: `docker compose up` needs no .env and no secrets (fake AI providers, JSON store).
+# Live: put OPENAI_API_KEY in .env (see .env.example); providers on `auto` switch to OpenAI.
+# Reset demo data: `docker compose down -v`.
+# `env_file.required: false` needs Docker Compose v2.24+.
 services:
-  petpulse:
-    build: .
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_LIVE: ${INSTALL_LIVE:-false}
+    image: petpulse:demo
     ports:
       - "8000:8000"
-    environment:
-      - PYTHONPATH=/app
-    volumes:
-      # Mount for development (comment out for production)
-      - .:/app
-      # Mount for Google Cloud credentials
-      - ./gcloud-key.json:/app/gcloud-key.json:ro
     env_file:
-      - .env
+      - path: .env
+        required: false
+    environment:
+      DEMO_MODE: "true"
+      DATA_DIR: /app/data
+    volumes:
+      - demo-data:/app/data
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
-  # Optional: Add Redis for caching (uncomment if needed)
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis_data:/data
-  #   restart: unless-stopped
-
-# volumes:
-#   redis_data: 
+volumes:
+  demo-data: {}

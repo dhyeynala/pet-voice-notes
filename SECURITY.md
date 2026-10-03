@@ -20,7 +20,7 @@ This project uses sensitive API keys and credentials that must be protected.
 
 1. **Environment Variables**: All sensitive keys are stored in `.env` file
 2. **Git Ignore**: `.env` and `gcloud-key.json` are excluded from version control
-3. **Template File**: `.env.template` provides setup instructions without exposing keys
+3. **Template File**: `.env.example` provides setup instructions without exposing keys
 4. **Documentation**: This file documents security practices
 
 ### Key Rotation Recommendations

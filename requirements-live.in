@@ -1,0 +1,3 @@
+# Optional live-only dependencies (Google STT). Installed with INSTALL_LIVE=true.
+#   uv pip compile requirements-live.in -c requirements.txt -o requirements-live.txt --python-version 3.11
+google-cloud-speech

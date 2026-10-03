@@ -6,7 +6,6 @@ Includes pet data caching to avoid repeated database queries
 
 import os
 import json
-import openai
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 import re
@@ -15,13 +14,14 @@ from collections import Counter
 from firestore_store import db, get_pet_by_id
 from visualization_service import PetVisualizationService
 from simple_rag_service import SimplePetHealthRAGService
+from petpulse.deps import get_llm
+from petpulse.providers.llm import LegacyTask
 
 
 class IntelligentChatbotService:
     """Enhanced chatbot that uses OpenAI Function Calling for smart visualization decisions with data caching"""
 
     def __init__(self):
-        self.openai_client = openai.OpenAI()
         self.rag_service = SimplePetHealthRAGService()
         self.visualization_service = PetVisualizationService()
 
@@ -542,7 +542,8 @@ Context from Pet's Health Data:
 
         try:
             # Call OpenAI with function calling enabled
-            response = self.openai_client.chat.completions.create(
+            response = get_llm().legacy_chat(
+                LegacyTask.CHAT_ASSISTANT,
                 model="gpt-4",
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": query}],
                 tools=self.available_functions,

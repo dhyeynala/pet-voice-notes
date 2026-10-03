@@ -30,7 +30,7 @@ Follow the instructions provided by the setup script for Google Cloud configurat
 
 ### 4. Run the Application
 ```bash
-python api_server.py
+uvicorn api_server:app --reload
 ```
 
 ## Method 2: Docker Setup
@@ -44,7 +44,7 @@ cd petpulse
 ### 2. Configure Environment
 ```bash
 # Copy and edit environment template
-cp .env.template .env
+cp .env.example .env
 # Edit .env with your API keys
 ```
 
@@ -58,7 +58,7 @@ cp public/firebase-config.template.js public/firebase-config.js
 ### 4. Run with Docker
 ```bash
 # Build and run with Docker Compose (recommended)
-docker-compose up --build
+docker compose up --build
 
 # Or run with Docker directly
 docker build -t petpulse .
@@ -81,7 +81,7 @@ pip install -r requirements.txt
 ### 3. Configure Environment
 ```bash
 # Copy template
-cp .env.template .env
+cp .env.example .env
 
 # Edit .env with your values:
 # - OpenAI API Key
@@ -106,7 +106,7 @@ cp public/firebase-config.template.js public/firebase-config.js
 
 ### 6. Run Application
 ```bash
-python api_server.py
+uvicorn api_server:app --reload
 ```
 
 ## Access the Application

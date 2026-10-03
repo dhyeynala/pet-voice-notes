@@ -1,60 +1,62 @@
 # transcribe.py
-import pyaudio
+"""Legacy server-microphone recording (review finding C5).
+
+Kept only so the existing routes keep their shape until the voice track replaces them with
+browser MediaRecorder uploads and deletes this module. PyAudio is no longer a dependency:
+without it, recording reports a clear error instead of breaking imports. Transcription goes
+through the configured ``STTProvider`` (fake by default).
+"""
+
+import io
 import queue
 import threading
 import time
-from google.cloud import speech
-import os
-from dotenv import load_dotenv
-from gcloud_auth import setup_google_cloud_auth
+import wave
 
-load_dotenv()
-
-# Setup Google Cloud authentication
-setup_google_cloud_auth()
+from petpulse.deps import get_stt
 
 # Audio recording parameters
 RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms chunks
 CHANNELS = 1
-FORMAT = pyaudio.paInt16
+SAMPLE_WIDTH = 2  # 16-bit PCM (pyaudio.paInt16)
+
+MIC_UNAVAILABLE = (
+    "Server-side microphone recording is unavailable: PyAudio is not installed. "
+    "Use text input; browser recording arrives with the voice track."
+)
 
 # Global state for recording
 recording_state = {"is_recording": False, "audio_data": [], "transcript": "", "audio_queue": queue.Queue()}
 
 
-def get_speech_client():
-    """Create Speech client with proper project configuration"""
+def _pyaudio():
+    """Import PyAudio lazily; ``None`` when it is not installed (the default)."""
     try:
-        # Create client with explicit project
-        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-        if not project_id:
-            raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set")
-        client = speech.SpeechClient()
-        return client
-    except Exception as e:
-        print(f"Error creating Speech client: {e}")
+        import pyaudio  # type: ignore[import-not-found]
+    except ImportError:
         return None
+    return pyaudio
+
+
+def _pcm_to_wav(pcm: bytes) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wav:
+        wav.setnchannels(CHANNELS)
+        wav.setsampwidth(SAMPLE_WIDTH)
+        wav.setframerate(RATE)
+        wav.writeframes(pcm)
+    return buf.getvalue()
 
 
 def transcribe_audio(duration_seconds=10):
     """Simple transcription for a fixed duration"""
-    client = get_speech_client()
-    if not client:
-        return "Error: Could not initialize Speech client"
+    pyaudio = _pyaudio()
+    if pyaudio is None:
+        return f"Error: {MIC_UNAVAILABLE}"
 
-    # Set up audio recording
     audio = pyaudio.PyAudio()
-
-    # Recording configuration
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=RATE,
-        language_code="en-US",
-    )
-
-    # Start recording
-    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    stream = audio.open(format=pyaudio.paInt16, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
     print(f"Recording for {duration_seconds} seconds...")
     frames = []
@@ -65,34 +67,18 @@ def transcribe_audio(duration_seconds=10):
 
     print("Recording finished. Processing...")
 
-    # Stop recording
     stream.stop_stream()
     stream.close()
     audio.terminate()
 
-    # Combine audio data
-    audio_data = b''.join(frames)
-
-    # Transcribe
-    audio = speech.RecognitionAudio(content=audio_data)
-
-    try:
-        response = client.recognize(config=config, audio=audio)
-
-        if response.results:
-            transcript = response.results[0].alternatives[0].transcript
-            print(f"Transcript: {transcript}")
-            return transcript
-        else:
-            return "No speech detected"
-
-    except Exception as e:
-        print(f"Transcription error: {e}")
-        return f"Error: {str(e)}"
+    return _transcribe_audio_data(b''.join(frames))
 
 
 def start_recording():
     """Start recording audio"""
+
+    if _pyaudio() is None:
+        return {"status": "error", "message": MIC_UNAVAILABLE}
 
     if recording_state["is_recording"]:
         return {"status": "error", "message": "Already recording"}
@@ -149,9 +135,14 @@ def get_recording_status():
 def _record_audio():
     """Internal function to record audio in background"""
 
+    pyaudio = _pyaudio()
+    if pyaudio is None:
+        recording_state["is_recording"] = False
+        return
+
     audio = pyaudio.PyAudio()
 
-    stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    stream = audio.open(format=pyaudio.paInt16, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 
     print("Recording started...")
 
@@ -171,29 +162,16 @@ def _record_audio():
 
 
 def _transcribe_audio_data(audio_data):
-    """Transcribe audio data using Google Cloud Speech-to-Text"""
-    try:
-        client = get_speech_client()
-        if not client:
-            return "Error: Could not initialize Speech client"
+    """Transcribe 16 kHz mono PCM through the configured STT provider.
 
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=RATE,
-            language_code="en-US",
-        )
-
-        audio = speech.RecognitionAudio(content=audio_data)
-        print("Transcribing audio with Google Cloud Speech-to-Text...")
-        response = client.recognize(config=config, audio=audio)
-
-        if response.results:
-            transcript = response.results[0].alternatives[0].transcript
-            print(f"Transcript: {transcript}")
-            return transcript
-        else:
-            return "No speech detected"
-
-    except Exception as e:
-        print(f"Transcription error: {e}")
-        return f"Error: {str(e)}"
+    Keeps the legacy string contract ("No speech detected" / "Error: ...") on purpose;
+    the voice track replaces it with typed ``Transcription`` handling (review H2).
+    """
+    result = get_stt().transcribe(_pcm_to_wav(audio_data), "audio/wav")
+    if result.status == "ok":
+        print(f"Transcript: {result.text}")
+        return result.text
+    if result.status == "no_speech":
+        return "No speech detected"
+    print(f"Transcription error: {result.error}")
+    return f"Error: {result.error}"

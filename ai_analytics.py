@@ -3,27 +3,42 @@ AI Analytics Service for Pet Health Insights
 Generates intelligent insights, recommendations, and daily routine headlines
 """
 
-import openai
-import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import logging
-from typing import List, Dict, Any
-import pandas as pd
-import numpy as np
+import statistics
+from typing import List, Dict, Any, Optional
 from collections import defaultdict, Counter
+
+from petpulse.deps import get_llm
+from petpulse.providers.llm import LegacyTask
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _mean(values):
+    """Arithmetic mean as a plain float (stdlib replacement for ``np.mean``)."""
+    return statistics.fmean(values)
+
+
+def _parse_timestamp(value) -> Optional[datetime]:
+    """Parse an ISO timestamp; ``None`` for missing or unparseable values."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 class PetAnalyticsAI:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # The LLM is resolved per call through petpulse.deps (fake unless OPENAI_API_KEY is set).
+        pass
 
     def generate_daily_headlines(
         self, pet_name: str, daily_data: List[Dict], historical_data: List[Dict] = None, date: str = None
@@ -58,8 +73,12 @@ class PetAnalyticsAI:
             Generate headlines as a JSON array of strings.
             """
 
-            response = self.client.chat.completions.create(
-                model="gpt-4", messages=[{"role": "user", "content": prompt}], temperature=0.7, max_tokens=300
+            response = get_llm().legacy_chat(
+                LegacyTask.DAILY_HEADLINES,
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=300,
             )
 
             content = response.choices[0].message.content.strip()
@@ -125,8 +144,12 @@ class PetAnalyticsAI:
             - Positive health behaviors to celebrate
             """
 
-            response = self.client.chat.completions.create(
-                model="gpt-4", messages=[{"role": "user", "content": prompt}], temperature=0.3, max_tokens=500
+            response = get_llm().legacy_chat(
+                LegacyTask.HEALTH_INSIGHTS,
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=500,
             )
 
             content = response.choices[0].message.content.strip()
@@ -167,7 +190,7 @@ class PetAnalyticsAI:
             elif category == 'energy_levels':
                 levels = [int(e.get('level', 3)) for e in entries]
                 daily_summary['energy'] = {
-                    'avg_level': np.mean(levels) if levels else 3,
+                    'avg_level': _mean(levels) if levels else 3,
                     'recordings': len(levels),
                     'trend': self._calculate_energy_trend(levels),
                 }
@@ -203,7 +226,7 @@ class PetAnalyticsAI:
                 durations = [int(e.get('duration', 0)) for e in entries]
                 context['exercise_analysis'] = {
                     'total_sessions': len(entries),
-                    'avg_duration': np.mean(durations) if durations else 0,
+                    'avg_duration': _mean(durations) if durations else 0,
                     'total_duration': sum(durations),
                     'consistency': len(entries) / timeframe_days,
                     'types': list(Counter(e.get('type', '') for e in entries).keys()),
@@ -220,7 +243,7 @@ class PetAnalyticsAI:
             elif category == 'energy_levels':
                 levels = [int(e.get('level', 3)) for e in entries]
                 context['energy_analysis'] = {
-                    'avg_energy': np.mean(levels) if levels else 3,
+                    'avg_energy': _mean(levels) if levels else 3,
                     'recordings': len(levels),
                     'high_energy_days': sum(1 for l in levels if l >= 4),
                     'low_energy_days': sum(1 for l in levels if l <= 2),
@@ -248,7 +271,7 @@ class PetAnalyticsAI:
         """Calculate average exercise intensity"""
         intensities = [e.get('intensity', 'moderate') for e in exercise_entries]
         intensity_map = {'low': 1, 'moderate': 2, 'high': 3}
-        avg_value = np.mean([intensity_map.get(i, 2) for i in intensities])
+        avg_value = _mean([intensity_map.get(i, 2) for i in intensities]) if intensities else 2
 
         if avg_value < 1.5:
             return 'low'
@@ -262,7 +285,8 @@ class PetAnalyticsAI:
         if len(energy_levels) < 2:
             return 'stable'
 
-        trend = np.polyfit(range(len(energy_levels)), energy_levels, 1)[0]
+        # Least-squares slope (stdlib replacement for np.polyfit(..., 1)[0])
+        trend = statistics.linear_regression(range(len(energy_levels)), energy_levels).slope
         if trend > 0.1:
             return 'increasing'
         elif trend < -0.1:
@@ -275,42 +299,42 @@ class PetAnalyticsAI:
         if not historical_data:
             return {}
 
-        # Convert to DataFrame for easier analysis
-        df = pd.DataFrame(historical_data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Group by category (first-seen order), parsing timestamps once.
+        by_category: Dict[str, List[Optional[datetime]]] = defaultdict(list)
+        for entry in historical_data:
+            by_category[entry.get('category')].append(_parse_timestamp(entry.get('timestamp')))
 
         patterns = {}
-
-        # Analyze by category
-        for category in df['category'].unique():
-            category_data = df[df['category'] == category]
+        for category, timestamps in by_category.items():
+            # Rows whose timestamp is missing or unparseable count towards frequency only.
+            parsed = [ts for ts in timestamps if ts is not None]
             patterns[category] = {
-                'frequency': len(category_data),
-                'most_active_hour': self._find_most_active_hour(category_data),
-                'weekday_pattern': self._analyze_weekday_pattern(category_data),
+                'frequency': len(timestamps),
+                'most_active_hour': self._find_most_active_hour(parsed),
+                'weekday_pattern': self._analyze_weekday_pattern(parsed),
             }
 
         return patterns
 
-    def _find_most_active_hour(self, category_data: pd.DataFrame) -> int:
-        """Find the most active hour for a category"""
-        if category_data.empty:
+    def _find_most_active_hour(self, timestamps: List[datetime]) -> int:
+        """Most common hour of day; ties go to the earliest hour. Always a plain ``int``."""
+        if not timestamps:
             return 12  # Default to noon
 
-        hours = category_data['timestamp'].dt.hour
-        return hours.mode().iloc[0] if not hours.empty else 12
+        counts = Counter(ts.hour for ts in timestamps)
+        best = max(counts.values())
+        return int(min(hour for hour, count in counts.items() if count == best))
 
-    def _analyze_weekday_pattern(self, category_data: pd.DataFrame) -> Dict:
-        """Analyze weekday patterns"""
-        if category_data.empty:
+    def _analyze_weekday_pattern(self, timestamps: List[datetime]) -> Dict:
+        """Weekday distribution, most common first."""
+        if not timestamps:
             return {}
 
-        weekdays = category_data['timestamp'].dt.day_name()
-        weekday_counts = weekdays.value_counts()
+        weekday_counts = Counter(WEEKDAY_NAMES[ts.weekday()] for ts in timestamps).most_common()
 
         return {
-            'most_active_day': weekday_counts.index[0] if not weekday_counts.empty else 'Monday',
-            'distribution': weekday_counts.to_dict(),
+            'most_active_day': weekday_counts[0][0],
+            'distribution': {day: int(count) for day, count in weekday_counts},
         }
 
     def _generate_fallback_headlines(self, pet_name: str, daily_data: List[Dict], date: str) -> List[str]:

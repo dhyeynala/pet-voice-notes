@@ -1,17 +1,13 @@
 # pdf_parser.py
 
-import fitz
-import os
-from openai import OpenAI
+import pymupdf as fitz
 from datetime import datetime
 from firestore_store import store_pdf_summary
-from dotenv import load_dotenv
-
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from petpulse.deps import get_llm
+from petpulse.providers.llm import LegacyTask
 
 
-def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
+def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url, blob_key=None):
     # Step 1: Extract PDF text
     doc = fitz.open(file_path)
     text = "\n".join([page.get_text() for page in doc])
@@ -19,7 +15,8 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 
     # Step 2: Summarize using GPT-4o (new SDK style)
     try:
-        response = client.chat.completions.create(
+        response = get_llm().legacy_chat(
+            LegacyTask.PDF_SUMMARY,
             model="gpt-4o",
             messages=[
                 {
@@ -41,6 +38,6 @@ def extract_text_and_summarize(file_path, user_id, pet_id, file_name, file_url):
 
     # Step 3: Store in Firestore
     timestamp = datetime.utcnow().isoformat()
-    store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url)
+    store_pdf_summary(user_id, pet_id, summary, timestamp, file_name, file_url, blob_key=blob_key)
 
     return {"summary": summary}

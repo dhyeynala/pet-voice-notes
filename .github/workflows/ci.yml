@@ -1,89 +1,115 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, "demo/**"]
   pull_request:
-    branches: [ main ]
+    branches: [main, "demo/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# No secrets anywhere in this workflow: the app must pass in demo mode (fake providers).
+env:
+  PYTHON_VERSION: "3.11"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install pinned dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: flake8 (config in .flake8; legacy files have scoped ignores)
+        run: flake8 .
+      - name: black
+        run: black --check --diff .
+      - name: mypy (petpulse/)
+        run: mypy
+
   test:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install system dependencies (for PyAudio)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y portaudio19-dev python3-dev libasound2-dev
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov flake8 black
-    
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
-    - name: Format check with black
-      run: |
-        black --check --diff .
-    
-    - name: Test with pytest
-      run: |
-        pytest --cov=. --cov-report=xml
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'test' }}
-        GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT || 'ci-test' }}
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install pinned dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Assert no provider keys are present
+        run: |
+          for var in OPENAI_API_KEY GOOGLE_APPLICATION_CREDENTIALS; do
+            if [ -n "${!var:-}" ]; then echo "::error::$var must not be set in CI"; exit 1; fi
+          done
+      - name: pytest (known bugs are strict xfails; coverage floor in pyproject.toml)
+        run: pytest --cov --cov-report=term --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
 
   security:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Bandit security checks
-      run: |
-        pip install bandit
-        bandit -r . -f json -o bandit-report.json || true
-    
-    - name: Check for secrets in code
-      run: |
-        pip install detect-secrets
-        detect-secrets scan . > secrets-report.json || true
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install pinned tools
+        run: pip install -r requirements-dev.txt
+      - name: bandit (medium+ severity, new package)
+        # Legacy modules have known findings (e.g. B108 = review C3) owned by the bug-fix track;
+        # add each module here once it is fixed or replaced.
+        run: bandit -ll -r petpulse
+      - name: detect-secrets (fails on anything not in .secrets.baseline)
+        run: git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 
   docker:
     runs-on: ubuntu-latest
-    needs: test
-    
+    needs: [lint, test]
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker image
-      run: |
-        docker build -t petpulse:test .
-    
-    - name: Test Docker image
-      run: |
-        docker run --rm petpulse:test python -c "print('Docker image test passed')" 
+      - uses: actions/checkout@v4
+      - name: Build image (base requirements only)
+        run: docker build -t petpulse:ci .
+      - name: Run with no env and poll /api/health
+        run: |
+          docker run -d --name petpulse -p 8000:8000 petpulse:ci
+          for i in $(seq 1 30); do
+            if body=$(curl -fsS http://localhost:8000/api/health); then
+              echo "$body"
+              echo "$body" | python3 -c "import json,sys; b=json.load(sys.stdin); assert b['mode']=='demo' and b['llm']=='fake' and b['stt']=='fake', b"
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs petpulse
+          exit 1
+      - name: Container healthcheck turns healthy
+        run: |
+          for i in $(seq 1 40); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' petpulse)
+            echo "health: $status"
+            [ "$status" = "healthy" ] && exit 0
+            sleep 2
+          done
+          docker logs petpulse
+          exit 1
+      - name: Stop
+        if: always()
+        run: if docker inspect petpulse >/dev/null 2>&1; then docker rm -f petpulse; fi

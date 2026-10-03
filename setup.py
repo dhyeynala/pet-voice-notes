@@ -12,16 +12,14 @@ from pathlib import Path
 
 
 def print_banner():
-    print(
-        """
+    print("""
 ╔══════════════════════════════════════════════════════════════╗
 ║                    🐾 PetPulse Setup                        ║
 ║                                                              ║
 ║  AI-Powered Pet Health Management System                    ║
 ║  Open Source Setup Script                                   ║
 ╚══════════════════════════════════════════════════════════════╝
-    """
-    )
+    """)
 
 
 def check_python_version():

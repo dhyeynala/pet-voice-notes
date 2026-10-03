@@ -3,33 +3,26 @@ from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from firebase_admin import storage
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from pathlib import Path
 import os
-import uuid
 
 """
 Environment setup
 
-Historically this module raised at import time when GOOGLE_CLOUD_PROJECT was
-missing. That breaks CI and importing the app in environments (e.g. forked PRs)
-where secrets are intentionally unavailable. We now avoid raising at import
-time and only validate inside endpoints that actually require GCP.
+The app imports and starts with no environment at all. Configuration lives in
+``petpulse.config.Settings`` (every field has a demo-safe default); storage and AI
+providers are resolved lazily through ``petpulse.deps``. Nothing reads key files or
+builds SDK clients at import time.
 """
 
-# Load environment variables first
+# Load .env (if present) so legacy os.getenv() reads see the same values as Settings.
 load_dotenv()
 
-# Do not raise at import time. Read values if present so dependent libraries
-# can pick them up, but leave them empty otherwise.
-project_id = os.getenv("GOOGLE_CLOUD_PROJECT", "")
-if project_id:
-    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-
-credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "gcloud-key.json")
-if credentials_path:
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+from petpulse.deps import get_blobs, get_settings  # noqa: E402
+from petpulse.routers import health as health_router  # noqa: E402
+from petpulse.store.blobs import new_key  # noqa: E402
 
 from main import main as run_main
 from firestore_store import get_pets_by_user_id, add_pet_to_page_and_user, handle_user_invite, db, store_to_firestore
@@ -61,21 +54,6 @@ def get_simple_rag_service():
     return _simple_rag_service
 
 
-def _require_gcp():
-    """Ensure GCP is configured for endpoints that depend on it.
-
-    Raises a 501 HTTP error if configuration is missing so tests and
-    environments without secrets do not fail at import time.
-    """
-    if not os.getenv("GOOGLE_CLOUD_PROJECT"):
-        from fastapi import HTTPException
-
-        raise HTTPException(
-            status_code=501,
-            detail="GCP not configured. Set GOOGLE_CLOUD_PROJECT and credentials to use this endpoint.",
-        )
-
-
 def get_visualization_service():
     global _visualization_service
     if _visualization_service is None:
@@ -94,7 +72,9 @@ def get_pet_ai():
     return _pet_ai
 
 
-app = FastAPI()
+PUBLIC_DIR = Path(__file__).resolve().parent / "public"
+
+app = FastAPI(title="PetPulse")
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,6 +90,12 @@ app.add_middleware(
 async def startup_event():
     """Pre-warm critical services to improve first request performance"""
     print("🚀 Starting PetPulse API server...")
+    # Fail fast on contradictory provider config (e.g. LLM_PROVIDER=openai without a key).
+    settings = get_settings()
+    settings.check()
+    print(
+        f"Mode: {settings.overall_mode()} | store={settings.store} llm={settings.resolved_llm()} stt={settings.resolved_stt()}"
+    )
     print("🔥 Pre-warming critical services...")
 
     # Pre-warm only the most commonly used service (visualization)
@@ -131,8 +117,6 @@ async def start(request: Request):
 
 @app.post("/api/upload_pdf")
 async def upload_pdf(request: Request, file: UploadFile = File(...)):
-    # Guard: this endpoint depends on Google Cloud Storage & credentials
-    _require_gcp()
     # Get form data
     form = await request.form()
     uid = form.get("uid")
@@ -150,11 +134,12 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         with open(temp_path, "wb") as f:
             f.write(contents)
 
-        blob = storage.bucket().blob(f"{uid}/{pet}/records/{uuid.uuid4()}_{file.filename}")
-        blob.upload_from_filename(temp_path)
-        blob.make_public()
+        # Local, private blob storage with a server-generated key (replaces public GCS objects).
+        # There is no public URL; an owner-checked download route arrives with the C3 fix.
+        blob_key = new_key("records", suffix=".pdf")
+        get_blobs().put(blob_key, contents)
 
-        result = extract_text_and_summarize(temp_path, uid, pet, file.filename, blob.public_url)
+        result = extract_text_and_summarize(temp_path, uid, pet, file.filename, None, blob_key=blob_key)
 
         # Clean up temporary file
         try:
@@ -165,7 +150,7 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         if "error" in result:
             return {"error": result["error"]}
 
-        return {"message": "PDF processed", "summary": result["summary"], "url": blob.public_url}
+        return {"message": "PDF processed", "summary": result["summary"], "url": None}
 
     except Exception as e:
         # Clean up temporary file on error
@@ -1034,15 +1019,14 @@ async def test_endpoint():
     }
 
 
-@app.get("/api/health")
-async def health_check():
-    return {"status": "healthy", "services": {"firebase": "connected", "storage": "available", "api": "operational"}}
+# New-style routers (one per track). Registered before the static mount.
+app.include_router(health_router.router)
 
 
 # Serve index last to avoid route shadowing
 @app.get("/")
 async def serve_index():
-    return FileResponse(os.path.join("public", "index.html"))
+    return FileResponse(PUBLIC_DIR / "index.html")
 
 
-app.mount("/", StaticFiles(directory="public", html=True), name="static")
+app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="static")
