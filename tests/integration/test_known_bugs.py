@@ -33,10 +33,11 @@ def known_bug(finding: str, owner: str):
 def test_c1_anonymous_request_cannot_read_another_users_pets(anon_client, client_as, make_pet):
     """Fixed (C1): no token -> 401; another user's token -> no access to alice's data."""
     pet_id = make_pet("alice", "Max")
-    assert anon_client.get("/api/user-pets/alice").status_code == 401
+    assert anon_client.get("/api/me/pets").status_code == 401
     assert anon_client.get(f"/api/pets/{pet_id}/analytics").status_code == 401
     bob = client_as("bob")
-    assert bob.get("/api/user-pets/alice").status_code == 403
+    assert bob.get("/api/me/pets").json() == []
+    assert bob.get(f"/api/pets/{pet_id}").status_code == 404
     assert bob.get(f"/api/pets/{pet_id}/analytics").status_code == 404
 
 
@@ -52,7 +53,7 @@ def test_c2_two_users_with_same_pet_name_get_distinct_pets(client_as, store):
 def test_cors_does_not_reflect_an_arbitrary_origin(client):
     """Fixed (CORS): only ALLOWED_ORIGINS are echoed, and never with credentials."""
     response = client.options(
-        "/api/user-pets/x", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
+        "/api/me/pets", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
     )
     assert response.headers.get("access-control-allow-origin") not in ("https://evil.example", "*")
     assert response.headers.get("access-control-allow-credentials") != "true"
@@ -79,11 +80,9 @@ def test_c3_upload_filename_cannot_choose_write_location(client_as, store, make_
     doc.new_page().insert_text((72, 72), "Recheck in 2 weeks.")
     pet_id = make_pet("alice", "Max")
     response = client_as("alice").post(
-        "/api/upload_pdf",
-        data={"uid": "alice", "pet": pet_id},  # the owner uploading (a foreign uid is a 403 now)
-        files={"file": (filename, doc.tobytes(), "application/pdf")},
+        f"/api/pets/{pet_id}/records", files={"file": (filename, doc.tobytes(), "application/pdf")}
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert seen == {"existed_during_processing": False}
     assert not target.exists()
     [(_, record)] = store.query(f"pets/{pet_id}/records")

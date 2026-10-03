@@ -16,7 +16,7 @@ settings, generated at startup if unset). Helpers in `petpulse/core/auth.py` (Tr
 - GET  /api/pets/{pet_id}         -> Pet
 Pet = {id, name, animal_type, breed, age, weight, gender, owners, created_at}
 Seed: Alice owns "Max" (dog) and "Luna" (cat); Bob owns his own "Max". ~30 days of entries, one urgent note.
-The few pre-contract routes still mounted live in `petpulse/routers/legacy.py` and are auth+ownership protected (see Legacy routes below).
+Every route that touches a pet names it in the path; no route takes a uid or pet id from a body or query (see Removed routes below).
 
 ## Records / uploads + analytics (Track B)
 - POST /api/pets/{pet_id}/records  multipart file=PDF -> Record  (size cap, %PDF- check, server filename)
@@ -87,8 +87,8 @@ All `/api/demo/*` routes return 404 when `DEMO_MODE=false`.
   bad/expired token (`"invalid or expired token"`).
 - 404 `"pet not found"`: the pet does not exist **or** the caller is not in `owners` (same
   answer, so ids can't be probed).
-- 403: only on legacy routes that carry a uid (`/api/user-pets/{user_id}`,
-  `POST /api/pets/{user_id}`, `uid` in a body) when it is not the caller.
+- No route answers 403 for ownership: the caller is always the token's uid, and a pet the
+  caller does not own is a 404. A `uid`, `owners` or other unknown field in a create body is a 422.
 - `POST /api/pets` returns **201** with the Pet. `PetCreate` = `name` (1-60 chars),
   `animal_type` (`dog|cat|bird|rabbit|hamster|guinea-pig|fish|reptile|other`), optional `breed`
   (<=80), `age` (0-40), `weight` (0-500), `gender` (`male|female|male-neutered|female-spayed`,
@@ -148,15 +148,7 @@ Test fixtures: `client` is signed in as `alice` (the default owner for `make_pet
 - Seeded notes are written in the `Note` shape (without `id`, plus `pet_id`, `uid`, `tz`) to
   `pets/{id}/notes`, the only place notes live (typed, voice and PDF alike).
 
-### Legacy routes
-Four pre-contract routes are still mounted, in `petpulse/routers/legacy.py`, all protected:
-`POST /api/upload_pdf` and `POST /api/markdown` need `pet` owned by the caller and `uid` (if
-sent) equal to the caller; `GET /api/markdown?pet=` checks the pet; `GET /api/user-pets/{user_id}`
-and `POST /api/pets/{user_id}` need `user_id` to be the caller (403 otherwise). Each one except
-markdown has a contract replacement (`POST /api/pets/{pet_id}/records`, `GET /api/me/pets`,
-`POST /api/pets`), and the UI uses only the contract routes. Markdown is stored on the pet only.
-Errors use the shared envelope.
-
+### Removed routes
 Removed: `/api/test`, `/api/pages/invite`, `GET|POST /api/pages/{page_id}`, the
 server-microphone routes `/api/start`, `/api/start_recording`, `/api/stop_recording`,
 `/api/recording_status` (Track D, review C5), and (Track F) `POST /api/pets/{pet_id}/textinput`,
@@ -164,8 +156,11 @@ server-microphone routes `/api/start`, `/api/start_recording`, `/api/stop_record
 `GET /api/pets/{pet_id}/health_insights`, `POST /api/pets/{pet_id}/daily_routine`,
 `POST /api/pets/{pet_id}/preload`, `POST /api/pets/{pet_id}/cache/clear`,
 `GET /api/pets/{pet_id}/cache/status`, `GET /api/pets/{pet_id}/analytics/summary`,
-`GET /api/pets/{pet_id}/visualizations`, and the `{"query"}` body of `POST /api/pets/{pet_id}/chat`
-(the contract `{"message","tz"}` handler owns that path; a `query` body is a 422). The analytics
+`GET /api/pets/{pet_id}/visualizations`, the `{"query"}` body of `POST /api/pets/{pet_id}/chat`
+(the contract `{"message","tz"}` handler owns that path; a `query` body is a 422), and the last
+pre-contract routes: `POST /api/upload_pdf` (use `POST /api/pets/{pet_id}/records`),
+`GET /api/user-pets/{user_id}` (use `GET /api/me/pets`), `POST /api/pets/{user_id}` (use
+`POST /api/pets`) and `GET|POST /api/markdown` (no replacement; nothing used it). The analytics
 routes are registered once, by `petpulse/routers/analytics.py`. They answer 404 (or 405 where
 the path still exists for another method); `tests/integration/test_auth.py` asserts that.
 

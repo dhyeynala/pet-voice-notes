@@ -363,7 +363,7 @@ petpulse/
 ├── core/           # config (Settings), auth, errors, logging, deps (store/provider factories),
 │                   #   firebase, timeutil
 ├── routers/        # thin HTTP layer: health, demo, pets, records, analytics, notes,
-│                   #   assistant (chat), insights, voice, legacy (pre-contract routes kept)
+│                   #   assistant (chat), insights, voice
 ├── services/       # notes, assistant (chat), retrieval, insights, charts, events, queries,
 │                   #   voice, audio, pdf (summaries), pdf_text (page extraction), pets
 ├── llm/            # client, model config, schemas, prompts/*.v1.md, fake rules

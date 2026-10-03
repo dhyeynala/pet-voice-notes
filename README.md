@@ -142,7 +142,7 @@ pet-voice-notes/
 │   ├── app.py                # app factory: middleware, startup seed, router registration
 │   ├── core/                 # config, auth, errors, logging, deps, firebase, timeutil
 │   ├── routers/              # HTTP routes (health, demo, pets, records, analytics, notes,
-│   │                         #   assistant, insights, voice, legacy)
+│   │                         #   assistant, insights, voice)
 │   ├── services/             # notes, chat (assistant), insights, charts, voice, PDF, pets
 │   ├── llm/                  # LLM client, schemas, versioned prompts, fake rules
 │   ├── providers/            # LLM + speech-to-text providers (fake, OpenAI, Google)

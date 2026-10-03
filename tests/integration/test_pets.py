@@ -81,8 +81,8 @@ def test_pet_ids_cannot_address_other_collections(client, store):
         assert client.get(f"/api/pets/{bad}").status_code == 404
 
 
-def test_legacy_create_route_uses_uuid_ids_and_no_shared_page(client, store):
-    pet = client.post("/api/pets/alice", json={"name": "Max", "animal_type": "dog", "pageId": "default-page"}).json()["pet"]
-    assert uuid.UUID(pet["id"]).version == 4
-    assert store.get("pages/default-page") is None
-    assert store.get(f"pets/{pet['id']}")["owners"] == ["alice"]
+def test_create_refuses_a_shared_page_id(client, store):
+    """Review C2: pets were once filed under a client-chosen shared ``pageId``; now it is refused."""
+    response = client.post("/api/pets", json={"name": "Max", "animal_type": "dog", "pageId": "default-page"})
+    assert response.status_code == 422
+    assert store.get("pages/default-page") is None and store.query("pets") == []

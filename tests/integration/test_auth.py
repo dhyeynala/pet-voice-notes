@@ -112,7 +112,7 @@ PROTECTED = [r for r in _api_routes() if r not in PUBLIC_ROUTES]
 def test_inventory_is_not_empty_and_public_routes_exist():
     routes = set(_api_routes())
     assert PUBLIC_ROUTES <= routes
-    assert len(PROTECTED) >= 20
+    assert len(PROTECTED) >= 15  # 16 today: every contract route except the public four
     assert ("GET", "/api/test") not in routes
     assert not any(path.startswith("/api/pages") for _, path in routes)
     assert not routes & REMOVED_ROUTES
@@ -130,6 +130,13 @@ REMOVED_ROUTES = {
     ("GET", "/api/pets/{pet_id}/cache/status"),
     ("GET", "/api/pets/{pet_id}/analytics/summary"),
     ("GET", "/api/pets/{pet_id}/visualizations"),
+    # The last pre-contract routes (petpulse/routers/legacy.py): replaced by
+    # POST /api/pets/{pet_id}/records, GET /api/me/pets and POST /api/pets; markdown is gone.
+    ("POST", "/api/upload_pdf"),
+    ("GET", "/api/user-pets/{user_id}"),
+    ("POST", "/api/pets/{user_id}"),
+    ("GET", "/api/markdown"),
+    ("POST", "/api/markdown"),
 }
 
 
@@ -196,39 +203,47 @@ def test_owner_gets_2xx(client, make_pet, method, path, body):
     assert 200 <= response.status_code < 300, response.text
 
 
-# ---------------------------------------------------------------------------- legacy uid/pet in path/body
-def test_uid_in_path_must_be_the_caller(client):
-    assert client.get("/api/user-pets/bob").status_code == 403
-    response = client.post("/api/pets/bob", json={"name": "Rex", "animal_type": "dog"})
-    assert response.status_code == 403
-    assert response.json()["detail"] == "user id does not match the signed-in user"
+# ---------------------------------------------------------------------------- client-sent ids
+def test_no_route_takes_a_user_or_pet_id_outside_the_path():
+    """The caller comes from the token and the pet from ``/api/pets/{pet_id}``: no route reads a
+    uid, user id or pet id from the query string or the body (the old legacy-route pattern)."""
+    import petpulse.app as app_module
+
+    app_module.app.openapi_schema = None
+    schema = app_module.app.openapi()
+    components = schema.get("components", {}).get("schemas", {})
+    suspicious = {"uid", "user_id", "pet", "pet_id", "owners"}
+    found = []
+    for path, operations in schema["paths"].items():
+        assert "{user_id}" not in path, path
+        for method, operation in operations.items():
+            if (method.upper(), path) in PUBLIC_ROUTES:  # demo login takes the uid to sign in as
+                continue
+            for param in operation.get("parameters", []):
+                if param["in"] != "path" and param["name"] in suspicious:
+                    found.append(f"{method.upper()} {path} ?{param['name']}")
+            for media in operation.get("requestBody", {}).get("content", {}).values():
+                ref = media.get("schema", {}).get("$ref", "")
+                fields = components.get(ref.rsplit("/", 1)[-1], {}).get("properties", {}) if ref else {}
+                found.extend(f"{method.upper()} {path} body.{name}" for name in fields if name in suspicious)
+    assert found == []
 
 
-def test_pet_in_body_must_be_owned(client, client_as, make_pet):
+def test_a_client_sent_owner_or_uid_is_rejected_on_create(client):
+    for extra in ({"uid": "bob"}, {"owners": ["bob"]}):
+        response = client.post("/api/pets", json={"name": "Rex", "animal_type": "dog", **extra})
+        assert response.status_code == 422, extra
+
+
+def test_another_users_pet_is_404_for_uploads_and_json_bodies(client_as, make_pet, store):
+    """What the legacy ``{"uid", "pet"}`` body checks covered, on the contract routes."""
     alice_pet = make_pet("alice")
     bob = client_as("bob")
-    # POST /api/markdown names the pet in the JSON body (not a voice route: Track D removes those).
-    assert bob.post("/api/markdown", json={"uid": "bob", "pet": alice_pet, "markdown": "x"}).status_code == 404
-    assert client.post("/api/markdown", json={"uid": "bob", "pet": alice_pet, "markdown": "x"}).status_code == 403
-    assert client.post("/api/markdown", json={"uid": "alice", "markdown": "x"}).status_code == 422
-    upload = bob.post(
-        "/api/upload_pdf",
-        data={"uid": "bob", "pet": alice_pet},
-        files={"file": ("x.pdf", b"%PDF-1.4", "application/pdf")},
-    )
-    assert upload.status_code == 404
-
-
-def test_markdown_is_per_owned_pet_with_no_shared_page(client, client_as, make_pet, store):
-    alice_pet = make_pet("alice")
-    bob = client_as("bob")
-    bob_pet = make_pet("bob")
-    write = client.post("/api/markdown", json={"page": "default-page", "pet": alice_pet, "markdown": "alice secret"})
-    assert write.status_code == 200
-    assert store.get("pages/default-page") is None
-    assert bob.get("/api/markdown", params={"page": "default-page", "pet": bob_pet}).json() == {"markdown": ""}
-    assert bob.get("/api/markdown", params={"page": "default-page", "pet": alice_pet}).status_code == 404
-    assert client.get("/api/markdown", params={"pet": alice_pet}).json() == {"markdown": "alice secret"}
+    upload = bob.post(f"/api/pets/{alice_pet}/records", files={"file": ("x.pdf", b"%PDF-1.4 tiny", "application/pdf")})
+    assert upload.status_code == 404 and upload.json()["detail"] == "pet not found"
+    note = bob.post(f"/api/pets/{alice_pet}/notes", json={"text": "Bob was here."})
+    assert note.status_code == 404
+    assert store.query(f"pets/{alice_pet}/records") == [] and store.query(f"pets/{alice_pet}/notes") == []
 
 
 def test_current_user_name_comes_from_the_store(client_as, store):
