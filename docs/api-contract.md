@@ -170,3 +170,20 @@ Records and analytics routers import `require_pet_access` from `petpulse.auth` d
 temporary `_auth_bridge` and `tests/_track_b_auth.py` are gone); the route-inventory test in
 `tests/test_auth.py` reads the OpenAPI schema, so every new `/api/pets/{pet_id}/...` route is
 checked for 401 (no token) and 404 (another user's pet) automatically.
+
+---
+
+## Optional Firebase mode (Track G)
+
+Default behaviour is unchanged (demo login, local store). Details and setup: `docs/firebase.md`.
+
+- `GET /api/auth/config` (public) -> which sign-in to show:
+  `{"provider":"demo","mode":"demo","firebase":null}` or
+  `{"provider":"firebase","mode":"firebase","firebase":{"apiKey","authDomain","projectId"}}`.
+- `GET /api/health` gains `"auth": "demo"|"firebase"` and `"blobs": "local"|"firebase"`;
+  `"store"` now reports the resolved store (`"json"|"memory"|"firestore"`).
+- With `AUTH_PROVIDER` resolving to `firebase`: `Authorization: Bearer <Firebase ID token>` replaces
+  the demo token on every `/api` call (same header, same 401/404 rules; demo tokens are rejected).
+  The verified token's uid is the user id (`owners`). 503 `code: "auth_unavailable"` = token could
+  not be checked right now (do not sign out). `/api/demo/*` -> 404 `code: "demo_login_disabled"`.
+- With the Firestore store: `POST /api/demo/reset` -> 409 `code: "reset_disabled"`.

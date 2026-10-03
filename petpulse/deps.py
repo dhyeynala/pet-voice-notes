@@ -10,6 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
+from petpulse import firebase
 from petpulse.config import Settings
 from petpulse.providers.llm import FakeLLM, LLMProvider, OpenAILLM
 from petpulse.providers.stt import FakeSTT, GoogleSTT, OpenAISTT, STTProvider
@@ -29,14 +30,35 @@ def get_settings() -> Settings:
 @lru_cache(maxsize=1)
 def _build_store() -> Store:
     settings = get_settings()
-    if settings.store == "memory":
+    resolved = settings.resolved_store()
+    if resolved == "firestore":
+        return _firestore_store(settings)
+    if resolved == "memory":
         return MemoryStore()
     return JsonFileStore(settings.data_dir / "db.json")
 
 
 @lru_cache(maxsize=1)
 def _build_blobs() -> BlobStore:
-    return LocalBlobStore(get_settings().data_dir / "blobs")
+    settings = get_settings()
+    if settings.resolved_blobs() == "firebase":
+        return _firebase_blobs(settings)
+    return LocalBlobStore(settings.data_dir / "blobs")
+
+
+def _firestore_store(settings: Settings) -> Store:
+    # Lazy: firebase_admin is an optional dependency (requirements-live.txt).
+    from petpulse.store.firestore import FirestoreStore
+
+    settings.check()
+    return FirestoreStore.from_app(firebase.get_app(settings))
+
+
+def _firebase_blobs(settings: Settings) -> BlobStore:
+    from petpulse.store.firestore import FirebaseBlobStore
+
+    settings.check()
+    return FirebaseBlobStore.from_app(firebase.get_app(settings))
 
 
 def _openai_key(settings: Settings) -> str:
@@ -107,5 +129,6 @@ def override(**instances: Any) -> None:
 def reset() -> None:
     """Drop overrides and cached instances; the next call re-reads the environment."""
     _overrides.clear()
+    firebase.reset()  # never imports firebase_admin
     for factory in (get_settings, _build_store, _build_blobs, _build_llm, _build_stt):
         factory.cache_clear()

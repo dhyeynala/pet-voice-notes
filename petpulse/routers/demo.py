@@ -4,6 +4,10 @@
 - ``POST /api/demo/login``  public: ``{"uid": "alice"}`` (or ``{"name": "Sam"}`` to create a new
   demo user) -> ``{"token", "user": {"uid", "name"}}``
 - ``POST /api/demo/reset``  authenticated: wipe the store and restore the seed
+
+In Firebase sign-in mode (``AUTH_PROVIDER`` resolves to ``firebase``) all three return 404 with
+``code: "demo_login_disabled"``; with the Firestore store, reset returns 409 (``code:
+"reset_disabled"``) so a signed-in user can never wipe a real project.
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from petpulse import seed
 from petpulse.auth import current_user, issue_token
 from petpulse.config import Settings
 from petpulse.deps import get_blobs, get_settings, get_store
-from petpulse.errors import NotFoundError, UnprocessableError
+from petpulse.errors import ConflictError, NotFoundError, UnprocessableError
 from petpulse.schemas.pets import DemoLogin, DemoUser, LoginResponse, User
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore
@@ -30,6 +34,8 @@ router = APIRouter(tags=["demo"])
 def require_demo_mode(settings: Settings = Depends(get_settings)) -> None:
     if not settings.demo_mode:
         raise NotFoundError("not found")
+    if settings.resolved_auth() == "firebase":
+        raise NotFoundError("demo login is disabled: this server uses Firebase sign-in", code="demo_login_disabled")
 
 
 @router.get("/api/demo/users", response_model=list[DemoUser], dependencies=[Depends(require_demo_mode)])
@@ -77,7 +83,12 @@ def demo_login(body: DemoLogin, store: Store = Depends(get_store)) -> LoginRespo
 
 @router.post("/api/demo/reset", dependencies=[Depends(require_demo_mode)])
 def demo_reset(
-    user: User = Depends(current_user), store: Store = Depends(get_store), blobs: BlobStore = Depends(get_blobs)
+    user: User = Depends(current_user),
+    store: Store = Depends(get_store),
+    blobs: BlobStore = Depends(get_blobs),
+    settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    if settings.resolved_store() == "firestore":
+        raise ConflictError("demo reset is disabled with the Firestore store", code="reset_disabled")
     summary = seed.reset_demo_data(store, blobs=blobs)
     return {"status": "reset", "seed": summary.as_dict()}

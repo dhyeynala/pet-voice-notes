@@ -199,6 +199,10 @@ the mode of every AI feature.
 `auto`, so they switch to OpenAI when the key is present (calls are billed). See
 [.env.example](.env.example) for every setting.
 
+**Firebase (optional):** Firestore storage and Firebase sign-in work the same way:
+`STORE_BACKEND` / `AUTH_PROVIDER` default to `auto` and switch to Firebase only when its
+credentials are configured. See [docs/firebase.md](docs/firebase.md).
+
 **Run without Docker:**
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt

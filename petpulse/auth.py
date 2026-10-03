@@ -14,6 +14,10 @@ FastAPI dependencies:
 - ``require_self``        legacy ``/{user_id}`` routes: the path uid must be the caller (403)
 - ``require_body_pet_access`` / ``require_query_pet_access``  legacy routes that name the pet
   in a JSON/form body or the query string instead of the path
+
+With ``AUTH_PROVIDER`` resolving to ``firebase`` (track G), ``current_user`` accepts only Firebase
+ID tokens instead, verified with the Admin SDK (signature, expiry, audience = our project); the
+token's uid becomes ``User.uid``, so ownership checks are unchanged. Demo tokens are then rejected.
 """
 
 from __future__ import annotations
@@ -30,10 +34,17 @@ from typing import Any, Optional
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from petpulse import firebase
 from petpulse import pets as pet_records
 from petpulse.config import Settings
 from petpulse.deps import get_settings, get_store
-from petpulse.errors import ForbiddenError, NotFoundError, UnauthorizedError, UnprocessableError
+from petpulse.errors import (
+    ForbiddenError,
+    NotFoundError,
+    ServiceUnavailableError,
+    UnauthorizedError,
+    UnprocessableError,
+)
 from petpulse.schemas.pets import Pet, User
 from petpulse.store.base import Store
 
@@ -52,7 +63,7 @@ __all__ = [
 
 TOKEN_VERSION = "v1"
 _generated_secret: Optional[bytes] = None
-_bearer = HTTPBearer(auto_error=False, description="Demo token from POST /api/demo/login")
+_bearer = HTTPBearer(auto_error=False, description="Demo token from POST /api/demo/login, or a Firebase ID token")
 
 
 class InvalidToken(ValueError):
@@ -119,10 +130,36 @@ def current_user(
 ) -> User:
     if credentials is None or not credentials.credentials:
         raise UnauthorizedError("not authenticated")
+    if settings.resolved_auth() == "firebase":
+        return _firebase_user(credentials.credentials, settings, store)
     try:
         uid = verify_token(credentials.credentials, settings=settings)
     except InvalidToken:
         raise UnauthorizedError("invalid or expired token") from None
+    return User(uid=uid, name=pet_records.display_name(store, uid))
+
+
+def _firebase_user(token: str, settings: Settings, store: Store) -> User:
+    """A verified Firebase ID token -> ``User``. Creates ``users/{uid}`` on first sign-in."""
+    try:
+        claims = firebase.verify_id_token(token, settings)
+    except firebase.FirebaseTokenError:
+        raise UnauthorizedError("invalid or expired token") from None
+    except firebase.FirebaseUnavailable:
+        raise ServiceUnavailableError("sign-in cannot be verified right now", code="auth_unavailable") from None
+    uid = str(claims["uid"])
+    if not pet_records.is_valid_id(uid):
+        # Store paths can't hold it (Firebase's own uids are 28 alphanumerics, which always fit).
+        raise UnauthorizedError("invalid or expired token")
+    if pet_records.get_user(store, uid) is None:
+        email = claims.get("email")
+        pet_records.save_user(
+            store,
+            uid,
+            firebase.display_name(claims) or "PetPulse user",
+            email=email if isinstance(email, str) else "",
+            demo=False,
+        )
     return User(uid=uid, name=pet_records.display_name(store, uid))
 
 

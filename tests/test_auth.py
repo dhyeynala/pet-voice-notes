@@ -12,7 +12,12 @@ from petpulse import deps
 from petpulse.auth import InvalidToken, issue_token, verify_token
 from petpulse.config import Settings
 
-PUBLIC_ROUTES = {("GET", "/api/health"), ("GET", "/api/demo/users"), ("POST", "/api/demo/login")}
+PUBLIC_ROUTES = {
+    ("GET", "/api/health"),
+    ("GET", "/api/auth/config"),
+    ("GET", "/api/demo/users"),
+    ("POST", "/api/demo/login"),
+}
 
 
 def settings(**env: Any) -> Settings:

@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// PetPulse Cloud Storage rules (optional Firebase mode, docs/firebase.md).
+// Record PDFs live at pets/{petId}/records/{file}; the backend writes them with the Admin SDK
+// (bypasses rules) and serves them through the owner-checked API route. Clients may read only
+// the files of pets they own, and never write.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /pets/{petId}/records/{file} {
+      allow read: if request.auth != null
+        && request.auth.uid in firestore.get(/databases/(default)/documents/pets/$(petId)).data.owners;
+      allow write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
