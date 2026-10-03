@@ -26,7 +26,8 @@ test("voiceErrorMessage explains contract status codes", () => {
   assert.match(voiceErrorMessage({ status: 422 }), /No speech was detected.*nothing was saved/);
   assert.match(voiceErrorMessage({ status: 502 }), /speech-to-text service failed.*nothing was saved/);
   assert.match(voiceErrorMessage({ status: 415 }, "audio/ogg"), /audio format \(audio\/ogg\)/);
-  assert.match(voiceErrorMessage({ status: 413 }), /too large/);
+  assert.match(voiceErrorMessage({ status: 413 }), /too large or too long/);
+  assert.match(voiceErrorMessage(new ApiError(400, "unknown sample", "r2", null)), /rejected: unknown sample \(request r2\)/);
   assert.match(voiceErrorMessage(new ApiError(500, "kaput", "req-1", null)), /kaput \(request req-1\)/);
 });
 

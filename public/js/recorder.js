@@ -41,7 +41,9 @@ export function voiceErrorMessage(err, mime) {
     case 415:
       return `The server can't read this audio format${mime ? ` (${mime})` : ""}. Try another browser, or use a sample recording.`;
     case 413:
-      return "The recording is too large. Keep voice notes under a minute.";
+      return "The recording is too large or too long. Keep voice notes under a minute.";
+    case 400:
+      return `The voice note was rejected: ${describeError(err)}`;
     default:
       return `Voice note failed: ${describeError(err)}`;
   }
