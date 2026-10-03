@@ -181,3 +181,16 @@ def test_startup_fails_when_firestore_is_forced_without_credentials(monkeypatch)
     with pytest.raises(ConfigError, match="STORE_BACKEND=firestore"):
         with TestClient(api_server.app):
             pass
+
+
+def test_auth_emulator_is_refused_for_real_projects(monkeypatch, installed):
+    monkeypatch.setenv("FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9099")
+    s = make(firebase_credentials_json=SA_JSON, firebase_web_api_key=WEB_KEY)
+    with pytest.raises(ConfigError, match="FIREBASE_AUTH_EMULATOR_HOST"):
+        s.check()
+    assert "authEmulatorUrl" not in (s.firebase_web_config() or {})
+
+    demo = json.dumps({**FAKE_SERVICE_ACCOUNT, "project_id": "demo-petpulse"})
+    s = make(firebase_credentials_json=demo, firebase_web_api_key=WEB_KEY)
+    s.check()
+    assert s.firebase_web_config()["authEmulatorUrl"] == "http://127.0.0.1:9099"

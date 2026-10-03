@@ -1,7 +1,8 @@
 // public/js/api.js: the only way the frontend talks to the backend.
-// apiFetch adds the demo Bearer token, sends the user back to the login page on 401, and throws
-// ApiError (with the server's `detail`) on any non-2xx response. No uid ever goes in a URL: the
-// backend takes the user from the token.
+// apiFetch adds the Bearer token (demo token or Firebase ID token), sends the user back to the
+// login page on 401 (a Firebase session first refreshes its ID token and retries once), and
+// throws ApiError (with the server's `detail`) on any non-2xx response. No uid ever goes in a
+// URL: the backend takes the user from the token.
 
 const TOKEN_KEY = "petpulse.token";
 const USER_KEY = "petpulse.user";
@@ -31,7 +32,7 @@ export function getUser() {
   }
 }
 
-/** method: how this session signed in ("demo" today; e.g. "firebase" once that option exists). */
+/** method: how this session signed in ("demo" or "firebase"). */
 export function setSession(token, user, method) {
   sessionStorage.setItem(TOKEN_KEY, token);
   sessionStorage.setItem(USER_KEY, JSON.stringify(user || null));
@@ -49,13 +50,13 @@ export function clearSession() {
 }
 
 /**
- * Sign-in methods the server enables, from GET /api/health. Accepts health.auth.modes (array),
- * health.auth.mode or health.auth_mode (string, "a+b" or "a,b"); defaults to ["demo"] when the
- * server does not say (current backend).
+ * Sign-in methods the server enables, from GET /api/health. Accepts health.auth as a string
+ * ("demo" | "firebase", the current backend), health.auth.modes (array), health.auth.mode or
+ * health.auth_mode (string, "a+b" or "a,b"); defaults to ["demo"] when the server does not say.
  */
 export function authModes(health) {
   const auth = health && health.auth;
-  let raw = (auth && (auth.modes || auth.mode)) || (health && health.auth_mode) || null;
+  let raw = typeof auth === "string" ? auth : (auth && (auth.modes || auth.mode)) || (health && health.auth_mode) || null;
   if (typeof raw === "string") raw = raw.split(/[+,\s]+/);
   const modes = Array.isArray(raw) ? raw.map((m) => String(m).trim().toLowerCase()).filter(Boolean) : [];
   return modes.length ? [...new Set(modes)] : ["demo"];
@@ -95,6 +96,42 @@ export function errorDetail(body, status) {
 
 let redirecting = false;
 
+/**
+ * How a session gets a new token after a 401, by sign-in method. Firebase ID tokens expire after
+ * an hour, so a Firebase session asks the SDK for a fresh one; demo tokens cannot be refreshed.
+ * Tests replace entries here.
+ */
+export const tokenRefreshers = {
+  firebase: async () => {
+    const { refreshIdToken } = await import("./firebase.js");
+    return refreshIdToken();
+  },
+};
+
+let refreshing = null;
+
+/** One refresh at a time: requests that fail with 401 together share it. */
+function refreshToken() {
+  const method = getAuthMethod();
+  const refresh = tokenRefreshers[method];
+  if (!refresh || !getToken()) return Promise.resolve(null);
+  if (!refreshing) {
+    refreshing = (async () => {
+      try {
+        const token = await Promise.resolve().then(refresh); // always async, even if refresh throws
+        if (token) setSession(token, getUser(), method);
+        return token || null;
+      } catch (err) {
+        console.warn("Token refresh failed:", err);
+        return null;
+      } finally {
+        refreshing = null;
+      }
+    })();
+  }
+  return refreshing;
+}
+
 function redirectToLogin() {
   clearSession();
   const here = window.location.pathname;
@@ -106,10 +143,11 @@ function redirectToLogin() {
 /**
  * fetch() wrapper for every API call.
  * options: method, json (object -> JSON body), body (FormData etc.), query (object), raw (return the
- * Response instead of parsed JSON), auth (default true), signal.
+ * Response instead of parsed JSON), auth (default true), signal. `retried` is internal (the one
+ * retry after a token refresh).
  */
 export async function apiFetch(path, options = {}) {
-  const { method, json, body, query, raw = false, auth = true, signal } = options;
+  const { method, json, body, query, raw = false, auth = true, signal, retried = false } = options;
   const headers = { Accept: raw ? "*/*" : "application/json" };
   let payload = body;
   if (json !== undefined) {
@@ -136,6 +174,7 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (response.status === 401 && auth) {
+    if (!retried && (await refreshToken())) return apiFetch(path, { ...options, retried: true });
     redirectToLogin();
     throw new ApiError(401, "Your session has expired. Please log in again.", null, null);
   }

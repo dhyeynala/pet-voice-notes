@@ -146,8 +146,9 @@ pet-voice-notes/
 ├── firestore_store.py             # Database operations + caching
 ├── public/                         # Frontend files
 │   ├── main.html                  # Main dashboard interface
-│   ├── index.html                 # Login page
-│   └── firebase-config.js         # Firebase client config
+│   ├── index.html                 # Login page (demo picker; Firebase sign-in when enabled)
+│   ├── js/firebase.js             # Optional Firebase sign-in (config from /api/auth/config)
+│   └── vendor/                    # Vendored Chart.js, Font Awesome, Firebase JS SDK
 ├── docker-compose.yml              # Easy deployment setup
 └── requirements.txt                # Python dependencies
 ```
@@ -211,7 +212,8 @@ pytest
 ```
 
 > Auth is a demo login: `POST /api/demo/login {"uid": "alice"}` returns a bearer token for every
-> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). See
+> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). With Firebase configured
+> the login page offers Google / email sign-in instead and the Firebase ID token is the bearer token. See
 > [docs/api-contract.md](docs/api-contract.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## API Reference

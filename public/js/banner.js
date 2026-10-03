@@ -48,7 +48,10 @@ function liveProviders(health) {
 
 export function bannerText(health) {
   if (!health) return null;
-  if (health.mode === "demo") return "Demo mode: AI responses are simulated (fake provider). No data leaves this machine.";
+  if (health.mode === "demo") {
+    const cloud = health.store === "firestore" || health.auth === "firebase";
+    return `Demo mode: AI responses are simulated (fake provider). ${cloud ? "Data and sign-in use Firebase." : "No data leaves this machine."}`;
+  }
   if (health.mode === "live") return `Live AI: ${liveProviders(health)} (calls are billed)`;
   const demoFeatures = Object.entries(health.features || {})
     .filter(([, f]) => f && f.mode === "demo")

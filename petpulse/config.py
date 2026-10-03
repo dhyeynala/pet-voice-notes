@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional
@@ -249,11 +250,15 @@ class Settings(BaseSettings):
         project = self.firebase_project()
         if self.resolved_auth() != "firebase" or project is None or self.firebase_web_api_key is None:
             return None
-        return {
+        config = {
             "apiKey": self.firebase_web_api_key,
             "authDomain": self.firebase_auth_domain or f"{project}.firebaseapp.com",
             "projectId": project,
         }
+        emulator = firebase_auth_emulator()
+        if emulator and project.startswith("demo-"):
+            config["authEmulatorUrl"] = f"http://{emulator}"  # local Auth emulator (development only)
+        return config
 
     def _firebase_problems(self) -> list[str]:
         """Firebase-track checks (G). Forced Firebase without what it needs fails; auto never does."""
@@ -279,6 +284,11 @@ class Settings(BaseSettings):
                 )
             if self.firebase_web_api_key is None:
                 problems.append("AUTH_PROVIDER=firebase requires FIREBASE_WEB_API_KEY (the browser SDK needs it to sign in).")
+        emulator = firebase_auth_emulator()
+        project = self.firebase_project() or ""
+        if emulator and self.resolved_auth() == "firebase" and not project.startswith("demo-"):
+            # The Admin SDK accepts unsigned tokens when this is set; never allow it for a real project.
+            problems.append("FIREBASE_AUTH_EMULATOR_HOST is only allowed with an emulator project id (demo-*).")
         uses_firebase = self.resolved_store() == "firestore" or self.resolved_auth() == "firebase"
         if uses_firebase and not firebase_admin_installed():
             problems.append(
@@ -286,6 +296,12 @@ class Settings(BaseSettings):
                 "(Docker: INSTALL_LIVE=true docker compose build)."
             )
         return problems
+
+
+def firebase_auth_emulator() -> Optional[str]:
+    """``FIREBASE_AUTH_EMULATOR_HOST`` (``host:port``), read by the Admin SDK from the process env."""
+    value = os.environ.get("FIREBASE_AUTH_EMULATOR_HOST", "").strip()
+    return value or None
 
 
 def firebase_admin_installed() -> bool:

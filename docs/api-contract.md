@@ -179,7 +179,8 @@ Default behaviour is unchanged (demo login, local store). Details and setup: `do
 
 - `GET /api/auth/config` (public) -> which sign-in to show:
   `{"provider":"demo","mode":"demo","firebase":null}` or
-  `{"provider":"firebase","mode":"firebase","firebase":{"apiKey","authDomain","projectId"}}`.
+  `{"provider":"firebase","mode":"firebase","firebase":{"apiKey","authDomain","projectId"}}`
+  (plus `authEmulatorUrl` only for `demo-*` emulator projects). Used by `public/js/firebase.js`.
 - `GET /api/health` gains `"auth": "demo"|"firebase"` and `"blobs": "local"|"firebase"`;
   `"store"` now reports the resolved store (`"json"|"memory"|"firestore"`).
 - With `AUTH_PROVIDER` resolving to `firebase`: `Authorization: Bearer <Firebase ID token>` replaces

@@ -1,10 +1,13 @@
 // public/js/login.js: sign-in on index.html. Each method is a <section data-login-method> plus
 // an entry in LOGIN_METHODS; the page shows the methods the server enables (authModes(health)).
 // Demo: lists GET /api/demo/users, logs in with POST /api/demo/login {uid} or {name}.
+// Firebase: Google pop-up or email/password with the vendored SDK (js/firebase.js, loaded only in
+// this mode, configured from GET /api/auth/config); the ID token is the bearer token.
 // Every method ends in completeLogin(token, user, method): token in sessionStorage, open main.html.
 import { apiFetch, asList, authModes, clearSession, describeError, getToken, setSession } from "./api.js";
 import { el, icon, replaceChildren } from "./dom.js";
 import { initBanner } from "./banner.js";
+import { firebaseErrorMessage, isCancelled } from "./firebase-errors.js";
 
 const params = new URLSearchParams(window.location.search);
 const listNode = document.getElementById("demo-users");
@@ -78,8 +81,64 @@ function initDemoLogin() {
   renderUsers();
 }
 
-/** mode -> initializer. A Firebase option registers here (and adds its <section>) later. */
-const LOGIN_METHODS = { demo: initDemoLogin };
+/** Exchange a Firebase ID token for our session: GET /api/me verifies it (and creates the user). */
+async function finishFirebaseLogin(idToken) {
+  setSession(idToken, null, "firebase");
+  const me = await apiFetch("/api/me");
+  completeLogin(idToken, me, "firebase");
+}
+
+function firebaseButtons() {
+  return document.querySelectorAll("#login-firebase button");
+}
+
+async function runFirebase(action) {
+  firebaseButtons().forEach((b) => (b.disabled = true));
+  setStatus("Signing in…");
+  try {
+    const firebase = await import("./firebase.js");
+    await finishFirebaseLogin(await action(firebase));
+  } catch (err) {
+    clearSession();
+    firebaseButtons().forEach((b) => (b.disabled = false));
+    if (isCancelled(err)) return setStatus("");
+    const msg = err && err.code && String(err.code).startsWith("auth/") ? firebaseErrorMessage(err) : describeError(err);
+    setStatus(`Sign-in failed: ${msg}`, true);
+  }
+}
+
+async function initFirebaseLogin() {
+  document.getElementById("firebase-google-btn").addEventListener("click", () => runFirebase((fb) => fb.signInWithGoogle()));
+  const form = document.getElementById("firebase-email-form");
+  const submit = (create) => {
+    const email = document.getElementById("firebase-email").value.trim();
+    const password = document.getElementById("firebase-password").value;
+    if (!email || !password) return setStatus("Enter your email and password.", true);
+    runFirebase((fb) => fb.signInWithEmail(email, password, create));
+  };
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submit(false);
+  });
+  document.getElementById("firebase-register-btn").addEventListener("click", () => submit(true));
+
+  try {
+    const firebase = await import("./firebase.js");
+    const auth = await firebase.firebaseAuth();
+    if (params.get("switch") || params.get("expired")) {
+      await firebase.signOutFirebase();
+    } else if (auth.currentUser) {
+      // Still signed in to Firebase in this tab (e.g. after a reload): continue straight away.
+      await runFirebase(() => auth.currentUser.getIdToken());
+    }
+  } catch (err) {
+    firebaseButtons().forEach((b) => (b.disabled = true));
+    setStatus(`Firebase sign-in is unavailable: ${describeError(err)}`, true);
+  }
+}
+
+/** mode (from GET /api/health -> auth) -> initializer for its <section data-login-method>. */
+const LOGIN_METHODS = { demo: initDemoLogin, firebase: initFirebaseLogin };
 
 async function init() {
   const health = await initBanner();

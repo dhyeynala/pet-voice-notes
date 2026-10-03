@@ -96,9 +96,12 @@ those pets' sub-collections); new pets must be owned by their creator alone, own
 `owners`; everything else (`llm_calls`, `meta`, ...) is server-only. Storage: owners may read
 their pets' record files; clients never write.
 
-## Frontend (sign-in button)
+## Frontend
 
-`GET /api/auth/config` (public) tells the UI which login to show:
+The login page (`public/index.html`, `public/js/login.js`) reads `auth` from `GET /api/health`
+and shows the matching `<section data-login-method>`: the demo picker, or in Firebase mode
+"Continue with Google" plus email/password (sign in or create an account). The browser config
+comes from `GET /api/auth/config` (public):
 
 ```json
 {"provider": "demo", "mode": "demo", "firebase": null}
@@ -106,11 +109,28 @@ their pets' record files; clients never write.
  "firebase": {"apiKey": "...", "authDomain": "my-project.firebaseapp.com", "projectId": "my-project"}}
 ```
 
-In Firebase mode: initialise the Firebase JS SDK with `firebase`, sign in (e.g.
-`signInWithPopup(auth, new GoogleAuthProvider())`), then send
-`Authorization: Bearer <await user.getIdToken()>` on every `/api` call, exactly where the demo
-token goes today. On 401, call `getIdToken(true)` once and retry, then sign out. On 503
-`auth_unavailable`, retry later without signing out. `GET /api/me` returns `{uid, name}`.
+- The Firebase JS SDK (app + auth, 12.19.0) is vendored under `public/vendor/firebase-12.19.0/`
+  (version, source, license and sha256 in `public/vendor/README.md`) and loaded with `import()`
+  only in Firebase mode, so demo mode never downloads it. Sign-in itself talks to Google
+  (Identity Toolkit, the `authDomain` pop-up): that is inherent to Firebase and opt-in.
+- After sign-in the Firebase ID token is the bearer token (stored per tab in `sessionStorage`,
+  like the demo token, with Firebase's per-tab persistence). `GET /api/me` completes the login
+  and creates the user record.
+- Tokens last an hour: the app stores each rotated token (`onIdTokenChanged`), and on a 401 a
+  Firebase session asks the SDK for a fresh token and retries once before going back to the
+  login page (concurrent 401s share one refresh). A 503 `auth_unavailable` does not sign out.
+- Firebase sessions get only "Log out" in the user menu (switch user / reset demo data are
+  demo-only); log out also signs out of Firebase. The banner says data and sign-in use Firebase.
+
+### Trying it locally with the emulators
+
+No real project needed: with the Firebase CLI, `firebase emulators:start --only firestore,auth
+--project demo-petpulse`, then start the app with `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`,
+`FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099`, `FIREBASE_WEB_API_KEY=any-value` and a
+service-account key whose `project_id` is `demo-petpulse` (any throwaway RSA key works; the
+emulators do not check it). `/api/auth/config` then adds `authEmulatorUrl` and the browser signs
+in against the Auth emulator. `FIREBASE_AUTH_EMULATOR_HOST` makes the Admin SDK accept unsigned
+tokens, so startup refuses it unless the project id starts with `demo-`.
 
 ## Limitations
 

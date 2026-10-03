@@ -1,229 +1,69 @@
-# PetPulse Quick Start Guide
+# PetPulse Quick Start
 
-Get PetPulse running in minutes! Choose your preferred setup method:
+PetPulse runs as a **demo with zero secrets**: deterministic fake AI, a local JSON store and a
+demo login. OpenAI and Firebase are optional add-ons, each switched on just by configuring it.
 
-## Prerequisites
+## 1. Demo (no keys, no accounts)
 
-Before starting, you'll need:
-- **Python 3.8+** installed
-- **Git** installed
-- **API Keys** (see setup instructions below)
+Docker Compose v2.24+:
 
-## Method 1: Automated Setup (Recommended)
-
-### 1. Clone and Setup
 ```bash
-git clone <your-repo-url>
-cd petpulse
-python setup.py
+git clone https://github.com/dhyeynala/pet-voice-notes.git
+cd pet-voice-notes
+docker compose up --build        # http://localhost:8000
+docker compose down -v           # reset demo data
 ```
 
-### 2. Follow the Interactive Setup
-The setup script will guide you through:
-- Environment configuration
-- Firebase setup
-- Dependency installation
-- Google Cloud instructions
+Without Docker (Python 3.11):
 
-### 3. Complete Google Cloud Setup
-Follow the instructions provided by the setup script for Google Cloud configuration.
-
-### 4. Run the Application
-```bash
-uvicorn api_server:app --reload
-```
-
-## Method 2: Docker Setup
-
-### 1. Clone Repository
-```bash
-git clone <your-repo-url>
-cd petpulse
-```
-
-### 2. Configure Environment
-```bash
-# Copy and edit environment template
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-### 3. Configure Firebase
-```bash
-# Copy and edit Firebase template
-cp public/firebase-config.template.js public/firebase-config.js
-# Edit firebase-config.js with your Firebase details
-```
-
-### 4. Run with Docker
-```bash
-# Build and run with Docker Compose (recommended)
-docker compose up --build
-
-# Or run with Docker directly
-docker build -t petpulse .
-docker run -p 8000:8000 --env-file .env petpulse
-```
-
-## Method 3: Manual Setup
-
-### 1. Clone Repository
-```bash
-git clone <your-repo-url>
-cd petpulse
-```
-
-### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
+uvicorn api_server:app --reload  # http://localhost:8000 ; API docs at /docs
 ```
 
-### 3. Configure Environment
+Log in as Alice or Bob (or create a new demo user). `GET /api/health` shows the mode of every
+feature.
+
+## 2. Optional: live AI (OpenAI)
+
 ```bash
-# Copy template
 cp .env.example .env
-
-# Edit .env with your values:
-# - OpenAI API Key
-# - Google Cloud Project ID
-# - Dog/Cat API Keys (optional)
+# set OPENAI_API_KEY=... (calls are billed); providers on `auto` switch to OpenAI
 ```
 
-### 4. Configure Firebase
-```bash
-# Copy template
-cp public/firebase-config.template.js public/firebase-config.js
+Google Speech-to-Text is opt-in: `STT_PROVIDER=google` plus `GOOGLE_APPLICATION_CREDENTIALS`
+and the live extras (`pip install -r requirements-live.txt`, or
+`INSTALL_LIVE=true docker compose build`).
 
-# Edit firebase-config.js with your Firebase project details
-```
+## 3. Optional: Firebase (Firestore + Firebase sign-in)
 
-### 5. Setup Google Cloud
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable APIs: Speech-to-Text, Firebase, Storage
-4. Create service account and download JSON key
-5. Save as `gcloud-key.json` in project root
+Set `FIREBASE_CREDENTIALS_JSON` (service-account key) and `FIREBASE_WEB_API_KEY` in `.env`,
+install the live extras, and deploy `firestore.rules` / `storage.rules`. With the default
+`STORE_BACKEND=auto` / `AUTH_PROVIDER=auto` the app then uses Firestore and shows a
+"Continue with Google" / email sign-in instead of the demo picker. There is no client config
+file to edit: the browser gets its Firebase config from `GET /api/auth/config`. Full steps:
+[docs/firebase.md](docs/firebase.md).
 
-### 6. Run Application
-```bash
-uvicorn api_server:app --reload
-```
-
-## Access the Application
-
-Once running, open your browser to:
-- **Main Application**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Alternative API Docs**: http://localhost:8000/redoc
-
-## Required API Keys
-
-### 1. OpenAI API Key
-- **Get from**: https://platform.openai.com/api-keys
-- **Required for**: AI assistant, voice transcription, analytics
-- **Features**: GPT-4 function calling, text summarization, content classification
-
-### 2. Google Cloud Project
-- **Get from**: https://console.cloud.google.com/
-- **Required for**: Speech-to-Text, Firebase, Storage
-- **Cost**: Free tier available (sufficient for development)
-
-### 3. Firebase Project
-- **Get from**: https://console.firebase.google.com/
-- **Required for**: Database, Authentication, Storage
-- **Features**: Real-time database, user authentication, file storage
-
-### 4. Dog/Cat API Keys (Optional)
-- **Dog API**: https://thedogapi.com/ (free registration)
-- **Cat API**: https://thecatapi.com/ (free registration)
-- **Required for**: Breed-specific AI recommendations and insights
+`python setup.py` walks through steps 2 and 3 interactively and writes `.env`.
 
 ## Troubleshooting
 
-### Common Issues
+- **Startup fails with "Invalid PetPulse configuration"**: the message lists what is missing,
+  e.g. `LLM_PROVIDER=openai` without a key, or Firebase forced/half-configured. Fix the setting
+  or go back to `auto`.
+- **Firebase sign-in errors** ("domain not authorised", "sign-in method not enabled"): add your
+  origin under Authentication > Settings > Authorized domains and enable the provider in the
+  Firebase console.
+- **Port 8000 in use**: `uvicorn api_server:app --port 8001` (and add the origin to
+  `ALLOWED_ORIGINS`).
+- **Docker cache issues**: `docker compose build --no-cache`.
 
-#### 1. "Module not found" errors
-```bash
-# Ensure all dependencies are installed
-pip install -r requirements.txt
+## Security
 
-# For development dependencies
-pip install -r requirements-dev.txt
-```
+Never commit `.env` or any service-account key. Firebase web API keys are public config, but
+restrict them to your domains in the Google Cloud console. See [SECURITY.md](SECURITY.md).
 
-#### 2. "Google Cloud authentication failed"
-- Ensure `gcloud-key.json` is in project root
-- Check Google Cloud project ID in `.env`
-- Verify APIs are enabled in Google Cloud Console:
-  - Cloud Speech-to-Text API
-  - Firebase Admin SDK
-  - Cloud Storage API
+## Next steps
 
-#### 3. "Firebase connection failed"
-- Check Firebase config in `public/firebase-config.js`
-- Verify Firebase project is set up correctly
-- Ensure Firestore and Storage are enabled
-- Check Firebase Rules configuration
-
-#### 4. "OpenAI API key invalid"
-- Check your API key in `.env`
-- Verify you have credits in your OpenAI account
-- Ensure the key has proper permissions for GPT-4
-
-#### 5. Port already in use
-```bash
-# Check what's using port 8000
-lsof -i :8000
-
-# Use different port
-uvicorn api_server:app --port 8001
-```
-
-#### 6. Docker issues
-```bash
-# Clear Docker cache
-docker system prune
-
-# Rebuild without cache
-docker-compose build --no-cache
-```
-
-## Security Best Practices
-
-- **Never commit** `.env` file or `gcloud-key.json` to version control
-- **Rotate API keys** regularly for security
-- **Restrict Firebase API keys** to your domain in production
-- **Use environment variables** for all sensitive configuration
-- **Enable Firebase Security Rules** for production deployment
-
-## Performance Optimization
-
-### Development Mode
-- Use the caching system by preloading pet data
-- Monitor API response times in browser developer tools
-- Check cache status via `/api/pets/{pet_id}/cache/status`
-
-### Production Deployment
-- Use Docker for consistent deployment
-- Configure environment variables properly
-- Set up monitoring and logging
-- Consider using a reverse proxy (nginx) for static files
-
-## Next Steps
-
-- **Read the full [README.md](README.md)** for detailed technical architecture
-- **Review [SECURITY.md](SECURITY.md)** for security best practices
-- **Check [CONTRIBUTING.md](CONTRIBUTING.md)** if you want to contribute
-- **Explore the API** at http://localhost:8000/docs
-
-## Need Help?
-
-- **Documentation**: Check the [README.md](README.md) for detailed information
-- **Issues**: Search existing issues on GitHub before creating new ones
-- **Bugs**: Create a detailed bug report with reproduction steps
-- **Features**: Submit feature requests with clear use cases
-- **Support**: Contact maintainers for technical assistance
-
----
-
-**Start building AI-powered pet health management solutions with PetPulse!**
+[README.md](README.md) (architecture), [docs/api-contract.md](docs/api-contract.md) (API),
+[CONTRIBUTING.md](CONTRIBUTING.md) (development).
