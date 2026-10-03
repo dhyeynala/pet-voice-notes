@@ -257,3 +257,52 @@ def test_reset_needs_a_clearable_store():
 
     with pytest.raises(NotImplementedError):
         seed.reset_demo_data(Bare())  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------- sample PDF record
+def test_seed_adds_one_summarized_record_for_alices_max(seeded, blobs):
+    alice = seeded("alice")
+    records = alice.get(f"/api/pets/{ALICE_MAX_ID}/records").json()
+    assert len(records) == 1
+    record = records[0]
+    assert record["filename"] == seed.SAMPLE_RECORD_FILENAME
+    assert record["status"] == "summarized" and record["summary"]
+    assert record["pages"] == 1
+    assert record["created_at"] < datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+
+    file = alice.get(f"/api/pets/{ALICE_MAX_ID}/records/{record['id']}/file")
+    assert file.status_code == 200 and file.content.startswith(b"%PDF-")
+    assert alice.get(f"/api/pets/{ALICE_LUNA_ID}/records").json() == []
+
+    bob = seeded("bob")
+    assert bob.get(f"/api/pets/{ALICE_MAX_ID}/records").status_code == 404
+    assert bob.get(f"/api/pets/{ALICE_MAX_ID}/records/{record['id']}/file").status_code == 404
+
+
+def test_reset_replaces_the_record_and_deletes_old_files(seeded, store, blobs):
+    alice = seeded("alice")
+    first = alice.get(f"/api/pets/{ALICE_MAX_ID}/records").json()[0]
+    old_key = store.get(f"pets/{ALICE_MAX_ID}/records/{first['id']}")["blob_key"]
+    assert blobs.exists(old_key)
+
+    summary = alice.post("/api/demo/reset").json()["seed"]
+    assert summary["records"] == 1
+    after = alice.get(f"/api/pets/{ALICE_MAX_ID}/records").json()
+    assert len(after) == 1 and after[0]["id"] != first["id"]
+    assert not blobs.exists(old_key)
+    new_key = store.get(f"pets/{ALICE_MAX_ID}/records/{after[0]['id']}")["blob_key"]
+    assert blobs.exists(new_key)
+
+
+def test_no_sample_record_without_blobs_or_with_a_live_llm(monkeypatch, blobs):
+    store = MemoryStore()
+    assert seed.seed_demo_data(store, now=NOW).records == 0
+    assert store.query(f"pets/{ALICE_MAX_ID}/records") == []
+
+    monkeypatch.setattr(seed, "_llm_is_fake", lambda: False)
+    assert seed.seed_demo_data(MemoryStore(), now=NOW, blobs=blobs).records == 0
+
+
+def test_sample_record_pdf_is_small_and_synthetic():
+    data = seed.sample_record_pdf()
+    assert data.startswith(b"%PDF-") and len(data) < 5_000

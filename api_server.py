@@ -136,7 +136,7 @@ async def startup_event():
 async def load_demo_seed():
     """Load the demo seed into an empty store (SEED_ON_START=true, the default)."""
     if get_settings().seed_on_start:
-        seed.seed_if_empty(get_store())
+        seed.seed_if_empty(get_store(), blobs=get_blobs())
 
 
 @app.post("/api/start", dependencies=BODY_PET_ACCESS)

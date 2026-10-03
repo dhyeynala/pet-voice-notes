@@ -18,10 +18,11 @@ from petpulse import pets as pet_records
 from petpulse import seed
 from petpulse.auth import current_user, issue_token
 from petpulse.config import Settings
-from petpulse.deps import get_settings, get_store
+from petpulse.deps import get_blobs, get_settings, get_store
 from petpulse.errors import NotFoundError, UnprocessableError
 from petpulse.schemas.pets import DemoLogin, DemoUser, LoginResponse, User
 from petpulse.store.base import Store
+from petpulse.store.blobs import BlobStore
 
 router = APIRouter(tags=["demo"])
 
@@ -75,6 +76,8 @@ def demo_login(body: DemoLogin, store: Store = Depends(get_store)) -> LoginRespo
 
 
 @router.post("/api/demo/reset", dependencies=[Depends(require_demo_mode)])
-def demo_reset(user: User = Depends(current_user), store: Store = Depends(get_store)) -> dict[str, Any]:
-    summary = seed.reset_demo_data(store)
+def demo_reset(
+    user: User = Depends(current_user), store: Store = Depends(get_store), blobs: BlobStore = Depends(get_blobs)
+) -> dict[str, Any]:
+    summary = seed.reset_demo_data(store, blobs=blobs)
     return {"status": "reset", "seed": summary.as_dict()}

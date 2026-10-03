@@ -120,8 +120,15 @@ Test fixtures: `client` is signed in as `alice` (the default owner for `make_pet
 ### Seed
 - Loaded at startup when `SEED_ON_START=true` (default) and the store has no users and no
   pets; never touches a non-empty store. `POST /api/demo/reset` (any signed-in user) wipes the
-  whole store and reseeds; response `{"status":"reset","seed":{"version","users","pets","analytics","notes"}}`.
-  Tokens stay valid across a reset. Blobs (uploaded PDFs) are not deleted by a reset.
+  whole store and reseeds; response
+  `{"status":"reset","seed":{"version","users","pets","analytics","notes","records"}}`.
+  Tokens stay valid across a reset. A reset first deletes the blob of every stored record
+  (uploads included), then wipes the store.
+- One sample vet-record PDF for Alice's Max (`maple-street-vet-visit.pdf`, a one-page synthetic
+  note made with PyMuPDF, dated day -12 like the seeded vet-visit exit event), written through
+  `petpulse.routers.records.create_record`, so it is stored and summarized like an upload. It is
+  only seeded while the LLM resolves to the fake (no billed call at startup); with a live key
+  `seed.records` is 0.
 - Fixed uuid4 pet ids, so a reset keeps ids stable: Alice's Max
   `638452ec-3d34-4f2c-8d6b-5765533e2287`, Alice's Luna `72949cb3-b5b3-4ac1-aa47-8a9e4dc8c268`,
   Bob's Max `ade67093-1441-48e3-802f-5dcd551135b0` (`petpulse.seed.demo_data`).
@@ -142,5 +149,13 @@ pet in a body/form (`/api/upload_pdf`, `/api/start`, `/api/start_recording`,
 `/api/stop_recording`, `POST /api/markdown`) need `pet` owned by the caller and `uid` (if sent)
 equal to the caller; `GET /api/markdown?pet=` checks the pet; `/api/recording_status` needs a
 token. Removed: `/api/test`, `/api/pages/invite`, `GET|POST /api/pages/{page_id}`. Markdown is
-stored on the pet only (`page` is ignored). Their bodies still return some errors as
-`{"error": ...}` with 200; owners of those bodies should switch to `petpulse.errors`.
+stored on the pet only (`page` is ignored). Their bodies raise `HTTPException` (Track B
+converted the old `{"error": ...}`-with-200 bodies), so errors use the shared envelope.
+`POST /api/pets/{pet_id}/analytics/{category}` and `GET /api/pets/{pet_id}/analytics` exist both
+as legacy routes and in `petpulse/routers/analytics.py`; the legacy ones are registered first and
+delegate to the router, both carry the pet-access check.
+
+Records and analytics routers import `require_pet_access` from `petpulse.auth` directly (the
+temporary `_auth_bridge` and `tests/_track_b_auth.py` are gone); the route-inventory test in
+`tests/test_auth.py` reads the OpenAPI schema, so every new `/api/pets/{pet_id}/...` route is
+checked for 401 (no token) and 404 (another user's pet) automatically.
