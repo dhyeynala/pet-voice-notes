@@ -154,12 +154,16 @@ def test_demo_login_endpoints_are_disabled(fb_client):
     assert fb_client("tok-alice").post("/api/demo/reset").status_code == 404
 
 
-def test_client_sent_uid_is_never_trusted(fb_client, make_pet):
+def test_client_sent_uid_is_never_trusted(fb_client, make_pet, store):
+    """The verified Firebase uid is the caller: Bob can't reach Alice's pet, and a uid or
+    owner list in a create body is refused instead of trusted."""
     pet_id = make_pet("alice")
-    # A body uid that is not the verified caller is refused (legacy route).
-    as_bob = fb_client("tok-bob").post("/api/markdown", json={"uid": "alice", "pet": pet_id, "content": "x"})
-    assert as_bob.status_code in (403, 404)
-    assert fb_client("tok-bob").get("/api/user-pets/alice").status_code == 403
+    bob = fb_client("tok-bob")
+    assert bob.get(f"/api/pets/{pet_id}").status_code == 404
+    assert bob.post(f"/api/pets/{pet_id}/notes", json={"text": "x"}).status_code == 404
+    created = bob.post("/api/pets", json={"name": "Rex", "animal_type": "dog", "uid": "alice"})
+    assert created.status_code == 422
+    assert [p["name"] for p in fb_client("tok-alice").get("/api/me/pets").json()] == ["Max"]
 
 
 NON_DEMO = [r for r in PROTECTED if not r[1].startswith("/api/demo/")]  # demo routes 404 first (above)

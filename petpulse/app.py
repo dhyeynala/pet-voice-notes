@@ -22,14 +22,14 @@ from petpulse import __version__, seed
 from petpulse.core import errors
 from petpulse.core.deps import get_blobs, get_settings, get_store
 from petpulse.core.logging import configure_logging
-from petpulse.routers import analytics, assistant, demo, health, insights, legacy, notes, pets, records, voice
+from petpulse.routers import analytics, assistant, demo, health, insights, notes, pets, records, voice
 
 PUBLIC_DIR = Path(__file__).resolve().parents[1] / "public"
 
 # Registration order. Every /api route except /api/health, /api/auth/config, /api/demo/users and
 # /api/demo/login needs a bearer token (petpulse.core.auth); routes that touch a pet also check
-# that the caller owns it. ``legacy`` holds the pre-contract routes kept for old clients.
-ROUTERS = (health, demo, pets, records, analytics, notes, assistant, insights, voice, legacy)
+# that the caller owns it.
+ROUTERS = (health, demo, pets, records, analytics, notes, assistant, insights, voice)
 
 logger = logging.getLogger("petpulse.app")
 

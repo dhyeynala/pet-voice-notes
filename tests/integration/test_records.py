@@ -303,19 +303,3 @@ def test_list_records_newest_first_including_legacy_rows(client, store, alice_pe
         "status": "summarized",
         "created_at": "2025-01-01T00:00:00",
     }
-
-
-def test_legacy_upload_route_delegates_to_the_safe_path(client_as, store, make_pet):
-    pet_id = make_pet("alice", "Max")
-    client = client_as("alice")
-    bad = client.post(
-        "/api/upload_pdf", data={"uid": "alice", "pet": pet_id}, files={"file": ("x.pdf", b"not a pdf", "application/pdf")}
-    )
-    assert bad.status_code == 415
-    missing = client.post(
-        "/api/upload_pdf",
-        data={"uid": "alice", "pet": "no-such-pet"},
-        files={"file": ("x.pdf", make_pdf(), "application/pdf")},
-    )
-    assert missing.status_code == 404
-    assert store.query(f"pets/{pet_id}/records") == []

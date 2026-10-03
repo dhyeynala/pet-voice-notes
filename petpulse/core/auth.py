@@ -11,9 +11,9 @@ FastAPI dependencies:
 
 - ``current_user``        -> ``User`` or 401
 - ``require_pet_access``  -> ``Pet`` or 404 (404, not 403, so pet ids can't be probed)
-- ``require_self``        legacy ``/{user_id}`` routes: the path uid must be the caller (403)
-- ``require_body_pet_access`` / ``require_query_pet_access``  legacy routes that name the pet
-  in a JSON/form body or the query string instead of the path
+
+Every route that touches a pet names it in the path (``/api/pets/{pet_id}/...``); no route
+takes a uid or a pet id from a body or query string.
 
 With ``AUTH_PROVIDER`` resolving to ``firebase`` (track G), ``current_user`` accepts only Firebase
 ID tokens instead, verified with the Admin SDK (signature, expiry, audience = our project); the
@@ -31,20 +31,14 @@ import secrets
 import time
 from typing import Any, Optional
 
-from fastapi import Depends, Request
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from petpulse.core import firebase
 from petpulse.services import pets as pet_records
 from petpulse.core.config import Settings
 from petpulse.core.deps import get_settings, get_store
-from petpulse.core.errors import (
-    ForbiddenError,
-    NotFoundError,
-    ServiceUnavailableError,
-    UnauthorizedError,
-    UnprocessableError,
-)
+from petpulse.core.errors import NotFoundError, ServiceUnavailableError, UnauthorizedError
 from petpulse.schemas.pets import Pet, User
 from petpulse.store.base import Store
 
@@ -54,10 +48,7 @@ __all__ = [
     "User",
     "current_user",
     "issue_token",
-    "require_body_pet_access",
     "require_pet_access",
-    "require_query_pet_access",
-    "require_self",
     "verify_token",
 ]
 
@@ -173,48 +164,3 @@ def load_owned_pet(store: Store, user: User, pet_id: str) -> Pet:
 def require_pet_access(pet_id: str, user: User = Depends(current_user), store: Store = Depends(get_store)) -> Pet:
     """For routes with a ``{pet_id}`` path parameter: the pet, if the caller owns it."""
     return load_owned_pet(store, user, pet_id)
-
-
-def require_self(user_id: str, user: User = Depends(current_user)) -> User:
-    """Legacy ``/{user_id}`` routes: the uid in the path must be the signed-in user."""
-    if user_id != user.uid:
-        raise ForbiddenError("user id does not match the signed-in user")
-    return user
-
-
-async def _request_fields(request: Request) -> dict[str, Any]:
-    content_type = request.headers.get("content-type", "")
-    if content_type.startswith(("multipart/form-data", "application/x-www-form-urlencoded")):
-        form = await request.form()
-        return {key: value for key, value in form.items() if isinstance(value, str)}
-    try:
-        data = await request.json()
-    except ValueError:
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-async def require_body_pet_access(
-    request: Request, user: User = Depends(current_user), store: Store = Depends(get_store)
-) -> Pet:
-    """Legacy routes that send ``{"uid", "pet"}`` in a JSON or form body.
-
-    ``pet`` must be a pet the caller owns (404); ``uid``, if sent, must be the caller (403).
-    """
-    fields = await _request_fields(request)
-    uid = fields.get("uid")
-    if uid not in (None, "") and uid != user.uid:
-        raise ForbiddenError("uid does not match the signed-in user")
-    pet_id = fields.get("pet")
-    if not isinstance(pet_id, str) or not pet_id:
-        raise UnprocessableError("pet is required")
-    return load_owned_pet(store, user, pet_id)
-
-
-def require_query_pet_access(
-    pet: Optional[str] = None, user: User = Depends(current_user), store: Store = Depends(get_store)
-) -> Optional[Pet]:
-    """Legacy routes with an optional ``?pet=`` query parameter."""
-    if pet is None or pet == "":
-        return None
-    return load_owned_pet(store, user, pet)

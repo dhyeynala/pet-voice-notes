@@ -59,6 +59,7 @@ DELETED = (
     "requirements-live.txt",
     "requirements-live.in",
     "petpulse/store/firestore_compat.py",
+    "petpulse/routers/legacy.py",
     "petpulse/samples",
     *(f"petpulse/{m}.py" for m in ("config", "auth", "errors", "deps", "firebase", "timeutil", "pets", "audio")),
     # Review C5: recording happens in the browser; the server never opens a microphone.
@@ -77,7 +78,7 @@ STALE = re.compile(
     r")\b"
     r"|petpulse/(config|auth|errors|deps|firebase|timeutil|pets|audio)\.py"
     r"|petpulse\.(config|auth|errors|deps|firebase|timeutil|pets|audio)\b"
-    r"|petpulse/samples|petpulse\.samples|tests/test_\w+"
+    r"|petpulse/samples|petpulse\.samples|tests/test_\w+|routers/legacy\.py|routers\.legacy\b"
 )
 
 
