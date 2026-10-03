@@ -100,6 +100,14 @@ jobs:
           done
           docker logs petpulse
           exit 1
+      - name: Demo login as Alice sees the seeded pets; anonymous is 401
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/me/pets)
+          [ "$code" = "401" ] || { echo "::error::anonymous /api/me/pets returned $code"; exit 1; }
+          token=$(curl -fsS -X POST http://localhost:8000/api/demo/login -H 'Content-Type: application/json' \
+            -d '{"uid":"alice"}' | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+          curl -fsS http://localhost:8000/api/me/pets -H "Authorization: Bearer $token" \
+            | python3 -c "import json,sys; p=json.load(sys.stdin); n=sorted(x['name'] for x in p); assert n==['Luna','Max'], p; print(n)"
       - name: Container healthcheck turns healthy
         run: |
           for i in $(seq 1 40); do
