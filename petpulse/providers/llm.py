@@ -6,8 +6,10 @@ registry, schemas and the validating client in ``petpulse.llm`` are built on top
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Optional, Protocol, runtime_checkable
 
@@ -205,7 +207,10 @@ class OpenAILLM:
         self.max_retries = max_retries
         self.base_url = base_url
         self._http_client = http_client
-        self._async: Any = None
+        # One AsyncOpenAI client per event loop: its httpx pool holds connections bound to the
+        # loop that opened them, so a client must never outlive (or cross into) another loop.
+        # Weak keys, so a closed loop and its client are dropped together.
+        self._clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, Any] = weakref.WeakKeyDictionary()
 
     def _client_kwargs(self) -> dict[str, Any]:
         kwargs: dict[str, Any] = {"api_key": self._api_key, "timeout": self.timeout, "max_retries": self.max_retries}
@@ -214,14 +219,18 @@ class OpenAILLM:
         return kwargs
 
     def _async_client(self) -> Any:
-        if self._async is None:
+        """The client for the running loop (``asyncio.run`` per call, a TestClient portal, uvicorn)."""
+        loop = asyncio.get_running_loop()
+        client = self._clients.get(loop)
+        if client is None:
             import openai  # lazy
 
             kwargs = self._client_kwargs()
-            if self._http_client is not None:
+            if self._http_client is not None:  # tests only: a mocked, loop-independent transport
                 kwargs["http_client"] = self._http_client
-            self._async = openai.AsyncOpenAI(**kwargs)
-        return self._async
+            client = openai.AsyncOpenAI(**kwargs)
+            self._clients[loop] = client
+        return client
 
     def build_request(
         self, *, task: str, system: str, user: str, schema: dict[str, Any], temperature: float, max_tokens: int
