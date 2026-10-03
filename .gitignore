@@ -6,6 +6,14 @@
 
 # Google Cloud service account key
 gcloud-key.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+
+# Firebase CLI / emulators
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # Python
 __pycache__/

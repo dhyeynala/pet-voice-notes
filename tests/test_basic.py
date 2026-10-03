@@ -130,7 +130,8 @@ class TestBasicFunctionality:
     def test_template_files(self):
         """Test that template files exist for user configuration."""
         assert os.path.exists(".env.example")
-        assert os.path.exists("public/firebase-config.template.js")
+        # Firebase web config is served by GET /api/auth/config; no client config file/template.
+        assert not os.path.exists("public/firebase-config.template.js")
 
 
 # Simple smoke tests that test module structure without importing
@@ -160,7 +161,7 @@ def test_server_microphone_path_is_gone():
 
 def test_no_sensitive_files():
     """Test that no sensitive files are accidentally included."""
-    sensitive_files = [".env", "gcloud-key.json", "firebase-config.js"]  # Should only have the template
+    sensitive_files = [".env", "gcloud-key.json", "firebase-config.js"]
 
     for sensitive_file in sensitive_files:
         if sensitive_file == "firebase-config.js":

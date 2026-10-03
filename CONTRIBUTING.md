@@ -90,13 +90,10 @@ cd petpulse
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # Development dependencies
 
-# Setup environment
+# Optional: live settings (the demo needs no .env at all)
 cp .env.example .env
-# Edit .env with your API keys
-
-# Setup Firebase
-cp public/firebase-config.template.js public/firebase-config.js
-# Edit firebase-config.js with your Firebase details
+# OPENAI_API_KEY for live AI; Firebase settings per docs/firebase.md
+# (Firebase also needs: pip install -r requirements-live.txt)
 
 # Run development server
 uvicorn api_server:app --reload

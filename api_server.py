@@ -119,7 +119,8 @@ async def startup_event():
     settings = get_settings()
     settings.check()
     print(
-        f"Mode: {settings.overall_mode()} | store={settings.store} llm={settings.resolved_llm()} stt={settings.resolved_stt()}"
+        f"Mode: {settings.overall_mode()} | store={settings.resolved_store()} auth={settings.resolved_auth()} "
+        f"llm={settings.resolved_llm()} stt={settings.resolved_stt()}"
     )
     print("🔥 Pre-warming critical services...")
 
@@ -136,8 +137,12 @@ async def startup_event():
 
 @app.on_event("startup")
 async def load_demo_seed():
-    """Load the demo seed into an empty store (SEED_ON_START=true, the default)."""
-    if get_settings().seed_on_start:
+    """Load the demo seed into an empty store (SEED_ON_START=true, the default).
+
+    Skipped under Firebase sign-in: the seeded owners are demo logins nobody could use there.
+    """
+    settings = get_settings()
+    if settings.seed_on_start and settings.resolved_auth() == "demo":
         seed.seed_if_empty(get_store(), blobs=get_blobs())
 
 

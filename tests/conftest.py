@@ -36,6 +36,15 @@ DEMO_ENV = {
     "SEED_ON_START": "false",
     "DOG_API_KEY": "",
     "CAT_API_KEY": "",
+    # Firebase mode off: no credentials, so STORE_BACKEND/AUTH_PROVIDER=auto resolve to local/demo.
+    "STORE_BACKEND": "auto",
+    "AUTH_PROVIDER": "auto",
+    "FIREBASE_PROJECT_ID": "",
+    "FIREBASE_CREDENTIALS_JSON": "",
+    "FIREBASE_STORAGE_BUCKET": "",
+    "FIREBASE_WEB_API_KEY": "",
+    "FIREBASE_AUTH_DOMAIN": "",
+    "FIREBASE_AUTH_EMULATOR_HOST": "",
 }
 
 

@@ -146,8 +146,9 @@ pet-voice-notes/
 ├── firestore_store.py             # Database operations + caching
 ├── public/                         # Frontend files
 │   ├── main.html                  # Main dashboard interface
-│   ├── index.html                 # Login page
-│   └── firebase-config.js         # Firebase client config
+│   ├── index.html                 # Login page (demo picker; Firebase sign-in when enabled)
+│   ├── js/firebase.js             # Optional Firebase sign-in (config from /api/auth/config)
+│   └── vendor/                    # Vendored Chart.js, Font Awesome, Firebase JS SDK
 ├── docker-compose.yml              # Easy deployment setup
 └── requirements.txt                # Python dependencies
 ```
@@ -199,6 +200,10 @@ the mode of every AI feature.
 `auto`, so they switch to OpenAI when the key is present (calls are billed). See
 [.env.example](.env.example) for every setting.
 
+**Firebase (optional):** Firestore storage and Firebase sign-in work the same way:
+`STORE_BACKEND` / `AUTH_PROVIDER` default to `auto` and switch to Firebase only when its
+credentials are configured. See [docs/firebase.md](docs/firebase.md).
+
 **Run without Docker:**
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
@@ -207,7 +212,8 @@ pytest
 ```
 
 > Auth is a demo login: `POST /api/demo/login {"uid": "alice"}` returns a bearer token for every
-> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). See
+> other `/api` call (Alice owns Max and Luna, Bob owns a different Max). With Firebase configured
+> the login page offers Google / email sign-in instead and the Firebase ID token is the bearer token. See
 > [docs/api-contract.md](docs/api-contract.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## API Reference

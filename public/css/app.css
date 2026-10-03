@@ -156,3 +156,5 @@ body.login-page .demo-banner { position: fixed; top: 0; left: 0; right: 0; }
 .new-user-row input { flex: 1; padding: 10px 12px; border: 2px solid #e1e8ed; border-radius: 10px; font-size: 0.95rem; }
 .btn-new-user { padding: 10px 16px; border: none; border-radius: 10px; background: #667eea; color: white; font-weight: 600; cursor: pointer; }
 .btn-new-user:disabled { opacity: 0.6; }
+.firebase-row { margin-top: 8px; }
+.btn-new-user.btn-secondary { background: #e2e8f0; color: #2c3e50; }

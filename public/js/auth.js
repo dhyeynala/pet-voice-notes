@@ -1,5 +1,6 @@
-// public/js/auth.js: demo session on main.html (token in sessionStorage), the user menu with
-// log out, quick "switch user" and "reset demo data".
+// public/js/auth.js: the session on main.html (token in sessionStorage), the user menu with
+// log out, and (demo sessions only) quick "switch user" and "reset demo data". A Firebase session
+// keeps its stored ID token fresh and signs out of Firebase on log out.
 import { apiFetch, asList, clearSession, getAuthMethod, getToken, getUser, setSession, describeError } from "./api.js";
 import { el, icon, replaceChildren, showNotification } from "./dom.js";
 import { state } from "./state.js";
@@ -22,9 +23,30 @@ export async function refreshMe() {
   return me;
 }
 
-export function logout() {
+export async function logout() {
+  const firebase = getAuthMethod() === "firebase";
   clearSession();
+  if (firebase) {
+    try {
+      await (await import("./firebase.js")).signOutFirebase();
+    } catch (err) {
+      console.warn("Firebase sign-out failed:", err);
+    }
+  }
   window.location.replace("/");
+}
+
+/** Firebase sessions: store each rotated ID token so API calls never send an expired one. */
+export async function keepTokenFresh() {
+  if (getAuthMethod() !== "firebase") return;
+  try {
+    const { watchIdToken } = await import("./firebase.js");
+    await watchIdToken((token) => {
+      if (getToken()) setSession(token, getUser(), "firebase");
+    });
+  } catch (err) {
+    console.warn("Could not start Firebase token refresh:", err);
+  }
 }
 
 export async function switchUser(uid) {

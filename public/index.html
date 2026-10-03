@@ -192,8 +192,8 @@
     <p class="subtitle">Your pet's health journey, recorded and organized with AI-powered insights</p>
 
     <!-- One <section data-login-method="..."> per sign-in method; js/login.js shows the ones the
-         server enables (GET /api/health -> auth). Demo is the default; a Firebase section can be
-         added next to it without changing the demo flow. -->
+         server enables (GET /api/health -> auth). Demo is the default; Firebase appears only when
+         the server is configured for it (docs/firebase.md). -->
     <section id="login-demo" class="login-method" data-login-method="demo" hidden>
       <h2 style="font-size: 1rem; color: #2c3e50; margin-bottom: 14px;">Choose a demo user</h2>
       <div id="demo-users" class="demo-users" aria-live="polite"></div>
@@ -209,6 +209,29 @@
         Demo login: no password. Each user only sees their own pets. Log in as Alice, then switch to Bob
         to see that Alice's pets are hidden from him.
       </p>
+    </section>
+    <section id="login-firebase" class="login-method" data-login-method="firebase" hidden>
+      <h2 style="font-size: 1rem; color: #2c3e50; margin-bottom: 14px;">Sign in</h2>
+      <div class="demo-users">
+        <button id="firebase-google-btn" type="button" class="google-btn">
+          <i class="fab fa-google"></i>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+      <form id="firebase-email-form" class="new-user-form">
+        <label for="firebase-email">Or use your email and password:</label>
+        <div class="new-user-row firebase-row">
+          <input id="firebase-email" type="email" maxlength="254" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="new-user-row firebase-row">
+          <input id="firebase-password" type="password" minlength="6" maxlength="128" placeholder="Password" autocomplete="current-password" required>
+        </div>
+        <div class="new-user-row firebase-row">
+          <button type="submit" class="btn-new-user">Sign in</button>
+          <button id="firebase-register-btn" type="button" class="btn-new-user btn-secondary">Create account</button>
+        </div>
+      </form>
+      <p class="login-note">Signed in with Firebase. Each account only sees its own pets.</p>
     </section>
     <p id="login-status" class="login-status" role="status" hidden></p>
 

@@ -1,6 +1,6 @@
-// public/js/main.js: entry point for main.html. Requires a demo session, renders the banner and
+// public/js/main.js: entry point for main.html. Requires a session, renders the banner and
 // user menu, wires every module's event handlers, then loads the user's pets.
-import { requireSession, refreshMe, renderUserMenu } from "./auth.js";
+import { keepTokenFresh, requireSession, refreshMe, renderUserMenu } from "./auth.js";
 import { initBanner } from "./banner.js";
 import { initNav, handleHashNavigation } from "./nav.js";
 import { initPets, loadPets } from "./pets.js";
@@ -17,6 +17,7 @@ import { showNotification, updateCharacterCount } from "./dom.js";
 
 async function boot() {
   if (!requireSession()) return;
+  keepTokenFresh(); // Firebase sessions only; demo tokens do not rotate
 
   initNav();
   initPets();
