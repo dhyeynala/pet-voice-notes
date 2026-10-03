@@ -40,12 +40,15 @@ def test_app_structure():
 
 
 def test_requirements_file():
-    """Test that requirements.txt is readable and contains expected packages."""
+    """requirements.txt is a pinned lock of the base (demo + live) runtime."""
     with open("requirements.txt", "r") as f:
-        content = f.read()
-        assert "fastapi" in content.lower()
-        assert "openai" in content.lower()
-        assert "firebase-admin" in content.lower()
+        content = f.read().lower()
+    assert "fastapi==" in content
+    assert "openai==" in content  # shipped in base, imported lazily
+    for removed in ("pandas", "numpy", "pyaudio", "firebase-admin"):
+        assert f"\n{removed}==" not in content, f"{removed} should not be a base dependency"
+    pins = [line for line in content.splitlines() if line and not line.startswith(("#", " "))]
+    assert pins and all("==" in line for line in pins), "every base requirement must be pinned"
 
 
 def test_readme_exists():
@@ -128,7 +131,7 @@ class TestBasicFunctionality:
 
     def test_template_files(self):
         """Test that template files exist for user configuration."""
-        assert os.path.exists(".env.template")
+        assert os.path.exists(".env.example")
         assert os.path.exists("public/firebase-config.template.js")
 
 
