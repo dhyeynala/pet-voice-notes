@@ -30,7 +30,7 @@ from petpulse.auth import (  # noqa: E402
     require_query_pet_access,
     require_self,
 )
-from petpulse.deps import get_blobs, get_settings, get_store  # noqa: E402
+from petpulse.deps import get_blobs, get_llm, get_settings, get_store  # noqa: E402
 from petpulse.routers import analytics as analytics_router  # noqa: E402
 from petpulse.routers import assistant as assistant_router  # noqa: E402
 from petpulse.routers import demo as demo_router  # noqa: E402
@@ -857,8 +857,20 @@ async def get_cache_status(pet_id: str):
 
 
 @app.post("/api/pets/{pet_id}/chat", dependencies=PET_ACCESS)
-async def chat_with_assistant(pet_id: str, request: Request):
-    """Chat with AI Assistant using Intelligent RAG with Smart Visualization"""
+async def chat_with_assistant(
+    pet_id: str,
+    request: Request,
+    user=Depends(current_user),
+    pet=Depends(require_pet_access),
+    store=Depends(get_store),
+    llm=Depends(get_llm),
+):
+    """Chat. A contract body ``{"message", "tz"}`` goes to the grounded assistant (Track C,
+    ``petpulse.routers.assistant``); the legacy body ``{"query"}`` still reaches the legacy
+    intelligent chatbot until the cleanup PR removes this handler."""
+    payload = await request.json()
+    if isinstance(payload, dict) and "message" in payload:
+        return await assistant_router.chat_from_payload(pet_id, payload, user, pet, store, llm)
     try:
         intelligent_chatbot_service = get_intelligent_chatbot_service()
 

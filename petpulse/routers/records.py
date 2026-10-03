@@ -21,7 +21,6 @@ import logging
 import re
 import unicodedata
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
@@ -168,14 +167,25 @@ async def create_record(
 def create_record_sync(
     store: Store, blobs: BlobStore, pet_id: str, data: bytes, filename: Optional[str], **kwargs: Any
 ) -> dict[str, Any]:
-    """``create_record`` for synchronous callers (the demo seed), with or without a running loop."""
+    """``create_record`` for synchronous callers (the demo seed).
+
+    Outside an event loop it simply runs the coroutine. Inside one (seeding at app startup) it
+    must not block on a thread: the seed holds the store's batch lock. There it drives the
+    coroutine inline, which works for providers that never suspend (the fake one, the only
+    provider the seed uses) and raises otherwise.
+    """
     coro = create_record(store, blobs, pet_id, data, filename, **kwargs)
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
-    with ThreadPoolExecutor(max_workers=1) as pool:  # called from inside an event loop
-        return pool.submit(asyncio.run, coro).result()
+    try:
+        coro.send(None)
+    except StopIteration as done:
+        result: dict[str, Any] = done.value
+        return result
+    coro.close()
+    raise RuntimeError("create_record_sync inside an event loop needs a non-suspending provider; await create_record")
 
 
 def _reject_oversized_body(request: Request) -> None:

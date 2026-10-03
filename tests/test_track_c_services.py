@@ -385,3 +385,16 @@ def test_page_citations_outside_the_document_are_rejected():
         addressed_to_model=False,
     )
     assert page_problems(summary, 2) == ["findings.0.pages: [3] not in 1..2"]
+
+
+@pytest.mark.parametrize(
+    "transcript,urgent",
+    [
+        ("Max vomited twice this morning and there was some blood.", True),  # voice sample vomiting_blood
+        ("Max had his usual thirty minute walk and finished all of his dinner.", False),  # walk_and_dinner
+        ("Gave Max his heartworm pill with breakfast this morning.", False),  # heartworm_pill
+    ],
+)
+def test_voice_sample_transcripts_drive_the_urgent_banner(transcript, urgent):
+    note = run(process_note(PET, "alice", transcript, "voice", "UTC", store=MemoryStore(), llm=FakeLLM()))
+    assert note.urgent is urgent and note.status == "processed"

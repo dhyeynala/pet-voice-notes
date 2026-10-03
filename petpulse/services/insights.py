@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal, Optional, Sequence
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from petpulse.services.events import Event, EventLoad
 from petpulse.services.queries import energy_level, exercise_minutes
@@ -37,6 +37,23 @@ class Fact(BaseModel):
     window_days: Optional[int]
     evidence: list[str]
 
+    # Display fields for the UI (``{text, level}``), derived from the values above.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def text(self) -> str:
+        if self.value is None:
+            shown = "no data"
+        else:
+            number = int(self.value) if float(self.value).is_integer() else self.value
+            shown = f"{number} {self.unit}"
+        window = f" (last {self.window_days} days)" if self.window_days else ""
+        return f"{self.label}{window}: {shown}"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def level(self) -> str:
+        return "info"
+
 
 class Alert(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -45,6 +62,16 @@ class Alert(BaseModel):
     severity: Severity
     message: str
     evidence: list[str]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def text(self) -> str:
+        return self.message
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def level(self) -> str:
+        return self.severity
 
 
 class Insights(BaseModel):

@@ -1,8 +1,8 @@
 """Track C routes (API contract): notes, chat and insights. Owner gets 2xx, another user 404,
 no credentials 401; bad input 422; a provider outage on chat is 503, never an invented reply.
 
-Auth is the auth track's; these tests use the stand-ins in ``tests/_track_b_auth`` (keyed on
-the objects the routers depend on, so they keep working once ``petpulse.auth`` lands).
+Auth is the real ``petpulse.auth``: ``client`` is signed in as alice (who owns ``make_pet()``
+pets), ``anon_client`` has no token, ``client_as("bob")`` is another user.
 """
 
 from __future__ import annotations
@@ -12,8 +12,6 @@ from typing import Any
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from tests._track_b_auth import as_user, install_fake_auth, seed_pets
 
 NOTE_KEYS = {
     "id",
@@ -33,29 +31,30 @@ NOTE_KEYS = {
 
 
 @pytest.fixture
-def pets(app, store):
-    install_fake_auth(app, store)
-    return seed_pets(store)
+def pets(make_pet):
+    return make_pet("alice"), make_pet("bob")
 
 
 @pytest.fixture
-def chat_client(store, fake_llm, pets):
+def chat_app(app, store, fake_llm):
     """The contract chat route on its own: in ``api_server`` the legacy handler still matches first."""
     from petpulse import deps
     from petpulse.routers import assistant
-    from petpulse.routers import _auth_bridge as bridge
 
-    app = FastAPI()
-    app.include_router(assistant.router)
-    real = TestClient(app)
-    install_fake_auth(app, store)
-    app.dependency_overrides.update({deps.get_store: lambda: store, deps.get_llm: lambda: fake_llm})
-    assert bridge.current_user in app.dependency_overrides
-    return real
+    chat = FastAPI()
+    chat.include_router(assistant.router)
+    chat.dependency_overrides.update({deps.get_store: lambda: store, deps.get_llm: lambda: fake_llm})
+    return chat
 
 
-def post_note(client: TestClient, pet: str, text: str, uid: str = "alice", **extra: Any) -> Any:
-    return client.post(f"/api/pets/{pet}/notes", json={"text": text, **extra}, headers=as_user(uid))
+def as_user(uid: str) -> dict[str, str]:
+    from petpulse.auth import issue_token
+
+    return {"Authorization": f"Bearer {issue_token(uid)}"}
+
+
+def post_note(client: TestClient, pet: str, text: str, **extra: Any) -> Any:
+    return client.post(f"/api/pets/{pet}/notes", json={"text": text, **extra})
 
 
 def test_post_note_returns_201_with_the_contract_shape(client, pets, store):
@@ -71,12 +70,12 @@ def test_list_notes_newest_first_with_limit(client, pets):
     alice_pet, _ = pets
     for text in ("First walk of the day.", "Second walk of the day.", "Third walk of the day."):
         assert post_note(client, alice_pet, text).status_code == 201
-    response = client.get(f"/api/pets/{alice_pet}/notes?limit=2", headers=as_user("alice"))
+    response = client.get(f"/api/pets/{alice_pet}/notes?limit=2")
     assert response.status_code == 200 and [n["text"] for n in response.json()] == [
         "Third walk of the day.",
         "Second walk of the day.",
     ]
-    assert client.get(f"/api/pets/{alice_pet}/notes?limit=0", headers=as_user("alice")).status_code == 422
+    assert client.get(f"/api/pets/{alice_pet}/notes?limit=0").status_code == 422
 
 
 @pytest.mark.parametrize(
@@ -85,7 +84,7 @@ def test_list_notes_newest_first_with_limit(client, pets):
 )
 def test_bad_note_input_is_422(client, pets, body):
     alice_pet, _ = pets
-    response = client.post(f"/api/pets/{alice_pet}/notes", json=body, headers=as_user("alice"))
+    response = client.post(f"/api/pets/{alice_pet}/notes", json=body)
     assert response.status_code == 422
 
 
@@ -97,34 +96,27 @@ def test_bad_note_input_is_422(client, pets, body):
         ("get", "/api/pets/{pet}/insights", None),
     ],
 )
-def test_owner_only(client, pets, method, path, body):
+def test_owner_only(client, anon_client, client_as, pets, method, path, body):
     alice_pet, _ = pets
     url = path.format(pet=alice_pet)
     kwargs = {"json": body} if body is not None else {}
-    assert getattr(client, method)(url, **kwargs).status_code == 401
-    assert getattr(client, method)(url, headers=as_user("bob"), **kwargs).status_code == 404
-    assert getattr(client, method)(url, headers=as_user("alice"), **kwargs).status_code in (200, 201)
-
-
-def test_routes_fail_closed_without_the_auth_module(client, store):
-    seed_pets(store)  # no fake auth installed: the bridge's stand-ins answer 401
-    from petpulse.routers import _auth_bridge as bridge
-
-    if bridge.current_user.__module__ != bridge.__name__:
-        pytest.skip("petpulse.auth exists; covered by the auth track's route inventory")
-    assert client.get("/api/pets/pet-alice-max/notes", headers=as_user("alice")).status_code == 401
+    assert getattr(anon_client, method)(url, **kwargs).status_code == 401
+    assert getattr(client_as("bob"), method)(url, **kwargs).status_code == 404
+    assert getattr(client, method)(url, **kwargs).status_code in (200, 201)
 
 
 def test_insights_are_computed_with_mode(client, pets):
     alice_pet, _ = pets
     post_note(client, alice_pet, "He vomited blood this morning.")
-    body = client.get(f"/api/pets/{alice_pet}/insights?tz=America/New_York", headers=as_user("alice")).json()
+    body = client.get(f"/api/pets/{alice_pet}/insights?tz=America/New_York").json()
     assert set(body) == {"facts", "alerts", "headline", "mode"} and body["mode"] == "demo"
-    assert body["alerts"][0]["severity"] == "urgent"
-    assert client.get(f"/api/pets/{alice_pet}/insights?tz=Bad/Zone", headers=as_user("alice")).status_code == 422
+    assert body["alerts"][0]["severity"] == body["alerts"][0]["level"] == "urgent"
+    assert all(isinstance(item["text"], str) and item["level"] for item in body["alerts"] + body["facts"])
+    assert "Notes (last 7 days): 1 notes" in [fact["text"] for fact in body["facts"]]
+    assert client.get(f"/api/pets/{alice_pet}/insights?tz=Bad/Zone").status_code == 422
 
 
-def test_contract_chat_route(chat_client, pets, store):
+def test_contract_chat_route(chat_app, pets, store):
     alice_pet, bob_pet = pets
     store.set(
         f"pets/{alice_pet}/notes/n1",
@@ -144,30 +136,38 @@ def test_contract_chat_route(chat_client, pets, store):
         },
     )
     url = f"/api/pets/{alice_pet}/chat"
-    response = chat_client.post(url, json={"message": "Why was he limping?", "tz": "UTC"}, headers=as_user("alice"))
+    chat_client = TestClient(chat_app, headers=as_user("alice"))
+    response = chat_client.post(url, json={"message": "Why was he limping?", "tz": "UTC"})
     assert response.status_code == 200, response.text
     body = response.json()
     assert set(body) == {"answer", "status", "citations", "chart", "mode"} and body["status"] == "answered"
     assert body["citations"][0]["id"] == "n1" and body["citations"][0]["date"] == "2026-09-30"
-    assert chat_client.post(url, json={"message": "hi"}).status_code == 401
-    assert chat_client.post(f"/api/pets/{bob_pet}/chat", json={"message": "hi"}, headers=as_user("alice")).status_code == 404
-    assert chat_client.post(url, json={"query": "old shape"}, headers=as_user("alice")).status_code == 422
+    assert TestClient(chat_app).post(url, json={"message": "hi"}).status_code == 401
+    bob_client = TestClient(chat_app, headers=as_user("bob"))
+    assert bob_client.post(url, json={"message": "hi"}).status_code == 404
+    assert chat_client.post(f"/api/pets/{bob_pet}/chat", json={"message": "hi"}).status_code == 404
+    assert chat_client.post(url, json={"query": "old shape"}).status_code == 422
 
 
-def test_chat_outage_is_503(chat_client, pets, store, fake_llm):
+def test_chat_outage_is_503(chat_app, pets, store, fake_llm):
     alice_pet, _ = pets
     store.set(f"pets/{alice_pet}/notes/n1", {"text": "He was limping.", "created_at": "2026-09-30T12:00:00Z"})
     fake_llm.fail = True
-    response = chat_client.post(
-        f"/api/pets/{alice_pet}/chat", json={"message": "Why was he limping?"}, headers=as_user("alice")
+    response = TestClient(chat_app, headers=as_user("alice")).post(
+        f"/api/pets/{alice_pet}/chat", json={"message": "Why was he limping?"}
     )
     assert response.status_code == 503
 
 
-def test_legacy_chat_handler_still_answers_in_the_app(client, pets):
-    """Known collision: the legacy ``POST .../chat`` (body ``{"query"}``) is registered first and
-    still answers in ``api_server``. Deleting it (cleanup PR) activates the contract route; flip
-    this test then."""
+def test_app_chat_dispatches_contract_and_legacy_bodies(client, anon_client, client_as, pets, store):
+    """The legacy handler still owns ``POST .../chat``: ``{"message"}`` (the contract, used by the
+    new UI) goes to the grounded assistant; ``{"query"}`` still reaches the legacy chatbot."""
     alice_pet, _ = pets
-    response = client.post(f"/api/pets/{alice_pet}/chat", json={"message": "hi"}, headers=as_user("alice"))
-    assert "citations" not in response.json()
+    url = f"/api/pets/{alice_pet}/chat"
+    contract = client.post(url, json={"message": "Has he had a seizure?", "tz": "America/New_York"})
+    assert contract.status_code == 200 and set(contract.json()) == {"answer", "status", "citations", "chart", "mode"}
+    assert contract.json()["status"] == "not_in_records"
+    assert client.post(url, json={"message": "hi", "extra": 1}).status_code == 422
+    assert anon_client.post(url, json={"message": "hi"}).status_code == 401
+    assert client_as("bob").post(url, json={"message": "hi"}).status_code == 404
+    assert "citations" not in client.post(url, json={"query": "How is Max?"}).json()
