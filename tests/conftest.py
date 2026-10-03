@@ -33,8 +33,6 @@ DEMO_ENV = {
     "GOOGLE_APPLICATION_CREDENTIALS": "",
     "AUTH_SECRET": "",
     "SEED_ON_START": "false",
-    "DOG_API_KEY": "",
-    "CAT_API_KEY": "",
     # Firebase mode off: no credentials, so STORE_BACKEND/AUTH_PROVIDER=auto resolve to local/demo.
     "STORE_BACKEND": "auto",
     "AUTH_PROVIDER": "auto",

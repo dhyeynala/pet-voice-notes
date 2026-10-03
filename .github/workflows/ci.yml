@@ -130,6 +130,15 @@ jobs:
           exit 1
       - name: Smoke script runs in the image (fakes)
         run: docker run --rm petpulse:ci python scripts/smoke_live.py --allow-fake --report-dir /tmp/smoke
+      - name: docker compose reads .env.example as written (no comment becomes a value)
+        # `cp .env.example .env` is the documented first step, and Compose's env_file parser is
+        # not python-dotenv: an inline comment would become the value (live smoke regression).
+        run: |
+          cp .env.example .env
+          docker compose run --rm --no-deps app python -c "import os, sys; bad = sorted(k for k, v in os.environ.items() if v.strip().startswith('#')); sys.exit(('comment read as a value: ' + ', '.join(bad)) if bad else 0)"
+          docker compose run --rm --no-deps app python -c "from petpulse.core.config import Settings; s = Settings(); s.check(); print('config ok, mode', s.overall_mode())"
+          docker compose run --rm --no-deps app python scripts/smoke_live.py --dry-run
+          rm .env
       - name: Stop
         if: always()
         run: if docker inspect petpulse >/dev/null 2>&1; then docker rm -f petpulse; fi

@@ -15,9 +15,9 @@ help:
 	@echo "make run               run the API + UI on http://localhost:8000 (uvicorn petpulse.app:app)"
 	@echo "make test              pytest (tests/unit, tests/integration) + JS tests (tests/js)"
 	@echo "make lint              black, flake8, mypy, bandit, detect-secrets (what CI runs)"
-	@echo "make smoke-live        live smoke test in the app image (reads .env; capped by LIVE_CALL_CAP)"
+	@echo "make smoke-live        live smoke test in the app image (rebuilds it; reads .env via compose; capped by LIVE_CALL_CAP)"
 	@echo "make smoke-live-dry    show providers, models and the call cap; makes no calls"
-	@echo "make smoke-live-local  same as smoke-live, with the local Python environment"
+	@echo "make smoke-live-local  same as smoke-live without Docker (local Python env; reads .env directly)"
 	@echo "make smoke-fake        run the smoke script against the deterministic fakes (what CI does)"
 	@echo "make samples           regenerate bundled audio/PDF samples (needs espeak-ng + ffmpeg)"
 
@@ -40,7 +40,7 @@ lint:
 
 smoke-live:
 	mkdir -p reports
-	$(COMPOSE) run --rm --no-deps --user "$$(id -u):$$(id -g)" -v "$$(pwd)/reports:/app/reports" $(DOCKER_RUN_ARGS) \
+	$(COMPOSE) run --rm --no-deps --build --user "$$(id -u):$$(id -g)" -v "$$(pwd)/reports:/app/reports" $(DOCKER_RUN_ARGS) \
 		app python scripts/smoke_live.py $(SMOKE_ARGS)
 
 smoke-live-dry:
