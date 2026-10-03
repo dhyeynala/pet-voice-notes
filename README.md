@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
-  <img src="assets/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" width="600" height="auto">
+  <img src="docs/images/login-hero.png" alt="PetPulse login – Google sign-in with feature highlights" width="600" height="auto">
 </p>
 
 ## The Problem
@@ -33,7 +33,7 @@ The AI assistant can answer questions like "When did I first mention Max being t
 - **Multi-Pet Support**: Track multiple pets with shared family access
 
 <p align="center">
-  <img src="assets/assistant-dashboard.png" alt="PetPulse – AI Health Assistant with access to notes, PDFs, and tracking data" width="600" height="auto">
+  <img src="docs/images/assistant-dashboard.png" alt="PetPulse – AI Health Assistant with access to notes, PDFs, and tracking data" width="600" height="auto">
 </p>
 
 ## Technical Challenges I Solved
@@ -54,7 +54,7 @@ You notice something on your phone but want to analyze trends on your computer. 
 
 **Backend Stack:**
 - **FastAPI**: Async Python web framework with automatic OpenAPI docs
-- **PyAudio**: Real-time audio capture for voice recording
+- **Browser MediaRecorder**: voice notes are recorded in the browser and uploaded
 - **Google Speech-to-Text**: Enterprise speech recognition with 95%+ accuracy
 - **OpenAI GPT-4**: Content classification, summarization, and function calling
 - **Firebase**: Firestore (NoSQL database) + Auth + Storage
@@ -138,50 +138,57 @@ Firebase handles multiple users automatically, which simplified development. I d
 
 ```
 pet-voice-notes/
-├── api_server.py                    # Main FastAPI application
-├── intelligent_chatbot_service.py   # AI chat with function calling
-├── simple_rag_service.py           # RAG system for breed-specific info
-├── visualization_service.py        # Chart generation logic
-├── petpulse/providers/stt.py       # Speech-to-text (FakeSTT, OpenAI, Google)
-├── firestore_store.py             # Database operations + caching
-├── public/                         # Frontend files
-│   ├── main.html                  # Main dashboard interface
-│   ├── index.html                 # Login page (demo picker; Firebase sign-in when enabled)
-│   ├── js/firebase.js             # Optional Firebase sign-in (config from /api/auth/config)
-│   └── vendor/                    # Vendored Chart.js, Font Awesome, Firebase JS SDK
-├── docker-compose.yml              # Easy deployment setup
-└── requirements.txt                # Python dependencies
+├── petpulse/                 # the backend (FastAPI): uvicorn petpulse.app:app
+│   ├── app.py                # app factory: middleware, startup seed, router registration
+│   ├── core/                 # config, auth, errors, logging, deps, firebase, timeutil
+│   ├── routers/              # HTTP routes (health, demo, pets, records, analytics, notes,
+│   │                         #   assistant, insights, voice, legacy)
+│   ├── services/             # notes, chat (assistant), insights, charts, voice, PDF, pets
+│   ├── llm/                  # LLM client, schemas, versioned prompts, fake rules
+│   ├── providers/            # LLM + speech-to-text providers (fake, OpenAI, Google)
+│   ├── store/                # Store interface: local JSON / in-memory / Firestore, blob stores
+│   ├── schemas/              # request/response models
+│   └── seed/                 # demo data and bundled audio/PDF samples
+├── public/                   # the UI (index.html login, main.html dashboard, js/, vendored libs)
+├── tests/
+│   ├── unit/                 # modules and services, no HTTP
+│   ├── integration/          # the app over HTTP, scripts, the entry points
+│   └── js/                   # node:test tests for public/js
+├── evals/                    # note-extraction eval cases, gold labels, scorer
+├── scripts/                  # smoke_live.py (live/fake smoke test), make_samples.py
+├── docs/                     # quick-start, api-contract, firebase, live-smoke, images/
+├── requirements/             # base.txt, dev.txt, live.txt (pinned locks; *.in are the sources)
+├── Dockerfile, docker-compose.yml, Makefile, pyproject.toml, .env.example
+└── firestore.rules, storage.rules, firebase.json   # Firebase rules (optional Firebase mode)
 ```
 
-I split the logic across multiple service files to keep related functionality together. The main API routes are in `api_server.py`, while each service handles specific features like AI chat or visualizations.
+`petpulse/app.py` holds no route bodies: each feature has a router in `petpulse/routers/` that
+stays thin and calls a service in `petpulse/services/`. Storage and AI providers come from
+`petpulse/core/deps.py`, so every feature runs on deterministic fakes in demo mode.
 
 ## Data Structure
 
-Firebase uses collections and documents instead of traditional database tables. Here's how I organized the data:
+The same paths are used by the local JSON store and by Firestore:
 
 ```
 users/{userId}
-  └── pets: [list of pet IDs they can access]
+  └── name, email, demo, created_at
 
 pets/{petId}
-  ├── name, breed, age (basic pet info)
-  ├── voice-notes/{noteId} 
-  │   ├── transcript: "Max seems tired today..."
-  │   ├── summary: "Potential energy level concern" 
-  │   ├── classification: "MEDICAL" | "DAILY_ACTIVITY" | "MIXED"
-  │   ├── confidence: 0.85
-  │   └── timestamp
-  ├── textinput/{inputId} - typed notes with AI analysis
-  ├── records/{recordId} - uploaded PDF documents  
-  └── analytics/{entryId} - structured health tracking
-       ├── category: "diet" | "exercise" | "energy" | "medication"
-       ├── level: 1-5 rating scale
-       ├── source: "voice_input" | "text_input" | "manual_entry"
-       ├── summary: AI-generated insights
-       └── timestamp
+  ├── name, animal_type, breed, age, weight, gender, owners: [userId, ...]
+  ├── notes/{noteId}         - typed, voice and PDF notes (source: "text" | "voice" | "pdf")
+  │   ├── text, summary, kind, urgent, needs_review
+  │   ├── red_flags: [{flag, status, sentences}], observations: [...]
+  │   └── created_at, tz, mode: "demo" | "live"
+  ├── records/{recordId}     - uploaded vet-record PDFs (summary, pages, status)
+  └── analytics/{entryId}    - structured tracking from the dashboard forms
+       ├── category: "diet" | "exercise" | "medication" | "energy_levels" | ...
+       └── category fields, timestamp
 ```
 
-Each voice note gets processed by AI to extract health information and categorize it. The analytics collection stores structured data for visualization and trend analysis.
+Each note is processed once (`petpulse.services.notes.process_note`) to extract observations
+and red flags. Chat answers and insights are computed from these notes and analytics entries,
+with citations back to the records they came from.
 
 ## Getting Started
 
@@ -206,9 +213,9 @@ credentials are configured. See [docs/firebase.md](docs/firebase.md).
 
 **Run without Docker:**
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-uvicorn api_server:app --reload
-pytest
+pip install -r requirements/base.txt -r requirements/dev.txt   # or: make install
+uvicorn petpulse.app:app --reload                                 # or: make run
+pytest                                                            # or: make test
 ```
 
 > Auth is a demo login: `POST /api/demo/login {"uid": "alice"}` returns a bearer token for every
@@ -218,23 +225,27 @@ pytest
 
 ## API Reference
 
-FastAPI generates interactive documentation at `http://localhost:8000/docs`. Here are the core endpoints I built:
+FastAPI generates interactive documentation at `http://localhost:8000/docs`; the full contract is
+in [docs/api-contract.md](docs/api-contract.md). Every `/api` route except health, auth config and
+the demo login needs a bearer token, and every pet route checks that the caller owns the pet.
 
-**Voice & Text Input:**
+**Sign-in & pets:**
+- `POST /api/demo/login` - Demo login (`{"uid": "alice"}`) returns a bearer token
+- `GET /api/me/pets` - The caller's pets; `POST /api/pets` creates one
+
+**Voice & notes:**
 - `POST /api/pets/{pet_id}/voice-notes` - Upload a browser recording (`audio`, webm/ogg/mp4/wav) or a bundled `sample_id`; transcribe and store it as a note
 - `GET /api/voice/samples` - Bundled sample recordings (work without a microphone)
-- `POST /api/pets/{pet_id}/textinput` - Add typed notes with AI classification
+- `POST /api/pets/{pet_id}/notes` - Add a typed note; `GET` lists notes
 
-**AI & Analytics:**
-- `POST /api/pets/{pet_id}/chat` - Natural language queries with chart generation
-- `GET /api/pets/{pet_id}/analytics` - Structured health tracking data
-- `GET /api/pets/{pet_id}/visualizations` - Chart generation from text queries
-- `GET /api/pets/{pet_id}/health_insights` - AI health analysis and recommendations
+**Assistant & analytics:**
+- `POST /api/pets/{pet_id}/chat` - Questions answered from the pet's records, with citations
+- `GET /api/pets/{pet_id}/insights` - Facts and alerts computed from notes and analytics
+- `POST /api/pets/{pet_id}/analytics/{category}`, `GET /api/pets/{pet_id}/analytics` - Structured tracking data
 
-**Document & Data Management:**
-- `POST /api/upload_pdf` - Upload and analyze veterinary documents
-- `GET /api/user-pets/{user_id}` - List user's pets
-- `POST /api/pets/{user_id}` - Create new pet profile
+**Vet records:**
+- `POST /api/pets/{pet_id}/records` - Upload a PDF; it is summarized and stored
+- `GET /api/pets/{pet_id}/records`, `GET /api/pets/{pet_id}/records/{record_id}/file`
 
 **System:**
 - `GET /api/health` - Health check and per-feature Demo/Live mode
@@ -243,29 +254,16 @@ FastAPI generates interactive documentation at `http://localhost:8000/docs`. Her
 
 **Local Development:**
 ```bash
-# Install development dependencies
-pip install -r requirements.txt
-pip install pytest flake8 black mypy
-
-# Run with hot reload
-uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
-
-# Code quality checks
-flake8 .
-black .
-mypy .
-
-# Run tests
-pytest tests/
+make install     # pip install -r requirements/base.txt -r requirements/dev.txt
+make run         # uvicorn petpulse.app:app --reload (http://localhost:8000)
+make test        # pytest (tests/unit, tests/integration) + node --test tests/js/*.test.mjs
+make lint        # black --check, flake8, mypy (strict, petpulse/), bandit, detect-secrets
+make smoke-fake  # python scripts/smoke_live.py --allow-fake (what CI runs)
 ```
 
-**Docker Deployment:**
+**Docker:**
 ```bash
-# Development
-docker-compose up --build
-
-# Production
-docker-compose -f docker-compose.prod.yml up -d
+docker compose up --build
 ```
 
 **Testing API Endpoints:**
@@ -273,12 +271,18 @@ docker-compose -f docker-compose.prod.yml up -d
 # Health check
 curl http://localhost:8000/api/health
 
-# Voice note from a bundled sample (needs a demo token: POST /api/demo/login)
+# Demo token for Alice, then her pets
+TOKEN=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"uid":"alice"}' \
+  http://localhost:8000/api/demo/login | python -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/me/pets
+
+# Voice note from a bundled sample
 curl -X POST -H "Authorization: Bearer $TOKEN" -F sample_id=vomiting_blood -F tz=America/New_York \
   http://localhost:8000/api/pets/$PET_ID/voice-notes
 
-# Test PDF upload
-curl -X POST -F "file=@test.pdf" http://localhost:8000/api/upload_pdf
+# Ask the assistant
+curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"message":"Why was he limping?","tz":"America/New_York"}' http://localhost:8000/api/pets/$PET_ID/chat
 ```
 
 ## Performance & Metrics

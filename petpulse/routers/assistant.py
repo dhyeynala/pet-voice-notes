@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
-from petpulse.deps import get_llm, get_store
+from petpulse.core.deps import get_llm, get_store
 from petpulse.providers.llm import LLMProvider
-from petpulse.auth import current_user, require_pet_access
+from petpulse.core.auth import current_user, require_pet_access
 from petpulse.services.assistant import MAX_MESSAGE_CHARS, AssistantUnavailable, ChatResponse, answer_question
 from petpulse.store.base import Store
 
@@ -34,15 +34,6 @@ async def run_chat(pet_id: str, body: ChatRequest, user: Any, pet: Any, store: S
         raise HTTPException(
             status_code=503, detail=f"the assistant is unavailable ({exc.reason}); nothing was invented"
         ) from exc
-
-
-async def chat_from_payload(pet_id: str, payload: Any, user: Any, pet: Any, store: Store, llm: LLMProvider) -> ChatResponse:
-    """Contract chat for a raw JSON body (used by the legacy handler that still owns the path)."""
-    try:
-        body = ChatRequest.model_validate(payload)
-    except ValidationError as exc:
-        raise HTTPException(status_code=422, detail="body must be {\"message\": str, \"tz\": str}") from exc
-    return await run_chat(pet_id, body, user, pet, store, llm)
 
 
 @router.post("/api/pets/{pet_id}/chat", response_model=ChatResponse)

@@ -11,8 +11,8 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from petpulse import __version__
-from petpulse.config import Settings
-from petpulse.deps import get_settings
+from petpulse.core.config import Settings
+from petpulse.core.deps import get_settings
 
 router = APIRouter(tags=["health"])
 

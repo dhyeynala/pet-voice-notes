@@ -61,3 +61,10 @@ test("pages and modules load nothing from third-party hosts", () => {
     assert.doesNotMatch(read("js", f), /\bimport\b[^;]*["']https?:/, `${f} imports a remote module`);
   }
 });
+
+test("no module calls a removed legacy route", () => {
+  const removed = /["'`/](visualizations|knowledge_search|assistant_summary|health_insights|daily_routine|textinput|preload|upload_pdf|user-pets)["'`/]|cache\/(clear|status)|analytics\/summary/;
+  for (const f of jsFiles) {
+    assert.doesNotMatch(read("js", f), removed, `${f} still calls a removed route`);
+  }
+});

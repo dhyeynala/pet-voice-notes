@@ -1,6 +1,6 @@
 # PetPulse demo image: starts with zero secrets (fake AI providers, local JSON store).
 #   docker compose up                                  # demo
-#   INSTALL_LIVE=true docker compose build             # adds optional Google STT deps
+#   INSTALL_LIVE=true docker compose build             # adds optional Google STT + Firebase deps (requirements/live.txt)
 FROM python:3.11-slim
 
 ARG INSTALL_LIVE=false
@@ -14,9 +14,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Pinned, wheel-only dependencies: no compilers, no portaudio.
-COPY requirements.txt requirements-live.txt ./
-RUN pip install --only-binary=:all: -r requirements.txt \
-    && if [ "$INSTALL_LIVE" = "true" ]; then pip install --only-binary=:all: -r requirements-live.txt -c requirements.txt; fi
+COPY requirements/base.txt requirements/live.txt requirements/
+RUN pip install --only-binary=:all: -r requirements/base.txt \
+    && if [ "$INSTALL_LIVE" = "true" ]; then pip install --only-binary=:all: -r requirements/live.txt -c requirements/base.txt; fi
 
 # Non-root user. Code stays root-owned (read-only for the app); only data/ is writable.
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app \
@@ -33,4 +33,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).status == 200 else 1)"]
 
-CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "petpulse.app:app", "--host", "0.0.0.0", "--port", "8000"]

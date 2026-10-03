@@ -25,31 +25,32 @@ stepping on each other.
 
 | Track | Plan items | Owns (creates / edits / deletes) |
 |---|---|---|
-| **A. auth/data** | D1-1 backend, D1-2, D1-3, D1-4 backend | `petpulse/auth.py`, `petpulse/errors.py`, `petpulse/pets.py`, `petpulse/seed/`, `petpulse/routers/{demo,pets}.py`, `petpulse/schemas/pets.py`, `firestore_store.py`, the CORS/errors block in `api_server.py`, `_auth_headers` in `tests/conftest.py` |
-| **B. bug fixes** | D2-1, D2-2, D2-3, D2-5, D2-6 | `visualization_service.py`, `pdf_parser.py`, `petpulse/routers/records.py`, `petpulse/schemas/analytics.py`, `petpulse/store/blobs.py`, the H2 fallback lines in `summarize_openai.py` / `ai_analytics.py` / `api_server.py` (`health_insights`), the C4 hotfix lines in `simple_rag_service.py` / `intelligent_chatbot_service.py` |
-| **C. LLM layer** | D4-*, D5-*, D7-1 (LLM part) | `petpulse/llm/**`, `petpulse/schemas/llm.py`, `petpulse/services/**`, `petpulse/timeutil.py`, `petpulse/providers/llm.py`, `evals/**`; deletes `summarize_openai.py`, `ai_analytics.py`, `simple_rag_service.py`, `intelligent_chatbot_service.py` once replaced (and `LLMProvider.legacy_chat` with them) |
-| **D. voice** | D3-2, D3-3, D7-1 (STT part) | `petpulse/providers/stt.py`, `petpulse/routers/voice.py`, `petpulse/samples/audio/**`; deleted the server-microphone path (`transcribe.py`, `main.py`, `gcloud_auth.py` and the `/api/start*`, `/api/stop_recording`, `/api/recording_status` routes) |
+| **A. auth/data** | D1-1 backend, D1-2, D1-3, D1-4 backend | `petpulse/core/{auth,errors}.py`, `petpulse/services/pets.py`, `petpulse/seed/`, `petpulse/routers/{demo,pets}.py`, `petpulse/schemas/pets.py`, the CORS/errors block in `petpulse/app.py`, `_auth_headers` in `tests/conftest.py` |
+| **B. bug fixes** | D2-1, D2-2, D2-3, D2-5, D2-6 | `petpulse/routers/records.py`, `petpulse/services/{pdf,pdf_text}.py`, `petpulse/schemas/analytics.py`, `petpulse/store/blobs.py` |
+| **C. LLM layer** | D4-*, D5-*, D7-1 (LLM part) | `petpulse/llm/**`, `petpulse/services/**`, `petpulse/core/timeutil.py`, `petpulse/providers/llm.py`, `evals/**` |
+| **D. voice** | D3-2, D3-3, D7-1 (STT part) | `petpulse/providers/stt.py`, `petpulse/routers/voice.py`, `petpulse/services/{voice,audio}.py`, `petpulse/seed/samples/audio/**` |
 | **E. frontend** | every `public/**` change: D1-1 login UI, D1-4 banner, D2-4 XSS, D3-1 recorder, D4/D5 UI, D6-3 JS split | `public/**` (`main.html`, `index.html`, `js/`, `vendor/`). **Only this track edits `public/main.html`.** |
+| **F. restructure** | repo layout | moved the backend into `petpulse/` (`petpulse/app.py`, `petpulse/core/`), split `tests/` into `unit/` and `integration/`, moved the locks to `requirements/` and the guides to `docs/`; removed the pre-contract modules and routes |
+| **G. Firebase** | optional Firebase mode | `petpulse/core/firebase.py`, `petpulse/store/firestore.py`, `public/js/firebase.js`, `firestore.rules`, `storage.rules`, `docs/firebase.md` |
 
 Docs/evals (Phase 6) and the live smoke test (Phase 7) come after the tracks above.
 
 ### Shared files (edit additively)
-- **`api_server.py`**: put new routes in `petpulse/routers/<module>.py` and register them with
-  one `app.include_router(...)` line in the "New-style routers" block. Only the owning track
-  deletes a legacy route.
-- **`petpulse/config.py`**: append new fields with a demo-safe default and add the key to
+- **`petpulse/app.py`**: no route bodies. Put new routes in `petpulse/routers/<module>.py`
+  (thin: parse, check access, call a service) and add the module to `ROUTERS`.
+- **`petpulse/core/config.py`**: append new fields with a demo-safe default and add the key to
   `.env.example` (a test fails if a setting is missing there).
-- **`petpulse/deps.py`**: add factories; don't change existing signatures. Tests use
+- **`petpulse/core/deps.py`**: add factories; don't change existing signatures. Tests use
   `deps.override(...)` / `app.dependency_overrides`.
-- **`requirements.in` → `requirements.txt`**: never hand-merge the lock. On conflict take
-  either side and recompile: `uv pip compile requirements.in -o requirements.txt --python-version 3.11`
-  (same for `requirements-dev.in`, `requirements-live.in`).
+- **`requirements/*.in` → `requirements/*.txt`**: never hand-merge a lock. On conflict take
+  either side and recompile:
+  `uv pip compile requirements/base.in -o requirements/base.txt --python-version 3.11`,
+  `uv pip compile requirements/dev.in -c requirements/base.txt -o requirements/dev.txt --python-version 3.11`,
+  `uv pip compile requirements/live.in -c requirements/base.txt -o requirements/live.txt --python-version 3.11`.
 - **`tests/conftest.py`**: add fixtures, don't change existing ones without telling the other tracks.
-- **`tests/test_known_bugs.py`**: each known bug is a strict xfail. The PR that fixes it gets a
-  failing CI run until it removes that marker, which is the point. If your PR changes a route a
-  proof uses, update the proof in the same PR.
-- **`.flake8`**: remove a legacy file's `per-file-ignores` entry when you rewrite or delete
-  it. Never add codes.
+- **`tests/integration/test_known_bugs.py`**: each review finding keeps a regression proof. If
+  your PR changes a route a proof uses, update the proof in the same PR.
+- **`.flake8`**: no per-file ignores. Never add codes.
 
 ### API changes that need the frontend
 Backend tracks keep the old route working until the frontend PR that switches to the new one
@@ -75,10 +76,10 @@ reports every feature's mode.
 ## Development Setup
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.11
 - Git
 - Docker (optional but recommended)
-- API Keys (see [QUICK_START.md](QUICK_START.md))
+- No API keys for the demo; optional live keys are described in [docs/quick-start.md](docs/quick-start.md)
 
 ### Local Development
 ```bash
@@ -86,17 +87,16 @@ reports every feature's mode.
 git clone https://github.com/YOUR_USERNAME/petpulse.git
 cd petpulse
 
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Development dependencies
+# Install dependencies (pinned locks in requirements/)
+pip install -r requirements/base.txt -r requirements/dev.txt   # or: make install
 
 # Optional: live settings (the demo needs no .env at all)
 cp .env.example .env
 # OPENAI_API_KEY for live AI; Firebase settings per docs/firebase.md
-# (Firebase also needs: pip install -r requirements-live.txt)
+# (Firebase also needs: pip install -r requirements/live.txt)
 
 # Run development server
-uvicorn api_server:app --reload
+uvicorn petpulse.app:app --reload   # or: make run
 ```
 
 ### Docker Development
@@ -112,58 +112,52 @@ docker compose up app
 
 ### Running Tests
 ```bash
-# Run all tests
+# Run all tests (Python + JS)
+make test
+
+# Python only, or one layer
 pytest
+pytest tests/unit
+pytest tests/integration
 
-# Run with coverage
-pytest --cov=. --cov-report=html
+# Run with coverage (the floor is in pyproject.toml)
+pytest --cov --cov-report=html
 
-# Run specific test file
-pytest tests/test_api_server.py
+# Run a specific test file
+pytest tests/integration/test_notes_chat_insights.py
 
-# Run with verbose output
-pytest -v
+# Frontend unit/lint tests (Node 20, no npm install)
+node --test tests/js/*.test.mjs
 ```
 
 ### Writing Tests
-- Tests should be in the `tests/` directory
-- Use descriptive test names following the pattern `test_<function>_<condition>_<expected_result>`
-- Test both success and failure cases
-- Mock external API calls (OpenAI, Firebase, Google Cloud)
-- Include integration tests for critical workflows
+- `tests/unit/`: modules and services called directly, no HTTP.
+- `tests/integration/`: the app over HTTP (`TestClient`), scripts and entry points.
+- `tests/js/`: `node:test` tests for `public/js`.
+- Shared fixtures live in `tests/conftest.py`: `client` (signed in as `alice`), `anon_client`,
+  `client_as("bob")`, `make_pet()` and an isolated store per test.
+- AI providers are deterministic fakes by default; never call a live API from a test.
+- Use descriptive test names and cover the failure cases too (401/404/422).
 
 Example test:
 ```python
-import pytest
-from unittest.mock import patch, MagicMock
-from api_server import app
-
-def test_health_endpoint_returns_healthy_status():
-    """Test that the health endpoint returns correct status."""
-    with app.test_client() as client:
-        response = client.get('/api/health')
-        assert response.status_code == 200
-        assert response.json['status'] == 'healthy'
-
-@patch('openai.ChatCompletion.create')
-def test_ai_chat_handles_openai_error(mock_openai):
-    """Test that AI chat gracefully handles OpenAI API errors."""
-    mock_openai.side_effect = Exception("API Error")
-    with app.test_client() as client:
-        response = client.post('/api/pets/123/chat', json={"message": "test"})
-        assert response.status_code == 500
+def test_chat_refuses_a_dosing_question(client, make_pet):
+    pet_id = make_pet(name="Max")  # owned by alice, like `client`
+    response = client.post(f"/api/pets/{pet_id}/chat", json={"message": "What dose of ibuprofen?"})
+    assert response.status_code == 200
+    assert response.json()["status"] == "out_of_scope"
 ```
 
 ## Code Quality
 
 ### Linting and Formatting
-These are the exact gates CI runs (tool versions are pinned in `requirements-dev.txt`):
+These are the exact gates CI runs (`make lint`; tool versions are pinned in `requirements/dev.txt`):
 ```bash
 flake8 .                 # config in .flake8
 black --check .          # config in pyproject.toml
 mypy                     # strict, on petpulse/
 pytest --cov             # coverage floor in pyproject.toml
-bandit -ll -r petpulse
+bandit -ll -r petpulse scripts evals
 git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 ```
 
@@ -365,21 +359,24 @@ Add screenshots or videos for UI changes
 ### Core Services
 ```
 petpulse/
-├── api_server.py              # FastAPI server with 20+ endpoints
-├── intelligent_chatbot_service.py  # OpenAI Function Calling service
-├── simple_rag_service.py      # RAG-based AI with breed APIs
-├── visualization_service.py   # Dynamic chart generation engine
-├── ai_analytics.py           # AI-powered analytics and insights
-├── petpulse/providers/stt.py # Speech-to-text (OpenAI, Google, deterministic fake)
-├── petpulse/services/voice.py # Browser voice notes: validate, transcribe, hand to process_note
-├── firestore_store.py        # Database operations and caching
-├── summarize_openai.py       # OpenAI text processing and classification
-├── pdf_parser.py             # Document analysis and extraction
-└── public/                  # Frontend assets and components
+├── app.py          # create_app(): middleware, lifespan (config check, logging, seed), ROUTERS
+├── core/           # config (Settings), auth, errors, logging, deps (store/provider factories),
+│                   #   firebase, timeutil
+├── routers/        # thin HTTP layer: health, demo, pets, records, analytics, notes,
+│                   #   assistant (chat), insights, voice, legacy (pre-contract routes kept)
+├── services/       # notes, assistant (chat), retrieval, insights, charts, events, queries,
+│                   #   voice, audio, pdf (summaries), pdf_text (page extraction), pets
+├── llm/            # client, model config, schemas, prompts/*.v1.md, fake rules
+├── providers/      # llm.py and stt.py: fake, OpenAI, Google
+├── store/          # Store interface + JSON/in-memory/Firestore backends, blob stores
+├── schemas/        # Pydantic request/response models
+└── seed/           # demo users, pets, entries, notes; samples/ (audio, PDFs)
 ```
+Also: `public/` (UI), `tests/{unit,integration,js}`, `evals/`, `scripts/`, `docs/`,
+`requirements/`.
 
 ### Technology Stack
-- **Backend**: Python 3.8+, FastAPI, async/await patterns
+- **Backend**: Python 3.11, FastAPI, Pydantic v2
 - **AI/ML**: OpenAI GPT-4, Function Calling, RAG systems
 - **Database**: Firebase Firestore with intelligent caching
 - **Cloud**: Google Cloud Speech-to-Text, Firebase Storage
@@ -413,7 +410,7 @@ For security vulnerabilities, please email the maintainers directly instead of c
 
 ### Project Documentation
 - Update README.md for major feature additions
-- Maintain QUICK_START.md for setup instructions
+- Maintain docs/quick-start.md for setup instructions
 - Document API changes in commit messages
 - Create examples for new features
 
@@ -445,7 +442,7 @@ Contributors are recognized through:
 
 ## Getting Help
 
-- **Documentation**: Check [README.md](README.md) and [QUICK_START.md](QUICK_START.md)
+- **Documentation**: Check [README.md](README.md) and [docs/quick-start.md](docs/quick-start.md)
 - **Issues**: Search existing GitHub issues
 - **Discussions**: Use GitHub Discussions for questions
 - **Direct Contact**: Email maintainers for urgent matters

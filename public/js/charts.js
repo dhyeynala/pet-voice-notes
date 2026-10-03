@@ -1,5 +1,6 @@
-// public/js/charts.js: analytics charts (vendored Chart.js, global `Chart`) and the chart that a
-// chat answer can carry ({type, title, data}).
+// public/js/charts.js: analytics charts (vendored Chart.js, global `Chart`), computed in the
+// browser from the typed analytics entries, and the chart that a chat answer can carry
+// ({type, title, data}).
 import { apiFetch, apiPath, asList } from "./api.js";
 import { el, icon, parseTimestamp } from "./dom.js";
 import { state } from "./state.js";
@@ -10,31 +11,13 @@ let activityChart, energyChart, dietChart, overviewChart, exerciseHistogram, med
 
 const CHART_IDS = ["activityChart", "energyChart", "dietChart", "overviewChart", "exerciseHistogram", "medicationChart", "activityHeatmap"];
 
-/** Fetch the server-built chart configs; fall back to charts computed here from raw entries. */
+/**
+ * Build every analytics chart from GET /api/pets/{id}/analytics?days=30 (the typed entries).
+ * The old server-side chart builder (/visualizations) is gone; charts are computed here.
+ */
 export async function updateCharts() {
   if (!state.selectedPet) return;
   CHART_IDS.forEach(showChartLoading);
-  try {
-    const data = await apiFetch(apiPath("pets", state.selectedPet, "visualizations"), { query: { days: 30 } });
-    const v = (data && data.visualizations) || null;
-    if (!v) throw new Error("no visualizations in response");
-    updateActivityChart(v.weekly_activity);
-    updateEnergyChart(v.energy_distribution);
-    updateDietChart(v.diet_frequency);
-    updateOverviewChart(v.health_overview);
-    updateExerciseHistogram(v.exercise_histogram);
-    updateMedicationChart(v.medication_adherence);
-    updateActivityHeatmap(v.activity_heatmap);
-  } catch (error) {
-    console.warn("Server visualizations unavailable, computing basic charts locally:", error.message || error);
-    await updateChartsBasic();
-  } finally {
-    CHART_IDS.forEach(hideChartLoading);
-  }
-}
-
-/** Fallback: basic charts from GET /api/pets/{id}/analytics?days=30. */
-export async function updateChartsBasic() {
   try {
     const entries = asList(await apiFetch(apiPath("pets", state.selectedPet, "analytics"), { query: { days: 30 } })).map(entryFields);
     const chartData = prepareChartData(entries);
@@ -42,8 +25,13 @@ export async function updateChartsBasic() {
     updateEnergyChart(chartData.energy);
     updateDietChart(chartData.diet);
     updateOverviewChart(chartData.overview);
+    updateExerciseHistogram(chartData.exercise);
+    updateMedicationChart(chartData.medication);
+    updateActivityHeatmap(chartData.heatmap);
   } catch (error) {
     console.error("Error updating charts:", error);
+  } finally {
+    CHART_IDS.forEach(hideChartLoading);
   }
 }
 
@@ -51,19 +39,33 @@ function localDateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function prepareChartData(entries) {
+const finite = (v) => (v === null || v === undefined || v === "" || typeof v === "boolean" ? null : Number.isFinite(Number(v)) ? Number(v) : null);
+
+const EXERCISE_BINS = [[0, 15], [15, 30], [30, 45], [45, 60], [60, 90], [90, Infinity]];
+
+function barConfig(labels, data, label, color, extra = {}) {
+  return {
+    type: "bar",
+    data: { labels, datasets: [{ label, data, backgroundColor: color }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, ...extra },
+  };
+}
+
+/** Chart inputs from typed analytics entries. `now` is injectable for tests. */
+export function prepareChartData(entries, now = new Date()) {
   const days = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
+    const d = new Date(now);
     d.setDate(d.getDate() - i);
     days.push(d);
   }
+  const timeOf = (e) => parseTimestamp(entryTime(e));
   const keyOf = (e) => {
-    const t = parseTimestamp(entryTime(e));
+    const t = timeOf(e);
     return t ? localDateKey(t) : null;
   };
   const activity = days.map((d) => entries.filter((e) => (e.category === "exercise" || e.category === "daily_activity") && keyOf(e) === localDateKey(d)).length);
-  const energy = entries.filter((e) => e.category === "energy_levels" && Number.isFinite(Number(e.level))).map((e) => Number(e.level));
+  const energy = entries.filter((e) => e.category === "energy_levels" && finite(e.level) !== null).map((e) => finite(e.level));
   const dietTypes = {};
   entries.filter((e) => e.category === "diet").forEach((e) => {
     const type = e.type || "meal";
@@ -73,15 +75,38 @@ export function prepareChartData(entries) {
   entries.forEach((e) => {
     perCategory[e.category] = (perCategory[e.category] || 0) + 1;
   });
+
+  // Exercise minutes per session; sessions without a stated duration are not counted (no imputing).
+  const durations = entries.filter((e) => e.category === "exercise").map((e) => finite(e.duration)).filter((d) => d !== null && d > 0);
+  const exerciseCounts = EXERCISE_BINS.map(([lo, hi]) => durations.filter((d) => d >= lo && d < hi).length);
+  const exerciseLabels = EXERCISE_BINS.map(([lo, hi]) => (hi === Infinity ? `${lo}+ min` : `${lo}-${hi} min`));
+
+  // Medication doses logged per day, last 14 days.
+  const medDays = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    medDays.push(d);
+  }
+  const meds = entries.filter((e) => e.category === "medication");
+  const medCounts = medDays.map((d) => meds.filter((e) => keyOf(e) === localDateKey(d)).length);
+
+  // Entries by local hour of day.
+  const hours = Array.from({ length: 24 }, (_, h) => h);
+  const byHour = hours.map(() => 0);
+  entries.forEach((e) => {
+    const t = timeOf(e);
+    if (t) byHour[t.getHours()] += 1;
+  });
+
   return {
     activity: { labels: days.map((d) => d.toLocaleDateString()), data: activity },
     energy,
     diet: { labels: Object.keys(dietTypes), data: Object.values(dietTypes) },
-    overview: {
-      type: "bar",
-      data: { labels: Object.keys(perCategory).map((c) => c.replace(/_/g, " ")), datasets: [{ label: "Entries", data: Object.values(perCategory), backgroundColor: "#667eea" }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } },
-    },
+    overview: barConfig(Object.keys(perCategory).map((c) => String(c).replace(/_/g, " ")), Object.values(perCategory), "Entries", "#667eea"),
+    exercise: durations.length ? barConfig(exerciseLabels, exerciseCounts, "Sessions", "#4ecdc4") : null,
+    medication: meds.length ? barConfig(medDays.map((d) => `${d.getMonth() + 1}/${d.getDate()}`), medCounts, "Doses logged", "#66bb6a") : null,
+    heatmap: { hours, activities: byHour, max_activity: Math.max(0, ...byHour) },
   };
 }
 

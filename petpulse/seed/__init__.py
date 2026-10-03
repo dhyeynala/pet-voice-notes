@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, ContextManager, Optional, Protocol, runtime_checkable
 
-from petpulse import pets as pet_records
+from petpulse.services import pets as pet_records
 from petpulse.seed.demo_data import ALICE_MAX_ID, DEMO_USERS, SEED_VERSION, DemoData, build
 from petpulse.store.base import Store
 from petpulse.store.blobs import BlobStore
@@ -31,12 +31,6 @@ __all__ = ["DEMO_USERS", "SEED_VERSION", "SeedSummary", "is_empty", "reset_demo_
 logger = logging.getLogger("petpulse.seed")
 
 META_PATH = "meta/seed"
-
-# Seeded notes are written in the contract Note shape to ``pets/{id}/notes`` and, while the
-# legacy UI reads ``textinput`` / ``voice-notes``, mirrored there too. The notes track can turn
-# this off once nothing reads the legacy collections.
-LEGACY_NOTE_MIRROR = True
-_LEGACY_KIND = {"MEDICAL": "MEDICAL", "DAILY_ACTIVITY": "DAILY_ACTIVITY"}  # everything else -> MIXED
 
 
 @runtime_checkable
@@ -77,19 +71,6 @@ def _batch(store: Store) -> ContextManager[None]:
     return store.batch() if isinstance(store, _Batching) else contextlib.nullcontext()
 
 
-def _legacy_note(note: dict[str, Any], note_id: str) -> tuple[str, dict[str, Any]]:
-    timestamp = str(note["created_at"]).removesuffix("+00:00")
-    common = {
-        "summary": note["summary"],
-        "content_type": _LEGACY_KIND.get(note["kind"], "MIXED"),
-        "timestamp": timestamp,
-        "note_id": note_id,
-    }
-    if note["source"] == "voice":
-        return "voice-notes", {"transcript": note["text"], **common}
-    return "textinput", {"input": note["text"], "confidence": 1.0, "keywords": [], **common}
-
-
 SAMPLE_RECORD_FILENAME = "maple-street-vet-visit.pdf"
 SAMPLE_RECORD_DAYS_AGO = 12  # matches the seeded vet-visit exit event
 SAMPLE_RECORD_LINES = (
@@ -116,13 +97,13 @@ def sample_record_pdf() -> bytes:
 
 
 def _llm_is_fake() -> bool:
-    from petpulse.deps import get_settings
+    from petpulse.core.deps import get_settings
 
     return get_settings().resolved_llm() == "fake"
 
 
 def _seed_record(store: Store, blobs: BlobStore, now: datetime) -> int:
-    from petpulse.routers.records import create_record_sync  # lazy: pulls in PyMuPDF and pdf_parser
+    from petpulse.routers.records import create_record_sync  # lazy: pulls in PyMuPDF
 
     record = create_record_sync(store, blobs, ALICE_MAX_ID, sample_record_pdf(), SAMPLE_RECORD_FILENAME)
     when = (now - timedelta(days=SAMPLE_RECORD_DAYS_AGO)).astimezone(timezone.utc).replace(tzinfo=None, microsecond=0)
@@ -152,11 +133,8 @@ def _write(store: Store, data: DemoData, now: datetime, blobs: Optional[BlobStor
             store.add(f"pets/{pet.id}/analytics", entry)
             analytics += 1
         for note in pet.notes:
-            note_id = store.add(f"pets/{pet.id}/notes", {**note, "pet_id": pet.id, "uid": pet.owner})
+            store.add(f"pets/{pet.id}/notes", {**note, "pet_id": pet.id, "uid": pet.owner})
             notes += 1
-            if LEGACY_NOTE_MIRROR:
-                collection, legacy = _legacy_note(note, note_id)
-                store.add(f"pets/{pet.id}/{collection}", legacy)
     records = 0
     if blobs is not None:
         if _llm_is_fake():

@@ -7,9 +7,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from petpulse.deps import get_llm, get_store
+from petpulse.core.deps import get_llm, get_store
 from petpulse.providers.llm import LLMProvider
-from petpulse.auth import current_user, require_pet_access
+from petpulse.core.auth import current_user, require_pet_access
 from petpulse.services.notes import MAX_NOTE_CHARS, Note, list_notes, process_note
 from petpulse.store.base import Store
 

@@ -24,15 +24,15 @@ from typing import Any, Optional
 
 from starlette.concurrency import run_in_threadpool
 
-from petpulse.audio import GENERIC_MIMES, SUPPORTED_MIMES, is_near_silence, normalize_mime, probe_duration, sniff
-from petpulse.config import Settings
+from petpulse.services.audio import GENERIC_MIMES, SUPPORTED_MIMES, is_near_silence, normalize_mime, probe_duration, sniff
+from petpulse.core.config import Settings
 from petpulse.providers.stt import UNSUPPORTED_FORMAT, STTProvider, Transcription
 from petpulse.providers.llm import LLMProvider
-from petpulse.samples import audio_manifest
+from petpulse.seed.samples import audio_manifest
 from petpulse.services.notes import process_note
 from petpulse.store.base import Store
-from petpulse.timeutil import InvalidTimezone
-from petpulse.timeutil import validate_tz as _canonical_tz
+from petpulse.core.timeutil import InvalidTimezone
+from petpulse.core.timeutil import validate_tz as _canonical_tz
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def validate_audio(
 
 
 def validate_tz(tz: Optional[str]) -> str:
-    """Checked before any STT call, with the note pipeline's own rules (``petpulse.timeutil``)."""
+    """Checked before any STT call, with the note pipeline's own rules (``petpulse.core.timeutil``)."""
     name = (tz or "").strip() or "UTC"
     try:
         return _canonical_tz(name)

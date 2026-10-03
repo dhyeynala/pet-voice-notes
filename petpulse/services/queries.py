@@ -16,7 +16,7 @@ from typing import Callable, Iterable, Literal, Optional, Sequence
 
 from petpulse.services.events import Event, numeric_field
 from petpulse.services.retrieval import tokenize
-from petpulse.timeutil import get_zone, local_date
+from petpulse.core.timeutil import get_zone, local_date
 
 Aggregate = Literal["count", "sum", "mean"]
 MAX_WINDOW_DAYS = 365

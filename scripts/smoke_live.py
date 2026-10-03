@@ -105,12 +105,6 @@ class BudgetedLLM:
         kwargs["max_tokens"] = min(int(kwargs.get("max_tokens", self._max_tokens)), self._max_tokens)
         return await self._inner.complete_json(**kwargs)
 
-    def legacy_chat(self, task: str, **kwargs: Any) -> Any:
-        self._budget.spend(f"llm.legacy_chat:{task}")
-        if "max_tokens" in kwargs:
-            kwargs["max_tokens"] = min(int(kwargs["max_tokens"]), self._max_tokens)
-        return self._inner.legacy_chat(task, **kwargs)
-
     def __getattr__(self, item: str) -> Any:  # register(), calls, fail ... (fakes)
         return getattr(self._inner, item)
 
@@ -163,10 +157,9 @@ class Context:
     @property
     def app(self) -> Any:
         if self._app is None:
-            from petpulse import deps
+            from petpulse.core import deps
 
-            api_server = importlib.import_module("api_server")
-            self._app = api_server.app
+            self._app = importlib.import_module("petpulse.app").app
             overrides = {
                 deps.get_store: lambda: self.store,
                 deps.get_llm: lambda: self.llm,
@@ -205,7 +198,8 @@ class Context:
 
 def _create_identity(ctx: Context) -> tuple[str, dict[str, str]]:
     """A temporary user and pet in the temporary store, signed in the app's real way."""
-    from petpulse import auth, pets
+    from petpulse.core import auth
+    from petpulse.services import pets
 
     pets.save_user(ctx.store, SMOKE_UID, "Smoke Test")
     pet = pets.create_pet(ctx.store, SMOKE_UID, {"name": "Max", "animal_type": "dog", "breed": "Labrador"})
@@ -260,7 +254,7 @@ def _walk(value: Any) -> Iterator[tuple[str, Any]]:
 
 # ------------------------------------------------------------------------------- checks
 def check_voice(ctx: Context) -> str:
-    from petpulse.samples import SMOKE_AUDIO_ID, audio_manifest
+    from petpulse.seed.samples import SMOKE_AUDIO_ID, audio_manifest
     from petpulse.services import voice
 
     sample = audio_manifest().get(SMOKE_AUDIO_ID)
@@ -293,7 +287,7 @@ def check_note(ctx: Context) -> str:
 
 
 def check_pdf(ctx: Context) -> str:
-    from petpulse.samples import SMOKE_PDF_PATH
+    from petpulse.seed.samples import SMOKE_PDF_PATH
 
     path = "/api/pets/{pet_id}/records"
     require_route(ctx, "POST", path, "bug-fix track")
@@ -420,8 +414,8 @@ def run(
     args = parser.parse_args(argv)
     os.chdir(ROOT)  # .env is read from the repo root
 
-    from petpulse import deps
-    from petpulse.config import ConfigError
+    from petpulse.core import deps
+    from petpulse.core.config import ConfigError
 
     saved_env = {k: os.environ.get(k) for k in ("STORE", "SEED_ON_START", "DATA_DIR")}
     tmp = tempfile.TemporaryDirectory(prefix="petpulse-smoke-")

@@ -15,8 +15,7 @@ Who and what:
 
 Analytics entries use the field names of the tracking forms in ``public/main.html`` and the
 legacy timestamp format (naive UTC ISO-8601), so the legacy dashboard reads them unchanged.
-Notes are stored in the contract ``Note`` shape (``pets/{id}/notes``) and, for the legacy UI,
-mirrored into ``textinput`` / ``voice-notes`` (see ``petpulse.seed.LEGACY_NOTE_MIRROR``).
+Notes are stored in the contract ``Note`` shape (``pets/{id}/notes``).
 """
 
 from __future__ import annotations

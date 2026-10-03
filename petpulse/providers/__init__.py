@@ -4,7 +4,7 @@ Live adapters import their SDKs lazily (inside methods), so importing this packa
 imports ``openai`` or ``google.cloud.speech``.
 """
 
-from petpulse.providers.llm import FakeLLM, LLMError, LLMProvider, LLMRefusal, OpenAILLM, RawCompletion, UnsupportedTask
+from petpulse.providers.llm import FakeLLM, LLMError, LLMProvider, LLMRefusal, OpenAILLM, RawCompletion
 from petpulse.providers.stt import FakeSTT, GoogleSTT, OpenAISTT, STTProvider, Transcription
 
 __all__ = [
@@ -19,5 +19,4 @@ __all__ = [
     "RawCompletion",
     "STTProvider",
     "Transcription",
-    "UnsupportedTask",
 ]

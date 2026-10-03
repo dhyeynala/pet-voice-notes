@@ -26,7 +26,7 @@ from petpulse.llm.registry import RenderedPrompt, escape_markers, get_prompt
 from petpulse.llm.schemas import strict_json_schema
 from petpulse.providers.llm import REPAIR_MARKER, LLMError, LLMProvider, LLMRefusal, RawCompletion
 from petpulse.store.base import Store
-from petpulse.timeutil import to_iso, utc_now
+from petpulse.core.timeutil import to_iso, utc_now
 
 logger = logging.getLogger("petpulse.llm")
 

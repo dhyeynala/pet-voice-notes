@@ -3,9 +3,6 @@
 Writes are validated against ``petpulse.schemas.analytics`` (one model per category,
 ``extra="forbid"``, bounded fields); only the validated fields plus server metadata are
 stored. Reads skip rows whose timestamp cannot be parsed instead of failing (review M3).
-
-The legacy handlers in ``api_server.py`` serve the same paths and delegate to
-``create_entry`` / ``list_entries`` until they are removed, so both stay identical.
 """
 
 from __future__ import annotations
@@ -17,8 +14,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import ValidationError
 
-from petpulse.deps import get_store
-from petpulse.auth import require_pet_access
+from petpulse.core.deps import get_store
+from petpulse.core.auth import require_pet_access
 from petpulse.schemas.analytics import CATEGORIES, ENTRY_MODELS, Entry, validate_entry
 from petpulse.store.base import Store
 

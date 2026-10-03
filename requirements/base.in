@@ -1,0 +1,12 @@
+# Base runtime dependencies (demo + live). Compile with:
+#   uv pip compile requirements/base.in -o requirements/base.txt --python-version 3.11
+# openai ships in the base image but is imported lazily, so demo mode never calls it.
+fastapi
+uvicorn
+pydantic>=2.7
+pydantic-settings>=2.7
+python-multipart
+python-dotenv
+requests
+pymupdf
+openai

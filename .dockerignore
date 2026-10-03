@@ -20,6 +20,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov/
-# Docs-only screenshots (README); not used by the app.
-assets/
+# Docs, screenshots and tests are not used by the app at runtime.
+docs/
 tests/
+requirements/dev.*

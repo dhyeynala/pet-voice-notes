@@ -27,10 +27,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: requirements/*.txt
       - name: Install pinned dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: flake8 (config in .flake8; legacy files have scoped ignores)
+        run: pip install -r requirements/base.txt -r requirements/dev.txt
+      - name: flake8 (config in .flake8; no per-file ignores)
         run: flake8 .
       - name: black
         run: black --check --diff .
@@ -52,9 +52,9 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: requirements/*.txt
       - name: Install pinned dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements/base.txt -r requirements/dev.txt
       - name: Assert no provider keys are present
         run: |
           for var in OPENAI_API_KEY GOOGLE_APPLICATION_CREDENTIALS; do
@@ -81,13 +81,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: requirements/*.txt
       - name: Install pinned tools
-        run: pip install -r requirements-dev.txt
-      - name: bandit (medium+ severity, new package)
-        # Legacy modules have known findings (e.g. B108 = review C3) owned by the bug-fix track;
-        # add each module here once it is fixed or replaced.
-        run: bandit -ll -r petpulse
+        run: pip install -r requirements/dev.txt
+      - name: bandit (medium+ severity, all shipped Python)
+        run: bandit -ll -r petpulse scripts evals
       - name: detect-secrets (fails on anything not in .secrets.baseline)
         run: git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
 
@@ -101,6 +99,7 @@ jobs:
       - name: Run with no env and poll /api/health
         run: |
           docker run -d --name petpulse -p 8000:8000 petpulse:ci
+          docker image inspect -f '{{json .Config.Cmd}}' petpulse:ci | grep -q 'petpulse.app:app'
           for i in $(seq 1 30); do
             if body=$(curl -fsS http://localhost:8000/api/health); then
               echo "$body"

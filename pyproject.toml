@@ -10,11 +10,7 @@ extend-exclude = '''
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 xfail_strict = true
-filterwarnings = [
-    # FastAPI's on_event (legacy startup hook in api_server) is deprecated upstream.
-    "ignore:\\s*on_event is deprecated:DeprecationWarning",
-    "ignore:datetime.datetime.utcnow:DeprecationWarning",
-]
+filterwarnings = ["error::DeprecationWarning:petpulse.*"]
 
 [tool.coverage.run]
 source = ["petpulse"]
