@@ -15,7 +15,7 @@ import pytest
 from petpulse.providers.llm import FakeLLM
 from petpulse.providers.stt import FakeSTT, OpenAISTT
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 FAKE_KEY = "sk-test-not-real-key-wxyz"  # pragma: allowlist secret
 
 

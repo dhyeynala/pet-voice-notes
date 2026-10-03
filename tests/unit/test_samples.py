@@ -10,7 +10,7 @@ from pathlib import Path
 
 from petpulse.seed.samples import AUDIO_DIR, MANIFEST_PATH, SMOKE_AUDIO_ID, SMOKE_PDF_PATH, audio_manifest
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_manifest_matches_files():

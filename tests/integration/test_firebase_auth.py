@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from petpulse.core import config, deps, firebase
 from petpulse.core.config import Settings
 from tests.fake_firebase import FAKE_SERVICE_ACCOUNT, CertificateFetchError, ExpiredIdTokenError, FakeFirebase, install
-from tests.test_auth import PET_ROUTES, PROTECTED, _fill
+from tests.integration.test_auth import PET_ROUTES, PROTECTED, _fill
 
 WEB_KEY = "web-api-key-for-tests"  # pragma: allowlist secret
 TOKENS = {

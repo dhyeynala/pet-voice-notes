@@ -11,7 +11,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _bare_env(tmp_path: Path) -> dict[str, str]:

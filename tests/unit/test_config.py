@@ -109,7 +109,7 @@ def test_env_example_lists_every_setting_and_defaults_to_demo():
 
     from dotenv import dotenv_values
 
-    example = Path(__file__).resolve().parents[1] / ".env.example"
+    example = Path(__file__).resolve().parents[2] / ".env.example"
     keys = dotenv_values(example)
     missing = [name.upper() for name in Settings.model_fields if name.upper() not in keys]
     assert not missing, f".env.example is missing {missing}"
